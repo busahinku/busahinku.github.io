@@ -55,7 +55,7 @@ export default function Home() {
           <ul className={`list-disc pl-8 mt-4 space-y-2 ${
             theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'
           }`}>
-            <li className="pl-2">I have loved designing since childhood. Nowadays, I have taken a break from it and make it for fun.</li>
+            <li className="pl-2">I have loved designing since childhood. Now, I do it for fun during my break.</li>
             <li className="pl-2">Dot Amet laoreet sagittis in lectus quis dui risus laoreet.</li>
           </ul>
           <p className={`text-base font-normal mt-4 mb-4 ${
