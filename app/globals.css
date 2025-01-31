@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #0D0D0F;
+  --navbar-bg: #1A1A1E;
+  --border-color: #2B2B2B;
+  --text-primary: #EEEEEE;
+}
+
+html.light {
+  --background: #F7F7F7;
+  --navbar-bg: #F7F7F7;
+  --border-color: #DADADA;
+  --text-primary: #1A1A1E;
+}
+
+body {
+  color: var(--text-primary);
+  background: var(--background);
+  font-family: 'Inter', sans-serif;
+  padding: 0;
+  margin: 0;
+}
+
+main {
+  padding: 0;
+}
+
+.light body {
+  color: var(--text-primary);
+  background: var(--background);
+}
