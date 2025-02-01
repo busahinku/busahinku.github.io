@@ -7,13 +7,29 @@
   --navbar-bg: #1A1A1E;
   --border-color: #2B2B2B;
   --text-primary: #EEEEEE;
+  --text-secondary: #634E4E;
+  --link-color: #1A5A92;
+
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h1 a,
+.prose h2 a,
+.prose h3 a,
+.prose h4 a {
+  text-decoration: none !important;
 }
 
 html.light {
-  --background: #F7F7F7;
-  --navbar-bg: #F7F7F7;
+  --background:rgb(253, 253, 253);
+  --navbar-bg:rgb(253, 253, 253);
   --border-color: #DADADA;
   --text-primary: #1A1A1E;
+  --text-secondary: #CD9D9D;
+  --link-color:rgb(151, 201, 245);
 }
 
 body {
@@ -31,4 +47,17 @@ main {
 .light body {
   color: var(--text-primary);
   background: var(--background);
+}
+
+/* Global link styles */
+.link-item {
+  color: var(--link-color);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: all 0.2s ease;
+  padding-bottom: 1px;
+}
+
+.link-item:hover {
+  border-bottom-color: var(--link-color);
 }

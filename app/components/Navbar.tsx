@@ -19,23 +19,13 @@ const Navbar = () => {
     const controlNavbar = () => {
       const currentScrollY = window.scrollY;
       
-      // Clear any existing timeout
-      if (scrollTimeout) {
-        clearTimeout(scrollTimeout);
-      }
-      
+      // Remove timeout to make transitions immediate
       if (currentScrollY < lastScrollY) {
-        // Scrolling up - show navbar after delay
-        const timeout = setTimeout(() => {
-          setIsVisible(true);
-        }, 500);
-        setScrollTimeout(timeout);
+        // Scrolling up - show navbar immediately
+        setIsVisible(true);
       } else if (currentScrollY > lastScrollY) {
-        // Scrolling down - hide navbar after delay
-        const timeout = setTimeout(() => {
-          setIsVisible(false);
-        }, 500);
-        setScrollTimeout(timeout);
+        // Scrolling down - hide navbar immediately
+        setIsVisible(false);
       }
       
       setLastScrollY(currentScrollY);
@@ -45,11 +35,8 @@ const Navbar = () => {
     
     return () => {
       window.removeEventListener('scroll', controlNavbar);
-      if (scrollTimeout) {
-        clearTimeout(scrollTimeout);
-      }
     };
-  }, [lastScrollY, scrollTimeout]);
+  }, [lastScrollY]);
   
   const navItems = [
     { label: 'Home', path: '/' },
@@ -64,8 +51,8 @@ const Navbar = () => {
     <>
       <header className={`fixed top-0 w-full z-50 pt-8 ${
         isVisible 
-          ? 'transition-transform duration-1000 ease-out translate-y-0' 
-          : 'transition-transform duration-500 ease-in -translate-y-full'
+          ? 'transition-all duration-300 ease-in-out translate-y-0' 
+          : 'transition-all duration-300 ease-in-out -translate-y-full'
       }`}>
         <div className="w-full max-[820px]:px-6">
           <div className="max-w-[800px] mx-auto relative flex items-center justify-between">
@@ -84,7 +71,7 @@ const Navbar = () => {
             <nav className={`absolute left-1/2 -translate-x-1/2 rounded-3xl px-2 shadow-sm hidden min-[820px]:block ${
               theme === 'dark' 
                 ? 'bg-[#1A1A1E] border border-[#2B2B2B]' 
-                : 'bg-[#F7F7F7] border border-[#DADADA] shadow-[0_2px_8px_rgba(0,0,0,0.1)]'
+                : 'bg-[#FBFBFB] border border-[#DADADA] shadow-[0_2px_8px_rgba(0,0,0,0.1)]'
             }`}>
               <div className="flex items-center h-10">
                 {navItems.map((item) => (
@@ -111,7 +98,7 @@ const Navbar = () => {
                 className={`h-10 w-10 flex items-center justify-center rounded-full transition-colors ${
                   theme === 'dark'
                     ? 'bg-[#1A1A1E] border border-[#2B2B2B] hover:border-[#FB2549]'
-                    : 'bg-[#F7F7F7] border border-[#DADADA] hover:border-[#FB2549] shadow-[0_2px_8px_rgba(0,0,0,0.08)]'
+                    : 'bg-[#FCFCFC] border border-[#DADADA] hover:border-[#FB2549] shadow-[0_2px_8px_rgba(0,0,0,0.08)]'
                 }`}
                 aria-label="Toggle theme"
               >
@@ -130,7 +117,7 @@ const Navbar = () => {
                 className={`h-10 w-10 flex items-center justify-center rounded-full min-[820px]:hidden transition-colors ${
                   theme === 'dark'
                     ? 'bg-[#1A1A1E] border border-[#2B2B2B]'
-                    : 'bg-[#F7F7F7] border border-[#DADADA] shadow-[0_2px_8px_rgba(0,0,0,0.08)]'
+                    : 'bg-[#FCFCFC] border border-[#DADADA] shadow-[0_2px_8px_rgba(0,0,0,0.08)]'
                 }`}
                 aria-label="Open menu"
               >

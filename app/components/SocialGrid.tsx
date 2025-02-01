@@ -27,7 +27,7 @@ export default function SocialGrid() {
         light: '/icons/social/spotify-dark.svg'
       },
       href: 'https://open.spotify.com/user/bzmah384nndroig0y2dh22saw?si=c7dc8de070df45a7',
-      description: 'Listening music is my stereotype when I am working.',
+      description: 'Listening to music is my go-to habit while working.',
       darkGradient: 'from-[#166D2B] to-[#0C3E19]',
       lightGradient: 'from-[#E8F5E9] to-[#C8E6C9]',
       gridArea: 'md:col-span-2 md:row-span-2 md:row-start-1',
@@ -51,7 +51,7 @@ export default function SocialGrid() {
         light: '/icons/social/instagram-dark.svg'
       },
       href: 'https://instagram.com/busahinku',
-      description: 'My personal Instagram account',
+      description: 'My instagram account I do not use much',
       darkGradient: 'from-[#9C1552] to-[#8C154A]',
       lightGradient: 'from-[#FCE4EC] to-[#F8BBD0]',
       gridArea: 'md:col-span-2 md:row-start-2',
@@ -63,7 +63,7 @@ export default function SocialGrid() {
         light: '/icons/social/twitter-dark.svg'
       },
       href: 'https://twitter.com/busahinku',
-      description: 'Some instant thoughts',
+      description: 'Instant actions',
       darkGradient: 'from-[#131313] to-[#0E0E0E]',
       lightGradient: 'from-[#FAFAFA] to-[#F5F5F5]',
       gridArea: 'md:col-span-1 md:row-start-3',
@@ -74,8 +74,8 @@ export default function SocialGrid() {
         dark: '/icons/social/email.svg',
         light: '/icons/social/email-dark.svg'
       },
-      href: 'mailto:buraksahinkucu@gmail.com',
-      description: 'You can freely reach me!',
+      href: 'mailto:buraksahinkucuk@gmail.com',
+      description: 'You can freely reach me! --> buraksahinkucuk@gmail.com',
       darkGradient: 'from-[#111F23] to-[#111F23]',
       lightGradient: 'from-[#E0F7FA] to-[#B2EBF2]',
       gridArea: 'md:col-span-3 md:row-start-3',

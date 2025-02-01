@@ -9,11 +9,17 @@ export default function Home() {
 
   const ongoings = [
     {
-      title: 'Learning Quantum Computing',
+      title: 'Currently reading: ',
+      items: [
+        { text: 'Casella', link: 'https://pages.stat.wisc.edu/~shao/stat610/Casella_Berger_Statistical_Inference.pdf' },
+        { text: 'Bain', link: 'https://archive.org/details/introductiontopr0000bain' },
+        { text: 'CFA 1 vol1', link: 'https://www.ithalkitaplar.com/2024-cfa-program-curriculum-level-i-box-set-volume-1-6-by-cfa-institute-5455' },
+        { text: 'Hands-on ML', link: 'https://www.oreilly.com/library/view/hands-on-machine-learning/9781492032632/' }
+      ],
       icon: '/icons/book.svg'
     },
     {
-      title: 'Mastering the language Python',
+      title: 'Trying to master Python and R, planning to learn C++ soon.',
       icon: '/icons/coding.svg'
     },
     {
@@ -21,7 +27,7 @@ export default function Home() {
       icon: '/icons/shape.svg'
     },
     {
-      title: 'Laaaa',
+      title: 'Actively learning statistical modeling',
       icon: '/icons/statics.svg'
     }
   ];
@@ -45,18 +51,18 @@ export default function Home() {
           <p className={`text-base font-normal mb-2 ${
             theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'
           }`}>
-            Hi! I am Burak Sahin Kucuk.
+            Hey! This is Burak Sahin.
           </p>
           <p className={`text-base font-normal ${
             theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'
           }`}>
-            I am currently pursing a career in Statistics and Computer Science at Middle East Technical University. I am currently sophomore student with high cGPAs. But I like to consider myself as someone who likes to create things and present them to people. I am also trying to improve myself in different fields such as Data Science, Machine Learning, Bayesian Statistics...
+            I am currently pursing a career in Statistics and Computer Science at Middle East Technical University. Currently sophomore student with high cGPA but #gradesdontmatter. But I like to consider myself as someone who likes to create things and present them to people. I am also trying to improve myself in different fields such as Data Science, Quantum Computing, Bayesian Statistics...
           </p>
           <ul className={`list-disc pl-8 mt-4 space-y-2 ${
             theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'
           }`}>
             <li className="pl-2">I have loved designing since childhood. Now, I do it for fun during my break.</li>
-            <li className="pl-2">Dot Amet laoreet sagittis in lectus quis dui risus laoreet.</li>
+            <li className="pl-2">This is my graph of thoughts, notes, and ideas.</li>
           </ul>
           <p className={`text-base font-normal mt-4 mb-4 ${
             theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'
@@ -75,8 +81,8 @@ export default function Home() {
             </h2>
             <div className="space-y-3">
               {ongoings.map((item, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <div className="w-5 h-5 relative">
+                <div key={index} className="flex items-start gap-3">
+                  <div className="w-5 h-5 relative mt-1">
                     <Image
                       src={item.icon}
                       alt={item.title}
@@ -84,11 +90,30 @@ export default function Home() {
                       className="object-contain"
                     />
                   </div>
-                  <span className={`text-base ${
-                    theme === 'dark' ? 'text-[#634E4E]' : 'text-[#CD9D9D]'
-                  }`}>
-                    {item.title}
-                  </span>
+                  <div className="flex-1">
+                    <span className={`text-base ${
+                      theme === 'dark' ? 'text-[#634E4E]' : 'text-[#CD9D9D]'
+                    }`}>
+                      {item.title}
+                    </span>
+                    {item.items && (
+                      <span className="inline">
+                        {item.items.map((subItem, subIndex) => (
+                          <span key={subIndex} className="inline">
+                            <a
+                              href={subItem.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="link-item text-base"
+                            >
+                              {subItem.text}
+                            </a>
+                            {subIndex < item.items.length - 1 && <span className="text-[#634E4E] dark:text-[#CD9D9D]">, </span>}
+                          </span>
+                        ))}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
