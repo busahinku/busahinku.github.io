@@ -17,6 +17,8 @@ import { useState } from 'react';
 import ConceptCheck from './components/ConceptCheck';
 import rehypeRaw from 'rehype-raw';
 import { Highlight, themes } from 'prism-react-renderer';
+import LikeButton from './components/LikeButton';
+import Comments from './components/Comments';
 
 interface BlogPostClientProps {
   post: BlogPost;
@@ -80,6 +82,7 @@ interface DivProps extends React.HTMLAttributes<HTMLDivElement> {
 export default function BlogPostClient({ post }: BlogPostClientProps) {
   const { theme, toggleTheme } = useTheme();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [copiedUrl, setCopiedUrl] = useState(false);
 
   const CodeBlock = ({ inline, className, children, ...props }: CodeProps) => {
     const match = /language-(\w+)/.exec(className || '');
@@ -361,7 +364,7 @@ export default function BlogPostClient({ post }: BlogPostClientProps) {
     h2: ({ children, id }: HeadingProps) => (
       <h2 
         id={id} 
-        className={`text-[20px] font-bold mt-6 mb-2 scroll-mt-20 group ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}
+        className={`text-2xl font-bold mt-6 mb-4 scroll-mt-20 group ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}
         onClick={() => id && document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })}
       >
         <span className="cursor-pointer">
@@ -377,7 +380,7 @@ export default function BlogPostClient({ post }: BlogPostClientProps) {
     h3: ({ children, id }: HeadingProps) => (
       <h3 
         id={id} 
-        className={`text-[18px] font-bold mt-5 mb-2 scroll-mt-20 group ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}
+        className={`text-xl font-bold mt-5 mb-3 scroll-mt-20 group ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}
         onClick={() => id && document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })}
       >
         <span className="cursor-pointer">
@@ -393,7 +396,7 @@ export default function BlogPostClient({ post }: BlogPostClientProps) {
     h4: ({ children, id }: HeadingProps) => (
       <h4 
         id={id} 
-        className={`text-[16px] font-bold mt-4 mb-2 scroll-mt-20 group ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}
+        className={`text-lg font-bold mt-4 mb-2 scroll-mt-20 group ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}
         onClick={() => id && document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })}
       >
         <span className="cursor-pointer">
@@ -407,7 +410,6 @@ export default function BlogPostClient({ post }: BlogPostClientProps) {
       </h4>
     ),
     p: ({ children, node }: ParagraphProps) => {
-      // Check if this paragraph contains a code block, image, or div
       if (node?.children.some(child => 
         child.type === 'element' && 
         (child.tagName === 'code' || child.tagName === 'pre' || 
@@ -416,7 +418,6 @@ export default function BlogPostClient({ post }: BlogPostClientProps) {
       )) {
         return <>{children}</>;
       }
-      // Check if parent is already a paragraph or if we're inside another block element
       if (node?.parent?.type === 'element' && 
           (node.parent.tagName === 'p' || 
            node.parent.tagName === 'blockquote' || 
@@ -424,33 +425,32 @@ export default function BlogPostClient({ post }: BlogPostClientProps) {
         return <>{children}</>;
       }
       return (
-        <p className={`text-[14px] my-2 leading-6 ${theme === 'dark' ? 'text-[#EEEEEE]/80' : 'text-[#1A1A1E]/80'}`}>
+        <p className={`text-base my-3 leading-relaxed ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}>
           {children}
         </p>
       );
     },
     ul: ({ children }: ListProps) => (
-      <ul className={`list-disc list-inside my-3 space-y-1.5 text-[14px] ${theme === 'dark' ? 'text-[#EEEEEE]/80' : 'text-[#1A1A1E]/80'}`}>
+      <ul className={`list-disc list-inside my-3 space-y-2 text-base ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}>
         {children}
       </ul>
     ),
     ol: ({ children }: ListProps) => (
-      <ol className={`list-decimal list-inside my-3 space-y-1.5 text-[14px] ${theme === 'dark' ? 'text-[#EEEEEE]/80' : 'text-[#1A1A1E]/80'}`}>
+      <ol className={`list-decimal list-inside my-3 space-y-2 text-base ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}>
         {children}
       </ol>
     ),
     li: ({ children }: ListProps) => (
-      <li className={`ml-4 ${theme === 'dark' ? 'text-[#EEEEEE]/80' : 'text-[#1A1A1E]/80'}`}>
+      <li className={`ml-4 text-base ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}>
         {children}
       </li>
     ),
     blockquote: ({ children }: ListProps) => (
-      <blockquote className={`border-l-4 border-gray-300 dark:border-gray-600 pl-4 my-3 italic text-[14px] ${theme === 'dark' ? 'text-[#EEEEEE]/70' : 'text-[#1A1A1E]/70'}`}>
+      <blockquote className={`border-l-4 border-gray-300 dark:border-gray-600 pl-4 my-4 italic text-base ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}>
         {children}
       </blockquote>
     ),
     a: ({ href, children }) => {
-      // Check if this is a table of contents link (starts with #)
       if (href?.startsWith('#')) {
         return (
           <span
@@ -468,7 +468,6 @@ export default function BlogPostClient({ post }: BlogPostClientProps) {
         );
       }
       
-      // External links
       return (
         <a
           href={href}
@@ -712,6 +711,95 @@ export default function BlogPostClient({ post }: BlogPostClientProps) {
               {processedContent}
             </ReactMarkdown>
           </div>
+          
+          <div className={`mt-16 pt-8 border-t ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
+            <div className="flex flex-wrap items-center gap-3">
+              <LikeButton slug={post.slug} theme={theme} />
+              
+              <a
+                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(post.title)}&url=${encodeURIComponent(window.location.href)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  theme === 'dark'
+                    ? 'bg-[#1A1A1E] hover:bg-[#2B2B2B] text-white'
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`}
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+                Share on X
+              </a>
+
+              <a
+                href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  theme === 'dark'
+                    ? 'bg-[#1A1A1E] hover:bg-[#2B2B2B] text-white'
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`}
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+                Share on Facebook
+              </a>
+
+              <a
+                href={`https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(window.location.href)}&title=${encodeURIComponent(post.title)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  theme === 'dark'
+                    ? 'bg-[#1A1A1E] hover:bg-[#2B2B2B] text-white'
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`}
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                </svg>
+                Share on LinkedIn
+              </a>
+
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  setCopiedUrl(true);
+                  setTimeout(() => setCopiedUrl(false), 2000);
+                }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  theme === 'dark'
+                    ? copiedUrl
+                      ? 'bg-green-500/20 text-green-400'
+                      : 'bg-[#1A1A1E] hover:bg-[#2B2B2B] text-white'
+                    : copiedUrl
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`}
+              >
+                {copiedUrl ? (
+                  <>
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 6L9 17L4 12" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M8 5H6C4.89543 5 4 5.89543 4 7V19C4 20.1046 4.89543 21 6 21H16C17.1046 21 18 20.1046 18 19V17M8 5C8 6.10457 8.89543 7 10 7H12C13.1046 7 14 6.10457 14 5M8 5C8 3.89543 8.89543 3 10 3H12C13.1046 3 14 3.89543 14 5M14 5H16C17.1046 5 18 5.89543 18 7V10" strokeLinecap="round"/>
+                    </svg>
+                    Copy URL
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <Comments slug={post.slug} theme={theme} />
         </article>
       </main>
     </div>

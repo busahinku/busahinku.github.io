@@ -61,8 +61,8 @@ $$
 w = w - {\alpha} \frac{{\partial}}{{\partial w}} J_{(w,b)}
 $$
 **$\alpha$ is between 0 - 1**, it basically controls how big of a step you take downhill
-	if $\alpha$ is very large then that corresponds to a very aggressive [[gradient descent]] procedure where you're trying to take huge steps downhill.
-	and if $\alpha$ is very small then you'd be taking small baby steps.
+if $\alpha$ is very large then that corresponds to a very aggressive [[gradient descent]] procedure where you're trying to take huge steps downhill.
+and if $\alpha$ is very small then you'd be taking small baby steps.
 and the other term which is right hand side of $\alpha$ is derivative term of the cost function J. It basically says you in which direction you want to take your baby step.
 Combination with derivative term and $\alpha$ , also determines the size of the steps you want to take downhill.
 
@@ -82,13 +82,16 @@ $$
 then copy the values, 
 w = tmp_w
 b = tmp_b with this way you prevent the w value from changing before the tmp_b operation is performed
+
 ```
 tmp_w = w - {\alpha} \frac{{\partial}}{{\partial w}} J_{(w,b)} 
 tmp_b = b - \alpha \frac{{\partial}}{{\partial b}} J_{(w,b)} 
 w = tmp_w
 b = tmp_b
 ```
+
 the code which is above is true. Also, there is a wrong implementation below:
+
 ```
 tmp_w = code
 w = tmp_w

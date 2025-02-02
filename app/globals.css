@@ -61,3 +61,53 @@ main {
 .link-item:hover {
   border-bottom-color: var(--link-color);
 }
+
+/* KaTeX Math Formulas Scrollbar */
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.5rem; /* Scrollbar için boşluk */
+  margin-bottom: 1rem;
+}
+
+.katex-display > .katex {
+  white-space: nowrap;
+}
+
+/* Scrollbar Styling - Dark Theme */
+.dark .katex-display::-webkit-scrollbar {
+  height: 8px;
+}
+
+.dark .katex-display::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.dark .katex-display::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+.dark .katex-display::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* Scrollbar Styling - Light Theme */
+.katex-display::-webkit-scrollbar {
+  height: 8px;
+}
+
+.katex-display::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+.katex-display::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.katex-display::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
