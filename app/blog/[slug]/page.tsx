@@ -1,23 +1,27 @@
 import BlogPostClient from './BlogPostClient';
-import { getBlogPosts } from '@/app/utils/getBlogPosts';
+import { getBlogPosts, type BlogPost } from '@/app/utils/getBlogPosts';
 import { notFound } from 'next/navigation';
 
 // Generate static pages for all blog posts at build time
 export async function generateStaticParams() {
-  const posts = getBlogPosts();
-  console.log('Available slugs:', posts.map(post => post.slug));
-  return posts.map((post) => ({
+  const posts = await getBlogPosts();
+  return posts.map((post: BlogPost) => ({
     slug: post.slug,
   }));
 }
 
-export default async function BlogPost({ params }: { params: { slug: string } }) {
-  const posts = getBlogPosts();
-  const post = posts.find((p) => p.slug === params.slug);
+interface PageProps {
+  params: Promise<{
+    slug: string;
+  }>;
+}
+
+export default async function Page({ params }: PageProps) {
+  const { slug } = await params;
+  const posts = await getBlogPosts();
+  const post = posts.find((p: BlogPost) => p.slug === slug);
 
   if (!post) {
-    console.log('Post not found for slug:', params.slug);
-    console.log('Available posts:', posts.map(p => p.slug));
     notFound();
   }
 

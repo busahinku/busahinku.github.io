@@ -13,11 +13,12 @@ import remarkEmoji from 'remark-emoji';
 import remarkToc from 'remark-toc';
 import type { BlogPost } from '@/app/utils/getBlogPosts';
 import type { Components } from 'react-markdown';
-import { createElement } from 'react';
+import { createElement, useState } from 'react';
 import ConceptCheck from './components/ConceptCheck';
 import Callout from './components/Callout';
 import rehypeReact from 'rehype-react';
 import rehypeRaw from 'rehype-raw';
+import { Highlight, themes } from 'prism-react-renderer';
 
 interface BlogPostClientProps {
   post: BlogPost;
@@ -81,49 +82,111 @@ interface DivProps extends React.HTMLAttributes<HTMLDivElement> {
   'data-title'?: string;
   'data-question'?: string;
   'data-answer'?: string;
+  'data-concept-check'?: boolean;
 }
 
 export default function BlogPostClient({ post }: BlogPostClientProps) {
   const { theme, toggleTheme } = useTheme();
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   const CodeBlock = ({ inline, className, children, ...props }: CodeProps) => {
     const match = /language-(\w+)/.exec(className || '');
+    const language = match ? match[1] : '';
+    const code = children as string;
+    const isCopied = copiedCode === code;
+
     if (inline) {
       return (
         <code
-          className="bg-black/10 dark:bg-white/10 px-1.5 py-0.5 rounded text-sm font-mono"
+          className={`px-1.5 py-0.5 rounded text-sm font-mono ${
+            theme === 'dark' 
+              ? 'bg-[#1A1A1E] text-[#EEEEEE]' 
+              : 'bg-gray-100 text-gray-800'
+          }`}
           {...props}
         >
           {children}
         </code>
       );
     }
+
+    const handleCopy = async () => {
+      if (typeof window !== 'undefined') {
+        await navigator.clipboard.writeText(code);
+        setCopiedCode(code);
+        setTimeout(() => {
+          setCopiedCode(null);
+        }, 2000);
+      }
+    };
+
     return (
       <div className="relative group">
-        <pre className={`${
-          match ? `language-${match[1]}` : ''
-        } p-5 rounded-lg overflow-auto bg-[#1A1A1E] text-[#EEEEEE] text-sm font-mono my-4 border border-gray-800`}>
-          <div className="absolute top-3 right-3 flex gap-2">
-            {match && (
-              <div className="px-2 py-1 rounded text-xs text-white/60 bg-white/10 font-mono">
-                {match[1]}
-              </div>
-            )}
-            <button
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  navigator.clipboard.writeText(children as string);
-                }
-              }}
-              className="px-2 py-1 rounded text-xs text-white/60 bg-white/10 hover:bg-white/20 transition-colors"
+        <Highlight
+          theme={theme === 'dark' ? themes.nightOwl : themes.github}
+          code={code}
+          language={language || 'text'}
+        >
+          {({ className, style, tokens, getLineProps, getTokenProps }) => (
+            <pre
+              className={`p-5 rounded-lg overflow-auto text-sm font-mono my-4 border ${
+                theme === 'dark'
+                  ? 'bg-[#1A1A1E] border-gray-800'
+                  : 'bg-gray-50 border-gray-200'
+              }`}
+              style={style}
             >
-              Copy
-            </button>
-          </div>
-          <code className={className} {...props}>
-            {children}
-          </code>
-        </pre>
+              <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                {language && (
+                  <div className={`px-2 py-1 rounded text-xs font-mono ${
+                    theme === 'dark'
+                      ? 'bg-white/10 text-white/60'
+                      : 'bg-gray-200 text-gray-600'
+                  }`}>
+                    {language}
+                  </div>
+                )}
+                <button
+                  onClick={handleCopy}
+                  className={`px-2 py-1 rounded text-xs transition-all duration-200 flex items-center gap-1.5 ${
+                    theme === 'dark'
+                      ? isCopied
+                        ? 'bg-green-500/20 text-green-400'
+                        : 'bg-white/10 text-white/60 hover:bg-white/20'
+                      : isCopied
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                  }`}
+                >
+                  {isCopied ? (
+                    <>
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8 5H6C4.89543 5 4 5.89543 4 7V19C4 20.1046 4.89543 21 6 21H16C17.1046 21 18 20.1046 18 19V17M8 5C8 6.10457 8.89543 7 10 7H12C13.1046 7 14 6.10457 14 5M8 5C8 3.89543 8.89543 3 10 3H12C13.1046 3 14 3.89543 14 5M14 5H16C17.1046 5 18 5.89543 18 7V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
+                      Copy
+                    </>
+                  )}
+                </button>
+              </div>
+              <code className={className}>
+                {tokens.map((line, i) => (
+                  <div key={i} {...getLineProps({ line })}>
+                    {line.map((token, key) => (
+                      <span key={key} {...getTokenProps({ token })} />
+                    ))}
+                  </div>
+                ))}
+              </code>
+            </pre>
+          )}
+        </Highlight>
       </div>
     );
   };
@@ -216,8 +279,51 @@ export default function BlogPostClient({ post }: BlogPostClientProps) {
   const processConceptChecks = (content: string) => {
     const conceptCheckRegex = /\?\[(.*?)\]\((.*?)\)/g;
     return content.replace(conceptCheckRegex, (_, question, answer) => {
-      return `<ConceptCheck question="${question.trim()}" answer="${answer.trim()}" />`;
+      return `<div data-concept-check data-question="${question.trim()}" data-answer="${answer.trim()}"></div>`;
     });
+  };
+
+  const getCalloutIcon = (type: string) => {
+    const icons: Record<string, string> = {
+      'note': '📝',
+      'abstract': '📑',
+      'summary': '📑',
+      'tldr': '📑',
+      'info': 'ℹ️',
+      'todo': '📋',
+      'tip': '💡',
+      'hint': '💡',
+      'important': '💡',
+      'success': '✅',
+      'check': '✅',
+      'done': '✅',
+      'question': '❓',
+      'help': '❓',
+      'faq': '❓',
+      'warning': '⚠️',
+      'caution': '⚠️',
+      'attention': '⚠️',
+      'failure': '❌',
+      'fail': '❌',
+      'missing': '❌',
+      'danger': '⚠️',
+      'error': '⚠️',
+      'bug': '🐛',
+      'example': '💭',
+      'quote': '💬',
+      'cite': '💬'
+    };
+    return icons[type.toLowerCase()] || icons['note'];
+  };
+
+  const getCalloutStyle = (type: string) => {
+    const styles: Record<string, { bg: string, border: string, lightBg: string, lightBorder: string }> = {
+      'note': { bg: 'bg-blue-900/30', border: 'border-blue-500/30', lightBg: 'bg-blue-50', lightBorder: 'border-blue-200' },
+      'warning': { bg: 'bg-orange-900/30', border: 'border-orange-500/30', lightBg: 'bg-orange-50', lightBorder: 'border-orange-200' },
+      'important': { bg: 'bg-red-900/30', border: 'border-red-500/30', lightBg: 'bg-red-50', lightBorder: 'border-red-200' },
+      'tip': { bg: 'bg-emerald-900/30', border: 'border-emerald-500/30', lightBg: 'bg-emerald-50', lightBorder: 'border-emerald-200' }
+    };
+    return styles[type.toLowerCase()] || styles['note'];
   };
 
   const processCallouts = (content: string) => {
@@ -386,34 +492,58 @@ export default function BlogPostClient({ post }: BlogPostClientProps) {
       <Callout type={type} title={title}>{children}</Callout>
     ),
     table: ({ children }) => (
-      <div className="overflow-x-auto my-6">
-        <table className="min-w-full divide-y divide-gray-300 dark:divide-gray-700">
+      <div className="overflow-x-auto rounded-lg my-6">
+        <table className={`min-w-full divide-y ${
+          theme === 'dark' 
+            ? 'divide-gray-700' 
+            : 'divide-gray-200'
+        }`}>
           {children}
         </table>
       </div>
     ),
     thead: ({ children }) => (
-      <thead className="bg-gray-100 dark:bg-gray-800">
+      <thead className={`${
+        theme === 'dark' 
+          ? 'bg-gray-800' 
+          : 'bg-gray-50'
+      }`}>
         {children}
       </thead>
     ),
     tbody: ({ children }) => (
-      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+      <tbody className={`divide-y ${
+        theme === 'dark' 
+          ? 'divide-gray-700' 
+          : 'divide-gray-200'
+      }`}>
         {children}
       </tbody>
     ),
     tr: ({ children }) => (
-      <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+      <tr className={`transition-colors ${
+        theme === 'dark'
+          ? 'hover:bg-gray-800/50'
+          : 'hover:bg-gray-50'
+      }`}>
         {children}
       </tr>
     ),
     th: ({ children }) => (
-      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+        theme === 'dark'
+          ? 'text-gray-400'
+          : 'text-gray-500'
+      }`}>
         {children}
       </th>
     ),
     td: ({ children }) => (
-      <td className="px-4 py-3 text-sm">
+      <td className={`px-4 py-3 text-sm whitespace-nowrap ${
+        theme === 'dark'
+          ? 'text-gray-300'
+          : 'text-gray-700'
+      }`}>
         {children}
       </td>
     ),
@@ -440,16 +570,45 @@ export default function BlogPostClient({ post }: BlogPostClientProps) {
       );
     },
     hr: () => (
-      <hr className="my-8 border-t border-gray-200 dark:border-gray-800" />
+      <hr className={`my-8 border-t ${
+        theme === 'dark'
+          ? 'border-gray-800'
+          : 'border-gray-300'
+      }`} />
     ),
-    ConceptCheck: ({ question, answer }) => (
+    ConceptCheck: ({ question, answer }: ConceptCheckProps) => (
       <ConceptCheck question={question} answer={answer} />
     ),
     div: ({ className, children, ...props }: DivProps) => {
+      if (props['data-concept-check'] !== undefined) {
+        return (
+          <ConceptCheck
+            question={props['data-question'] || ''}
+            answer={props['data-answer'] || ''}
+          />
+        );
+      }
       if (className?.includes('callout')) {
         const type = props['data-type'] || 'note';
         const title = props['data-title'] || '';
-        return <Callout type={type} title={title}>{children}</Callout>;
+        const style = getCalloutStyle(type);
+        const content = (children as string).split('\n').map((line, i) => (
+          <p key={i} className={`${theme === 'dark' ? 'text-white/80' : 'text-gray-700'} ${i > 0 ? 'mt-2' : ''}`}>
+            {line}
+          </p>
+        ));
+
+        return (
+          <div className={`rounded-lg p-4 my-4 border ${theme === 'dark' ? `${style.bg} ${style.border}` : `${style.lightBg} ${style.lightBorder}`}`}>
+            <div className={`font-medium text-base mb-2 flex items-center gap-2 ${theme === 'dark' ? 'text-white/90' : 'text-gray-900'}`}>
+              <span>{getCalloutIcon(type)}</span>
+              <span className="uppercase">{title || type}</span>
+            </div>
+            <div>
+              {content}
+            </div>
+          </div>
+        );
       }
       return <div className={className}>{children}</div>;
     },
@@ -459,7 +618,7 @@ export default function BlogPostClient({ post }: BlogPostClientProps) {
     <div className={`min-h-screen w-full ${theme === 'dark' ? 'bg-[#0D0D0F]' : 'bg-[rgb(253,253,253)]'}`}>
       <button
         onClick={toggleTheme}
-        className={`fixed top-8 right-8 z-50 h-10 w-10 flex items-center justify-center rounded-full backdrop-blur-sm transition-colors ${
+        className={`fixed top-8 right-8 z-50 h-10 w-10 flex items-center justify-center rounded-full backdrop-blur-2xl transition-colors ${
           theme === 'dark'
             ? 'bg-black/20 hover:bg-black/30 text-white'
             : 'bg-gray-200/50 hover:bg-gray-200/80 text-gray-700'

@@ -23,10 +23,6 @@ export default function Home() {
       icon: '/icons/coding.svg'
     },
     {
-      title: 'Bla bla bla bla',
-      icon: '/icons/shape.svg'
-    },
-    {
       title: 'Actively learning statistical modeling',
       icon: '/icons/statics.svg'
     }
@@ -34,7 +30,7 @@ export default function Home() {
 
   return (
     <div className="w-full max-[820px]:px-6">
-      <main className="max-w-[800px] mx-auto pt-12 pb-16">
+      <main className="max-w-[800px] mx-auto pt-24 pb-16">
         <div className="flex flex-col">
           <div className="w-[60px] h-[60px] rounded-xl overflow-hidden mb-6">
             <Image

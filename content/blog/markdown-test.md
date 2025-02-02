@@ -3,7 +3,7 @@ title: "Complete Markdown Features Test"
 description: "A comprehensive test of all available markdown features in our blog system"
 date: "2024-03-14 15:30"
 tags: ["markdown", "test", "documentation"]
-mainPhoto: "/images/markdown.jpg"
+mainPhoto: "https://images.pexels.com/photos/842711/pexels-photo-842711.jpeg?cs=srgb&dl=pexels-christian-heitz-285904-842711.jpg&fm=jpg"
 ---
 
 ## Table of Contents
@@ -59,27 +59,24 @@ def fibonacci(n):
 
 ### Callouts
 
->[!note] - hello
+>[!note] Hello
 > This is a note callout. It's useful for highlighting important information.
 > hello
 
->[!warning] Alo
+>[!warning] Warning
 > Be careful with this section! This is a warning callout.
 > aaa
-aaa
 
-
->[!important]
+>[!important] Important
 > This is a critical piece of information that shouldn't be missed
+# Hello World
 
->[!tip]
+>[!tip] Tip
 > Here's a helpful tip that might make your life easier.
-> aaaa
 
+      Antolia high graph
 
 ### Mathematical Formulas
-
-You can write inline math like this: $E = mc^2$ or create block equations:
 
 $$
 \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y_i})^2
@@ -115,7 +112,7 @@ Let's test our understanding:
 
 Here's an example image with a caption:
 
-![A beautiful sunset over mountains](/images/sunset.jpg)
+![A beautiful sunset over mountains](https://cdn.pixabay.com/photo/2022/08/20/05/59/nature-7398357_1280.jpg)
 
 ## Emoji Support
 
