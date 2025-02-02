@@ -13,10 +13,8 @@ import remarkEmoji from 'remark-emoji';
 import remarkToc from 'remark-toc';
 import type { BlogPost } from '@/app/utils/getBlogPosts';
 import type { Components } from 'react-markdown';
-import { createElement, useState } from 'react';
+import { useState } from 'react';
 import ConceptCheck from './components/ConceptCheck';
-import Callout from './components/Callout';
-import rehypeReact from 'rehype-react';
 import rehypeRaw from 'rehype-raw';
 import { Highlight, themes } from 'prism-react-renderer';
 
@@ -39,12 +37,6 @@ interface CalloutProps {
 interface CustomComponents extends Components {
   Callout: React.ComponentType<CalloutProps>;
   ConceptCheck: React.ComponentType<ConceptCheckProps>;
-}
-
-interface ConceptCheckData {
-  type: 'concept-check';
-  question: string;
-  answer: string;
 }
 
 interface ConceptCheckProps {
