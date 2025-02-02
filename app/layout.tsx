@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     default: "Burak Sahin Kucuk",
     template: "%s | Burak Sahin Kucuk"
   },
-  description: "My story about diverse topics.",
+  description: "Some stuff I've Learned or just want to share.",
   keywords: ["Burak Sahin Kucuk", "Statistics", "Life", "Technology", "Computer Science", "Computing Stuff", "Blog", "Portfolio"],
   authors: [{ name: "Burak Sahin Kucuk" }],
   creator: "Burak Sahin Kucuk",
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://busahinku.github.io",
     title: "Burak Sahin Kucuk",
-    description: "Statistics, Life, Technology, Computer Science, Computing Stuff",
+    description: "Some stuff I've Learned or just want to share.",
     siteName: "Burak Sahin Kucuk",
     images: [
       {

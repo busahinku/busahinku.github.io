@@ -7,9 +7,9 @@ This is my personal blog where I share my thoughts and experiences about various
 - Responsive design
 - Dark/Light mode
 - Blog posts with Markdown support
-- Comments system
+- Comments system with Google Authentication
 - Like system
-- Google Authentication
+- Beautiful UI/UX
 
 ## Technologies Used
 

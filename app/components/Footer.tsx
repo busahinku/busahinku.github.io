@@ -20,8 +20,8 @@ const Footer = () => {
   return (
     <footer className={`w-full py-8 mt-16 border-t ${
       theme === 'dark' 
-        ? 'border-[#2B2B2B]' 
-        : 'border-[#DADADA]'
+        ? 'border-[#2B2B2B] bg-black' 
+        : 'border-gray-200 bg-white'
     }`}>
       <div className="w-full max-[820px]:px-6">
         <div className="max-w-[800px] mx-auto">
@@ -35,7 +35,7 @@ const Footer = () => {
                   className={`text-sm transition-colors ${
                     theme === 'dark'
                       ? 'text-[#EEEEEE] hover:text-white'
-                      : 'text-[#1A1A1E] hover:text-black'
+                      : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
                   {link.label}
@@ -49,7 +49,7 @@ const Footer = () => {
               className={`text-sm transition-colors ${
                 theme === 'dark'
                   ? 'text-[#EEEEEE] hover:text-white'
-                  : 'text-[#1A1A1E] hover:text-black'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               To the top
@@ -60,7 +60,7 @@ const Footer = () => {
           <div className={`text-sm mt-6 ${
             theme === 'dark'
               ? 'text-[#EEEEEE]/60'
-              : 'text-[#1A1A1E]/60'
+              : 'text-gray-500'
           }`}>
             <p>All Rights Reserved - {new Date().getFullYear()}, busahinku</p>
           </div>
