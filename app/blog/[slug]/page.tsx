@@ -1,6 +1,11 @@
-import BlogPostClient from './BlogPostClient';
+import { Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { getBlogPosts, type BlogPost } from '@/app/utils/getBlogPosts';
 import { notFound } from 'next/navigation';
+
+const BlogPostClient = dynamic(() => import('./BlogPostClient'), {
+  ssr: false
+});
 
 // Generate static pages for all blog posts at build time
 export async function generateStaticParams() {
@@ -25,5 +30,9 @@ export default async function Page({ params }: PageProps) {
     notFound();
   }
 
-  return <BlogPostClient post={post} />;
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <BlogPostClient post={post} />
+    </Suspense>
+  );
 } 
