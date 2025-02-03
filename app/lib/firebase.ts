@@ -18,7 +18,7 @@ const app = initializeApp(firebaseConfig);
 if (typeof window !== 'undefined') {
   // Debug token'ı sadece development ortamında etkinleştir
   if (process.env.NODE_ENV === 'development') {
-    // @ts-ignore
+    // @ts-expect-error
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
   }
 
