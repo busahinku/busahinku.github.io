@@ -145,6 +145,14 @@ Here's an important note that contains:
 
 ?[Can you combine different markdown features in a single block?](Yes! As demonstrated above, you can mix and match various markdown features to create rich, interactive content. Just make sure to maintain proper formatting and structure.)
 
+son case
+
+**$\alpha$ is between 0 - 1**, it basically controls how big of a step you take downhill
+	if $\alpha$ is very large then that corresponds to a very aggressive [[gradient descent]] procedure where you're trying to take huge steps downhill.
+	and if $\alpha$ is very small then you'd be taking small baby steps.
+and the other term which is right hand side of $\alpha$ is derivative term of the cost function J. It basically says you in which direction you want to take your baby step.
+Combination with derivative term and $\alpha$ , also determines the size of the steps you want to take downhill. #hello
+
 ---
 
 That's all! This post demonstrates every markdown feature available in our blog system. Feel free to use this as a reference when writing your own posts. 

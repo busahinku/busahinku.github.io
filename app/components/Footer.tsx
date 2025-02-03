@@ -10,7 +10,6 @@ const Footer = () => {
     { label: 'Home', path: '/' },
     { label: 'Blog', path: '/blog' },
     { label: 'Projects', path: '/projects' },
-    { label: 'Resume', path: '/resume' },
     { label: 'About', path: '/about' },
     { label: 'Misc', path: '/misc' },
     { label: 'References', path: '/references' },
@@ -18,10 +17,10 @@ const Footer = () => {
 
 
   return (
-    <footer className={`w-full py-8 mt-16 border-t ${
+    <footer className={`w-full py-8 border-t ${
       theme === 'dark' 
-        ? 'border-[#2B2B2B] bg-black' 
-        : 'border-gray-200 bg-white'
+        ? 'border-[#2B2B2B] bg-[#141418]' 
+        : 'border-gray-200 bg-[#FAFAFA]'
     }`}>
       <div className="w-full max-[820px]:px-6">
         <div className="max-w-[800px] mx-auto">

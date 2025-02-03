@@ -2,6 +2,96 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  html {
+    font-size: 14px;
+  }
+
+  body {
+    @apply antialiased;
+  }
+}
+
+/* Tüm temel metin elemanları için font boyutu */
+p, li, a, span, div {
+  font-size: 14px;
+}
+
+/* KaTeX için özel kurallar */
+.katex, .katex *, .katex-html, .katex-html * {
+  font-size: revert !important;
+}
+
+.katex-display {
+  font-size: revert !important;
+}
+
+.prose {
+  max-width: none;
+}
+
+.prose p, .prose li {
+  font-size: 14px;
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+}
+
+/* KaTeX içeren prose elementleri için özel kural */
+.prose .katex-display, 
+.prose .katex-inline {
+  font-size: revert !important;
+}
+
+/* KaTeX elementlerini varsayılan boyutunda tut */
+.katex {
+  font-size: 1em !important;
+}
+
+.katex-display {
+  font-size: 1.21em !important;
+}
+
+/* Diğer prose stilleri */
+.prose h1 {
+  font-size: 1.5rem;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+.prose h2 {
+  font-size: 1.25rem;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.prose h3 {
+  font-size: 1.1rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose pre {
+  font-size: 14px;
+}
+
+.prose code {
+  font-size: 14px;
+}
+
+.prose ul {
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+}
+
+.prose ol {
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+}
+
+.prose blockquote {
+  font-size: 14px;
+}
+
 :root {
   --background: #0D0D0F;
   --navbar-bg: #1A1A1E;
