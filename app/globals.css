@@ -13,7 +13,7 @@
 }
 
 /* Tüm temel metin elemanları için font boyutu */
-p, li, a, span, div {
+p, li, a {
   font-size: 14px;
 }
 
@@ -51,23 +51,50 @@ p, li, a, span, div {
   font-size: 1.21em !important;
 }
 
-/* Diğer prose stilleri */
+/* Blog başlıkları için özel boyutlar */
+h1 {
+  font-size: 2rem !important;
+}
+
+h2 {
+  font-size: 1.5rem !important;
+}
+
+h3 {
+  font-size: 1.25rem !important;
+}
+
+h4 {
+  font-size: 1.125rem !important;
+}
+
+/* Blog başlıkları için prose özel stilleri */
 .prose h1 {
-  font-size: 1.5rem;
+  font-size: 2rem !important;
   margin-top: 0;
   margin-bottom: 1.5rem;
+  font-weight: 600;
 }
 
 .prose h2 {
-  font-size: 1.25rem;
+  font-size: 1.5rem !important;
   margin-top: 2rem;
   margin-bottom: 1rem;
+  font-weight: 600;
 }
 
 .prose h3 {
-  font-size: 1.1rem;
+  font-size: 1.25rem !important;
   margin-top: 1.5rem;
   margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.prose h4 {
+  font-size: 1.125rem !important;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
 }
 
 .prose pre {
