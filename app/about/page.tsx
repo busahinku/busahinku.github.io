@@ -1,12 +1,9 @@
 'use client';
 
 import Image from 'next/image';
-import { motion } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
-import { Newsreader } from 'next/font/google';
 import SocialGrid from '../components/SocialGrid';
 
-const newsreader = Newsreader({ subsets: ['latin'] });
 
 export default function AboutPage() {
   const { theme } = useTheme();

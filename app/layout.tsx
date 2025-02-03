@@ -5,7 +5,6 @@ import { Inter, Newsreader } from 'next/font/google';
 import Footer from './components/Footer';
 
 const inter = Inter({ subsets: ['latin'] });
-const newsreader = Newsreader({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: {
