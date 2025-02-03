@@ -16,12 +16,6 @@ const app = initializeApp(firebaseConfig);
 
 // App Check'i başlat
 if (typeof window !== 'undefined') {
-  // Debug token'ı sadece development ortamında etkinleştir
-  if (process.env.NODE_ENV === 'development') {
-    // @ts-expect-error
-    self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-  }
-
   initializeAppCheck(app, {
     provider: new ReCaptchaV3Provider(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ''),
     isTokenAutoRefreshEnabled: true
