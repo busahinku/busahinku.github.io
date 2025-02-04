@@ -24,7 +24,7 @@ if (typeof window !== 'undefined') {
   }
 
   try {
-    const appCheck = initializeAppCheck(app, {
+    initializeAppCheck(app, {
       provider: new ReCaptchaV3Provider(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!),
       isTokenAutoRefreshEnabled: true
     });
