@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { db, auth } from '@/app/lib/firebase';
-import { collection, addDoc, query, where, onSnapshot, Timestamp, doc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, onSnapshot, Timestamp, doc, deleteDoc, orderBy } from 'firebase/firestore';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import Image from 'next/image';
 
@@ -27,34 +27,44 @@ interface CommentsProps {
 // Avatar bileşeni
 const Avatar = ({ src, name }: { src: string | null, name: string }) => {
   if (!src) {
-    // İsmin baş harflerini al
-    const initials = name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-
     return (
       <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium bg-blue-100 text-blue-600">
-        {initials}
+        {name
+          .split(' ')
+          .map(word => word[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 2)}
       </div>
     );
   }
 
   return (
-    <Image
-      src={src}
-      alt={name}
-      width={40}
-      height={40}
-      className="rounded-full"
-      onError={(e) => {
-        // Resim yüklenemezse initials'a dön
-        e.currentTarget.style.display = 'none';
-        e.currentTarget.parentElement?.querySelector('.fallback-avatar')?.classList.remove('hidden');
-      }}
-    />
+    <div className="w-10 h-10 relative">
+      <Image
+        src={src}
+        alt={name}
+        width={40}
+        height={40}
+        className="rounded-full"
+        onError={(e) => {
+          const target = e.target as HTMLImageElement;
+          target.style.display = 'none';
+          const parent = target.parentElement;
+          if (parent) {
+            const fallback = document.createElement('div');
+            fallback.className = "w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium bg-blue-100 text-blue-600";
+            fallback.textContent = name
+              .split(' ')
+              .map(word => word[0])
+              .join('')
+              .toUpperCase()
+              .slice(0, 2);
+            parent.appendChild(fallback);
+          }
+        }}
+      />
+    </div>
   );
 };
 
@@ -81,39 +91,39 @@ export default function Comments({ slug, theme }: CommentsProps) {
     
     const q = query(
       collection(db, 'comments'),
-      where('slug', '==', slug)
+      where('slug', '==', slug),
+      orderBy('createdAt', 'desc')
     );
 
-    const unsubscribe = onSnapshot(q, 
-      (snapshot) => {
-        console.log('Comments snapshot received:', snapshot.docs.length, 'comments');
-        const commentsData = snapshot.docs.map(doc => {
-          const data = doc.data();
-          console.log('Comment data:', data);
-          return {
-            id: doc.id,
-            ...data
-          };
-        }) as Comment[];
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const commentsData: Comment[] = [];
+      snapshot.forEach((doc) => {
+        commentsData.push({ id: doc.id, ...doc.data() } as Comment);
+      });
 
-        // Yorumları ağaç yapısına dönüştür ve sırala
-        const commentTree = commentsData
-          .filter(comment => !comment.parentId) // Ana yorumları filtrele
-          .map(comment => {
-            // Her ana yorum için yanıtları bul ve sırala
-            comment.replies = commentsData
-              .filter(reply => reply.parentId === comment.id)
-              .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
-            return comment;
-          })
-          .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis()); // Ana yorumları sırala
+      // Yorumları düzenle (parent-child ilişkisi)
+      const organizedComments = commentsData.reduce((acc: Comment[], comment) => {
+        if (!comment.parentId) {
+          // Ana yorum
+          acc.push(comment);
+        } else {
+          // Alt yorum (reply)
+          const parentIndex = acc.findIndex(c => c.id === comment.parentId);
+          if (parentIndex !== -1) {
+            if (!acc[parentIndex].replies) {
+              acc[parentIndex].replies = [];
+            }
+            acc[parentIndex].replies!.push(comment);
+          } else {
+            // Parent bulunamazsa normal yorum olarak ekle
+            acc.push(comment);
+          }
+        }
+        return acc;
+      }, []);
 
-        setComments(commentTree);
-      },
-      (error) => {
-        console.error('Error listening to comments:', error);
-      }
-    );
+      setComments(organizedComments);
+    });
 
     return () => unsubscribe();
   }, [slug]);

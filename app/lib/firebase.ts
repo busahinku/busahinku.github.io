@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+import type { FirebaseError } from 'firebase/app';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -22,10 +23,16 @@ if (typeof window !== 'undefined') {
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = process.env.FIREBASE_APPCHECK_DEBUG_TOKEN;
   }
 
-  initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ''),
-    isTokenAutoRefreshEnabled: true
-  });
+  try {
+    const appCheck = initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!),
+      isTokenAutoRefreshEnabled: true
+    });
+    console.log('App Check initialized successfully');
+  } catch (error: unknown) {
+    const firebaseError = error as FirebaseError;
+    console.error('Error initializing App Check:', firebaseError.message);
+  }
 }
 
 export const db = getFirestore(app);
@@ -33,6 +40,6 @@ export const auth = getAuth(app);
 
 // Oturum kalıcılığını ayarla
 setPersistence(auth, browserLocalPersistence)
-  .catch((error) => {
-    console.error('Auth persistence error:', error);
+  .catch((error: FirebaseError) => {
+    console.error('Auth persistence error:', error.message);
   }); 
