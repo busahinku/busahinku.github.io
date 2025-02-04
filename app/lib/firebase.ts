@@ -19,7 +19,7 @@ if (typeof window !== 'undefined') {
   // Debug token'ı sadece development ortamında etkinleştir
   if (process.env.NODE_ENV === 'development') {
     // @ts-expect-error - Firebase App Check debug token is not recognized in global scope
-    self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    self.FIREBASE_APPCHECK_DEBUG_TOKEN = process.env.FIREBASE_APPCHECK_DEBUG_TOKEN;
   }
 
   initializeAppCheck(app, {
