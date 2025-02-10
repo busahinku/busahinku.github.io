@@ -68,6 +68,46 @@ const Avatar = ({ src, name }: { src: string | null, name: string }) => {
   );
 };
 
+// Yorumları düzenleyen yardımcı fonksiyon
+const organizeComments = (comments: Comment[]): Comment[] => {
+  const commentMap = new Map<string, Comment>();
+  const rootComments: Comment[] = [];
+
+  // Önce tüm yorumları map'e ekle
+  comments.forEach(comment => {
+    commentMap.set(comment.id, { ...comment, replies: [] });
+  });
+
+  // Sonra parent-child ilişkilerini kur
+  comments.forEach(comment => {
+    const processedComment = commentMap.get(comment.id)!;
+    if (comment.parentId && commentMap.has(comment.parentId)) {
+      // Eğer parent yorum varsa, onun altına ekle
+      const parent = commentMap.get(comment.parentId)!;
+      if (!parent.replies) parent.replies = [];
+      parent.replies.push(processedComment);
+    } else {
+      // Parent yoksa veya bulunamadıysa ana yorum olarak ekle
+      if (!comment.parentId) {
+        rootComments.push(processedComment);
+      }
+    }
+  });
+
+  // Yorumları ve yanıtları tarihe göre sırala
+  const sortByDate = (a: Comment, b: Comment) => 
+    b.createdAt.toMillis() - a.createdAt.toMillis();
+
+  rootComments.sort(sortByDate);
+  rootComments.forEach(comment => {
+    if (comment.replies) {
+      comment.replies.sort(sortByDate);
+    }
+  });
+
+  return rootComments;
+};
+
 export default function Comments({ slug, theme }: CommentsProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -101,28 +141,7 @@ export default function Comments({ slug, theme }: CommentsProps) {
         commentsData.push({ id: doc.id, ...doc.data() } as Comment);
       });
 
-      // Yorumları düzenle (parent-child ilişkisi)
-      const organizedComments = commentsData.reduce((acc: Comment[], comment) => {
-        if (!comment.parentId) {
-          // Ana yorum
-          acc.push(comment);
-        } else {
-          // Alt yorum (reply)
-          const parentIndex = acc.findIndex(c => c.id === comment.parentId);
-          if (parentIndex !== -1) {
-            if (!acc[parentIndex].replies) {
-              acc[parentIndex].replies = [];
-            }
-            acc[parentIndex].replies!.push(comment);
-          } else {
-            // Parent bulunamazsa normal yorum olarak ekle
-            acc.push(comment);
-          }
-        }
-        return acc;
-      }, []);
-
-      setComments(organizedComments);
+      setComments(organizeComments(commentsData));
     });
 
     return () => unsubscribe();
@@ -161,7 +180,7 @@ export default function Comments({ slug, theme }: CommentsProps) {
     setIsLoading(true);
     try {
       console.log('Adding new comment for slug:', slug);
-      const docRef = await addDoc(collection(db, 'comments'), {
+      const commentData = {
         text: newComment.trim(),
         slug,
         createdAt: Timestamp.now(),
@@ -171,7 +190,9 @@ export default function Comments({ slug, theme }: CommentsProps) {
           uid: auth.currentUser.uid
         },
         parentId: replyTo?.id || null
-      });
+      };
+
+      const docRef = await addDoc(collection(db, 'comments'), commentData);
       console.log('Comment added with ID:', docRef.id);
       setNewComment('');
       setReplyTo(null); // Yanıt verme modunu kapat
@@ -193,72 +214,76 @@ export default function Comments({ slug, theme }: CommentsProps) {
   };
 
   // Yorum bileşeni
-  const CommentItem = ({ comment, level = 0 }: { comment: Comment; level?: number }) => (
-    <div className={`flex gap-3 ${level > 0 ? 'ml-12 mt-4' : ''}`}>
-      <Avatar 
-        src={comment.author.photoURL} 
-        name={comment.author.name} 
-      />
-      <div className="flex-1">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">{comment.author.name}</span>
-            <span className={`text-sm ${
-              theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-            }`}>
-              {comment.createdAt.toDate().toLocaleDateString('tr-TR', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            {auth.currentUser && (
-              <button
-                onClick={() => setReplyTo({ id: comment.id, authorName: comment.author.name })}
-                className={`text-sm transition-colors px-2 py-1 rounded-full ${
-                  theme === 'dark'
-                    ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10'
-                    : 'text-gray-500 hover:text-blue-500 hover:bg-blue-50'
-                }`}
-              >
-                Reply
-              </button>
-            )}
-            {auth.currentUser?.uid === comment.author.uid && (
-              <button
-                onClick={() => handleDelete(comment.id)}
-                className={`text-sm transition-colors px-2 py-1 rounded-full ${
-                  theme === 'dark'
-                    ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10'
-                    : 'text-gray-500 hover:text-red-500 hover:bg-red-50'
-                }`}
-              >
-                Delete
-              </button>
-            )}
-          </div>
-        </div>
-        <p className={`mt-2 text-sm ${
-          theme === 'dark' ? 'text-white/80' : 'text-gray-700'
-        }`}>
-          {comment.text}
-        </p>
+  const CommentItem = ({ comment, level = 0 }: { comment: Comment; level?: number }) => {
+    if (level > 5) return null; // Maximum 5 seviye iç içe yanıt sınırı
 
-        {/* Alt yorumlar */}
-        {comment.replies && comment.replies.length > 0 && (
-          <div className="mt-4 space-y-4">
-            {comment.replies.map((reply) => (
-              <CommentItem key={reply.id} comment={reply} level={level + 1} />
-            ))}
+    return (
+      <div className={`flex gap-3 ${level > 0 ? 'ml-8 mt-4' : ''}`}>
+        <Avatar 
+          src={comment.author.photoURL} 
+          name={comment.author.name} 
+        />
+        <div className="flex-1">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{comment.author.name}</span>
+              <span className={`text-sm ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+              }`}>
+                {comment.createdAt.toDate().toLocaleDateString('tr-TR', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {auth.currentUser && level < 5 && (
+                <button
+                  onClick={() => setReplyTo({ id: comment.id, authorName: comment.author.name })}
+                  className={`text-sm transition-colors px-2 py-1 rounded-full ${
+                    theme === 'dark'
+                      ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10'
+                      : 'text-gray-500 hover:text-blue-500 hover:bg-blue-50'
+                  }`}
+                >
+                  Reply
+                </button>
+              )}
+              {auth.currentUser?.uid === comment.author.uid && (
+                <button
+                  onClick={() => handleDelete(comment.id)}
+                  className={`text-sm transition-colors px-2 py-1 rounded-full ${
+                    theme === 'dark'
+                      ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10'
+                      : 'text-gray-500 hover:text-red-500 hover:bg-red-50'
+                  }`}
+                >
+                  Delete
+                </button>
+              )}
+            </div>
           </div>
-        )}
+          <p className={`mt-2 text-sm ${
+            theme === 'dark' ? 'text-white/80' : 'text-gray-700'
+          }`}>
+            {comment.text}
+          </p>
+
+          {/* Alt yorumlar */}
+          {comment.replies && comment.replies.length > 0 && (
+            <div className="mt-4 space-y-4">
+              {comment.replies.map((reply) => (
+                <CommentItem key={reply.id} comment={reply} level={level + 1} />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="mt-8">

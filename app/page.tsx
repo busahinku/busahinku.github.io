@@ -52,7 +52,12 @@ export default function Home() {
           <p className={`text-base font-normal ${
             theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'
           }`}>
-            I am currently pursing a career in Statistics and Computer Science at Middle East Technical University. Currently sophomore student with high cGPA but #gradesdontmatter. But I like to consider myself as someone who likes to create things and present them to people. I am also trying to improve myself in different fields such as Data Science, Quantum Computing, Bayesian Statistics...
+            I am sophomore Statistics and Computer Engineering student at Middle East Technical University based in Ankara, Turkey. I like to consider myself as someone who likes to create things and present them to people. I am also trying to improve myself in different fields...
+          </p>
+          <p className={`text-base font-normal ${
+            theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'
+          }`}>
+            Glad to have you here! Feel free to look around :)
           </p>
           <ul className={`list-disc pl-8 mt-4 space-y-2 ${
             theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'
@@ -63,7 +68,7 @@ export default function Home() {
           <p className={`text-base font-normal mt-4 mb-4 ${
             theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'
           }`}>
-            I see myself as a relaxed and friendly person, so feel free to reach out, even just to say hi! You can contact me on my e-mail or my social media accounts.
+            I see myself as a relaxed and friendly person, so feel free to reach out, even just to say hi!
           </p>
           
           <SocialGrid />

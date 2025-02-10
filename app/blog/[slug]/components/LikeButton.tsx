@@ -9,6 +9,17 @@ interface LikeButtonProps {
   theme: 'dark' | 'light';
 }
 
+declare global {
+  interface Window {
+    grecaptcha: ReCaptcha;
+    onRecaptchaVerified: (token: string) => void;
+  }
+}
+
+interface ReCaptcha {
+  execute: (siteKey: string, options: { action: string }) => Promise<string>;
+}
+
 export default function LikeButton({ slug, theme }: LikeButtonProps) {
   const [likes, setLikes] = useState(0);
   const [hasLiked, setHasLiked] = useState(false);
@@ -38,27 +49,50 @@ export default function LikeButton({ slug, theme }: LikeButtonProps) {
 
   const handleLike = async () => {
     if (isLoading) return;
+    setIsLoading(true);
 
-    const newLikeCount = hasLiked ? likes - 1 : likes + 1;
-    const docRef = doc(db, 'posts', slug);
+    try {
+      // reCAPTCHA doğrulaması
+      const token = await new Promise<string>((resolve, reject) => {
+        window.onRecaptchaVerified = resolve;
+        const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+        if (!siteKey) {
+          reject(new Error('reCAPTCHA site key is not defined'));
+          return;
+        }
+        window.grecaptcha.execute(siteKey, { action: 'like' });
+      });
 
-    // Firestore'u güncelle
-    await updateDoc(docRef, {
-      likes: newLikeCount
-    });
+      if (!token) {
+        console.error('reCAPTCHA verification failed');
+        return;
+      }
 
-    // Local storage'ı güncelle
-    const likedPosts = JSON.parse(localStorage.getItem('likedPosts') || '{}');
-    if (hasLiked) {
-      delete likedPosts[slug];
-    } else {
-      likedPosts[slug] = true;
+      const newLikeCount = hasLiked ? likes - 1 : likes + 1;
+      const docRef = doc(db, 'posts', slug);
+
+      // Firestore'u güncelle
+      await updateDoc(docRef, {
+        likes: newLikeCount
+      });
+
+      // Local storage'ı güncelle
+      const likedPosts = JSON.parse(localStorage.getItem('likedPosts') || '{}');
+      if (hasLiked) {
+        delete likedPosts[slug];
+      } else {
+        likedPosts[slug] = true;
+      }
+      localStorage.setItem('likedPosts', JSON.stringify(likedPosts));
+
+      // State'i güncelle
+      setLikes(newLikeCount);
+      setHasLiked(!hasLiked);
+    } catch (error) {
+      console.error('Error handling like:', error);
+    } finally {
+      setIsLoading(false);
     }
-    localStorage.setItem('likedPosts', JSON.stringify(likedPosts));
-
-    // State'i güncelle
-    setLikes(newLikeCount);
-    setHasLiked(!hasLiked);
   };
 
   return (

@@ -13,7 +13,7 @@ import remarkEmoji from 'remark-emoji';
 import remarkToc from 'remark-toc';
 import type { BlogPost } from '@/app/utils/getBlogPosts';
 import type { Components } from 'react-markdown';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ConceptCheck from './components/ConceptCheck';
 import rehypeRaw from 'rehype-raw';
 import { Highlight, themes } from 'prism-react-renderer';
@@ -83,6 +83,17 @@ export default function BlogPostClient({ post }: BlogPostClientProps) {
   const { theme, toggleTheme } = useTheme();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
+
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = `https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`;
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
 
   const CodeBlock = ({ inline, className, children, ...props }: CodeProps) => {
     const match = /language-(\w+)/.exec(className || '');
@@ -714,6 +725,12 @@ export default function BlogPostClient({ post }: BlogPostClientProps) {
           
           <div className={`mt-16 pt-8 border-t ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
             <div className="flex flex-wrap items-center gap-3">
+              <div 
+                className="g-recaptcha" 
+                data-sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}
+                data-callback="onRecaptchaVerified"
+                data-size="invisible"
+              ></div>
               <LikeButton slug={post.slug} theme={theme} />
               
               <a

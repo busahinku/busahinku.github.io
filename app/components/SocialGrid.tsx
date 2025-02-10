@@ -74,8 +74,8 @@ export default function SocialGrid() {
         dark: '/icons/social/email.svg',
         light: '/icons/social/email-dark.svg'
       },
-      href: 'mailto:buraksahinkucuk@gmail.com',
-      description: 'You can freely reach me! --> buraksahinkucuk@gmail.com',
+      href: 'mailto:sahin.kucuk@metu.edu.tr',
+      description: 'You can freely reach me! --> sahin.kucuk@metu.edu.tr',
       darkGradient: 'from-[#111F23] to-[#111F23]',
       lightGradient: 'from-[#E0F7FA] to-[#B2EBF2]',
       gridArea: 'md:col-span-3 md:row-start-3',
