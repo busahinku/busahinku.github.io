@@ -3,8 +3,8 @@ title: Analysis of Crime Dynamics by Five States Exploring Trends, Socioeconomic
 description: It requires us to clean and interpret the provided data using Python programming language and its libraries such as NumPy, Matplotlib, Pandas, and Seaborn.
 date: '01-01-2024'
 tags: ['Python', 'pandas', 'Plotly', 'Matplotlib', 'Seaborn', 'NumPy']
-mainPhoto: 'https://pbs.twimg.com/media/Gjcf73NXkAA_6xG?format=jpg&name=large'
-demoUrl: 'https://github.com/busahinku/STAT112_Course_Final/blob/main/Final%20Report.docx'
+mainPhoto: 'https://mir-s3-cdn-cf.behance.net/project_modules/max_632/42138e219345373.67b08b2929d54.png'
+demoUrl: 'https://public.tableau.com/app/profile/burak.k.k/viz/Original-6--OverviewofShoppingData/OverviewofShoppingBehaviourHabitsandData'
 githubUrl: 'https://github.com/busahinku/STAT112_Course_Final'
 type: "data-analysis"
 ---

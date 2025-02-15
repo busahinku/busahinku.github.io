@@ -357,7 +357,7 @@ export default function ProjectPostClient({ project }: ProjectPostClientProps) {
 
       <div className="relative">
         <div className="w-full flex justify-center">
-          <div className="relative w-full max-w-[1000px] h-[500px]">
+          <div className="relative w-full  max-w-[1000px] h-[500px]">
             <Image
               src={project.mainPhoto}
               alt={project.title}
@@ -365,12 +365,12 @@ export default function ProjectPostClient({ project }: ProjectPostClientProps) {
               className="object-cover"
               priority
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/90" />
+            <div className="absolute shadow-sm inset-0 from-transparent via-transparent to-black/90" />
           </div>
         </div>
 
-        <div className="absolute opacity-82 left-1/2 -translate-x-1/2 bottom-0 translate-y-1/4 w-full max-w-[800px]">
-          <div className={`w-full backdrop-blur-sm rounded-xl shadow-lg mx-auto px-8 py-7 ${
+        <div className="absolute opacity-.95 left-1/2 -translate-x-1/2 bottom-0 translate-y-1/2 w-full max-w-[800px]">
+          <div className={`w-full backdrop-blur-sm rounded-xl shadow-sm mx-auto px-4 py-3 ${
             theme === 'dark'
               ? 'bg-[#0D0D0F]/95'
               : 'bg-white/95'

@@ -3,7 +3,7 @@ import ProjectClient from './ProjectClient';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Projects | Burak Şahinkuçuk',
+  title: 'Projects - busahinku',
   description: 'A showcase of my projects and work.',
 };
 

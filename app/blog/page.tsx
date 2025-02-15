@@ -1,5 +1,11 @@
 import { getBlogPosts } from '../utils/getBlogPosts';
 import BlogClient from './BlogClient';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Blog - busahinku',
+  description: 'A collection of blog posts.',
+};
 
 export default async function BlogPage() {
   try {
