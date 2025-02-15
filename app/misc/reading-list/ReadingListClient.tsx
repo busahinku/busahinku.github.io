@@ -16,30 +16,48 @@ interface Book {
 
 const books: Book[] = [
   {
-    title: 'Clean Code',
-    author: 'Robert C. Martin',
-    description: 'A handbook of agile software craftsmanship that helps developers write better code.',
-    image: '/images/misc/books/clean-code.jpg',
-    status: 'completed',
-    link: 'https://www.amazon.com/Clean-Code-Handbook-Software-Craftsmanship/dp/0132350882',
-    genre: 'Software Development'
-  },
-  {
-    title: 'The Pragmatic Programmer',
-    author: 'Andrew Hunt & David Thomas',
-    description: 'A guide to becoming a better programmer through practical examples and advice.',
-    image: '/images/misc/books/pragmatic-programmer.jpg',
+    title: 'Statistical Inference',
+    author: 'George Casella & Roger L. Berger',
+    description: 'A comprehensive guide to statistical inference, covering probability theory, estimation, hypothesis testing, and more.',
+    image: 'https://static-ppimages.freetls.fastly.net/nielsens/9781032593036.jpg?canvas=600,600&fit=bounds&height=600&mode=max&width=600&404=default.jpg',
     status: 'reading',
-    link: 'https://www.amazon.com/Pragmatic-Programmer-journey-mastery-Anniversary/dp/0135957052',
-    genre: 'Software Development'
+    link: 'https://www.amazon.com/Statistical-Inference-George-Casella/dp/0534243126',
+    genre: 'Statistics'
   },
   {
-    title: 'Design Patterns',
-    author: 'Erich Gamma et al.',
-    description: 'A catalog of reusable design patterns for object-oriented software design.',
-    image: '/images/misc/books/design-patterns.jpg',
+    title: 'Introduction to Probability and Mathematical Statistics',
+    author: 'Bain & Engelhardt',
+    description: 'A comprehensive guide to probability and mathematical statistics, covering probability theory, estimation, hypothesis testing, and more.',
+    image: 'https://i.ebayimg.com/images/g/p-EAAOSw5vBm0JfC/s-l1200.jpg',
+    status: 'reading',
+    link: 'https://www.amazon.com/Statistical-Inference-George-Casella/dp/8131503941',
+    genre: 'Statistics'
+  },
+  {
+    title: 'Hands-on Machine Learning with Scikit-Learn, Keras, and TensorFlow',
+    author: 'Aurélien Géron',
+    description: 'A comprehensive guide to machine learning, covering probability theory, estimation, hypothesis testing, and more.',
+    image: 'https://m.media-amazon.com/images/I/81R5BmGtv-L._AC_UF1000,1000_QL80_.jpg',
+    status: 'reading',
+    link: 'https://www.amazon.com/Hands-Machine-Learning-Scikit-Learn-TensorFlow/dp/1492032646',
+    genre: 'Machine Learning'
+  },
+  {
+    title: 'CFA Program Curriculum Level 1 Volume 1: Quantitative Methods',
+    author: 'CFA Institute',
+    description: 'A comprehensive guide to the CFA Program Curriculum Volume 1 Level 1.',
+    image: 'https://m.media-amazon.com/images/I/51cgfWkOFCL.jpg',
     status: 'planned',
-    link: 'https://www.amazon.com/Design-Patterns-Elements-Reusable-Object-Oriented/dp/0201633612',
+    link: 'https://www.amazon.com/2025-CFA-Program-Curriculum-Level/dp/1961409089',
+    genre: 'Finance'
+  },
+  {
+    title: 'Designing Data-Intensive Applications',
+    author: 'Martin Kleppmann',
+    description: 'Data is at the center of many challenges in system design today. Difficult issues need to be figured out, such as scalability, consistency...',
+    image: 'https://m.media-amazon.com/images/I/91YfNb49PLL._SY385_.jpg',
+    status: 'planned',
+    link: 'https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321',
     genre: 'Software Architecture'
   }
 ];

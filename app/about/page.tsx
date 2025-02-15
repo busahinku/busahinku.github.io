@@ -14,7 +14,7 @@ export default function AboutPage() {
         {/* Download Button */}
         <div className="mb-6 flex justify-center md:justify-start">
           <a
-            href="/resume.pdf"
+            href="/about/CV_censored_sophomore_Burak.pdf"
             download
             className={`
               group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[14px]

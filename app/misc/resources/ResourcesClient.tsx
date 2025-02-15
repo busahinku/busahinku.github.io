@@ -16,31 +16,13 @@ interface Resource {
 
 const resources: Resource[] = [
   {
-    title: 'Next.js Documentation',
-    description: 'Official documentation for Next.js, covering everything from basics to advanced features.',
-    category: 'Web Development',
-    platform: 'Next.js',
-    link: 'https://nextjs.org/docs',
-    image: '/images/misc/resources/nextjs.png',
+    title: 'Other Online Sources Will Be Added Soon',
+    description: 'I will add more resources as I find them.',
+    category: 'Data Science',
+    platform: 'Coursera',
+    link: 'https://www.coursera.org/',
+    image: 'https://s3-symbol-logo.tradingview.com/international-bus-mach--600.png',
     isRecommended: true
-  },
-  {
-    title: 'TypeScript Handbook',
-    description: 'Comprehensive guide to TypeScript features and best practices.',
-    category: 'Programming',
-    platform: 'TypeScript',
-    link: 'https://www.typescriptlang.org/docs/',
-    image: '/images/misc/resources/typescript.png',
-    isRecommended: true
-  },
-  {
-    title: 'Tailwind CSS Documentation',
-    description: 'Learn how to build modern websites with utility-first CSS framework.',
-    category: 'Web Development',
-    platform: 'Tailwind CSS',
-    link: 'https://tailwindcss.com/docs',
-    image: '/images/misc/resources/tailwind.png',
-    isRecommended: false
   }
 ];
 

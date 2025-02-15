@@ -15,27 +15,43 @@ interface Tool {
 
 const tools: Tool[] = [
   {
-    name: 'Visual Studio Code',
-    description: 'My primary code editor with extensive customization and extensions.',
-    category: 'Development',
-    image: '/images/misc/tools/vscode.png',
-    link: 'https://code.visualstudio.com/',
+    name: 'Toggl Track',
+    description: 'Time tracking tool for productivity and time management.',
+    category: 'Productivity',
+    image: 'https://play-lh.googleusercontent.com/PeblLXajnpQMBdnzHCQ9yRh6IZ1iOM7qqJkp306uOYlYq8djKFs2vTLO5YO265MPmcM',
+    link: 'https://toggl.com/',
     isFavorite: true
   },
   {
-    name: 'GitHub Copilot',
-    description: 'AI-powered coding assistant that helps with code completion and suggestions.',
-    category: 'Development',
-    image: '/images/misc/tools/github-copilot.png',
-    link: 'https://github.com/features/copilot',
-    isFavorite: true
+    name: 'Notion Calendar',
+    description: 'Calendar tool for productivity and time management.',
+    category: 'Productivity',
+    image: 'https://play-lh.googleusercontent.com/ZpieHVHj503tx4YoFlsHOtjQ3edA9FE_yLocxpEecO0TQq0VcKbcsZ4fvjA9LzcRdmg',
+    link: 'https://notion.so/',
+    isFavorite: false
   },
   {
     name: 'Figma',
     description: 'Design tool for creating user interfaces and prototypes.',
     category: 'Design',
-    image: '/images/misc/tools/figma.png',
+    image: 'https://www.figma.com/community/resource/8f3b2e8c-0d3f-4409-ae0d-42449d61b841/thumbnail',
     link: 'https://www.figma.com/',
+    isFavorite: true
+  },
+  {
+    name: 'ShareX',
+    description: 'Screenshot and screen recording tool.',
+    category: 'Productivity',
+    image: 'https://getsharex.com/img/ShareX_Wallpaper_White_Black.png',
+    link: 'https://getsharex.com/',
+    isFavorite: false
+  },
+  {
+    name: 'Obsidian',
+    description: 'Note-taking app with a focus on privacy and security.',
+    category: 'Productivity',
+    image: 'https://cdn2.steamgriddb.com/logo/35effc542dc36933a9c7ba0d56006380.png',
+    link: 'https://obsidian.md/',
     isFavorite: false
   }
 ];

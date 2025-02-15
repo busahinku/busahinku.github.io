@@ -18,25 +18,33 @@ const miscItems: MiscItem[] = [
     title: 'My Reading List',
     description: 'A curated collection of books I\'m currently reading or plan to read.',
     link: '/misc/reading-list',
-    image: '/images/misc/books.jpg',
-    date: '2024',
+    image: 'https://mir-s3-cdn-cf.behance.net/project_modules/max_632/181397219345373.67b09cfcf01af.png',
+    date: '2025',
     category: 'Reading'
   },
   {
     title: 'Favorite Tools & Software',
     description: 'A list of tools and software I use daily for development and productivity.',
     link: '/misc/tools',
-    image: '/images/misc/tools.jpg',
-    date: '2024',
+    image: 'https://mir-s3-cdn-cf.behance.net/project_modules/max_632/2a1d13219345373.67b09cfcf064d.png',
+    date: '2025',
     category: 'Tools'
   },
   {
     title: 'Learning Resources',
     description: 'Collection of resources I find helpful for learning new technologies.',
     link: '/misc/resources',
-    image: '/images/misc/learning.jpg',
-    date: '2024',
+    image: 'https://mir-s3-cdn-cf.behance.net/project_modules/max_632/e792a6219345373.67b09cfcefb2e.png',
+    date: '2025',
     category: 'Learning'
+  },
+  {
+    title: 'Music of The Year',
+    description: 'Collection of resources I find helpful for learning new technologies.',
+    link: 'https://open.spotify.com/playlist/768iqNmf4DJINbq8nIhe2e?si=917c3267d3454003',
+    image: 'https://mir-s3-cdn-cf.behance.net/project_modules/max_632/dffb29219345373.67b09cfcef621.png',
+    date: '2025',
+    category: 'music'
   }
 ];
 
