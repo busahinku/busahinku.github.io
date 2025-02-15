@@ -53,15 +53,10 @@ export default function LikeButton({ slug, theme }: LikeButtonProps) {
 
     try {
       // reCAPTCHA doğrulaması
-      const token = await new Promise<string>((resolve, reject) => {
-        window.onRecaptchaVerified = resolve;
-        const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
-        if (!siteKey) {
-          reject(new Error('reCAPTCHA site key is not defined'));
-          return;
-        }
-        window.grecaptcha.execute(siteKey, { action: 'like' });
-      });
+      const token = await window.grecaptcha.execute(
+        process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '',
+        { action: 'like' }
+      );
 
       if (!token) {
         console.error('reCAPTCHA verification failed');

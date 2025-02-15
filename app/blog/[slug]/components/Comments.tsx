@@ -215,19 +215,29 @@ export default function Comments({ slug, theme }: CommentsProps) {
 
   // Yorum bileşeni
   const CommentItem = ({ comment, level = 0 }: { comment: Comment; level?: number }) => {
-    if (level > 5) return null; // Maximum 5 seviye iç içe yanıt sınırı
+    if (level > 3) return null; // Maximum 3 seviye iç içe yanıt sınırı
+
+    const marginClass = level === 0 
+      ? '' 
+      : level === 1 
+        ? 'ml-4 sm:ml-8' 
+        : level === 2 
+          ? 'ml-6 sm:ml-12' 
+          : 'ml-8 sm:ml-16';
 
     return (
-      <div className={`flex gap-3 ${level > 0 ? 'ml-8 mt-4' : ''}`}>
-        <Avatar 
-          src={comment.author.photoURL} 
-          name={comment.author.name} 
-        />
-        <div className="flex-1">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="font-medium">{comment.author.name}</span>
-              <span className={`text-sm ${
+      <div className={`flex gap-2 sm:gap-3 ${marginClass} ${level > 0 ? 'mt-4' : ''}`}>
+        <div className="flex-shrink-0">
+          <Avatar 
+            src={comment.author.photoURL} 
+            name={comment.author.name} 
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium truncate">{comment.author.name}</span>
+              <span className={`text-xs sm:text-sm ${
                 theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
               }`}>
                 {comment.createdAt.toDate().toLocaleDateString('tr-TR', {
@@ -239,11 +249,11 @@ export default function Comments({ slug, theme }: CommentsProps) {
                 })}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              {auth.currentUser && level < 5 && (
+            <div className="flex items-center gap-1 sm:gap-2">
+              {auth.currentUser && level < 3 && (
                 <button
                   onClick={() => setReplyTo({ id: comment.id, authorName: comment.author.name })}
-                  className={`text-sm transition-colors px-2 py-1 rounded-full ${
+                  className={`text-xs sm:text-sm transition-colors px-2 py-1 rounded-full ${
                     theme === 'dark'
                       ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10'
                       : 'text-gray-500 hover:text-blue-500 hover:bg-blue-50'
@@ -255,7 +265,7 @@ export default function Comments({ slug, theme }: CommentsProps) {
               {auth.currentUser?.uid === comment.author.uid && (
                 <button
                   onClick={() => handleDelete(comment.id)}
-                  className={`text-sm transition-colors px-2 py-1 rounded-full ${
+                  className={`text-xs sm:text-sm transition-colors px-2 py-1 rounded-full ${
                     theme === 'dark'
                       ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10'
                       : 'text-gray-500 hover:text-red-500 hover:bg-red-50'
@@ -266,20 +276,14 @@ export default function Comments({ slug, theme }: CommentsProps) {
               )}
             </div>
           </div>
-          <p className={`mt-2 text-sm ${
-            theme === 'dark' ? 'text-white/80' : 'text-gray-700'
+          <div className={`mt-1 text-sm break-words ${
+            theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
           }`}>
             {comment.text}
-          </p>
-
-          {/* Alt yorumlar */}
-          {comment.replies && comment.replies.length > 0 && (
-            <div className="mt-4 space-y-4">
-              {comment.replies.map((reply) => (
-                <CommentItem key={reply.id} comment={reply} level={level + 1} />
-              ))}
-            </div>
-          )}
+          </div>
+          {comment.replies?.map((reply) => (
+            <CommentItem key={reply.id} comment={reply} level={level + 1} />
+          ))}
         </div>
       </div>
     );
