@@ -357,19 +357,19 @@ export default function ProjectPostClient({ project }: ProjectPostClientProps) {
 
       <div className="relative">
         <div className="w-full flex justify-center">
-          <div className="relative w-full  max-w-[1000px] h-[500px]">
+          <div className="relative w-full max-w-[850px] h-[200px] sm:h-[300px] md:h-[400px]">
             <Image
               src={project.mainPhoto}
               alt={project.title}
               fill
               className="object-cover"
               priority
+              sizes="(max-width: 1000px) 100vw, 1000px"
             />
-            <div className="absolute shadow-sm inset-0 from-transparent via-transparent to-black/90" />
           </div>
         </div>
 
-        <div className="absolute opacity-.95 left-1/2 -translate-x-1/2 bottom-0 translate-y-1/2 w-full max-w-[800px]">
+        <div className="relative mt-4 sm:mt-8 w-full max-w-[800px] mx-auto px-4">
           <div className={`w-full backdrop-blur-sm rounded-xl shadow-sm mx-auto px-4 py-3 ${
             theme === 'dark'
               ? 'bg-[#0D0D0F]/95'
@@ -439,7 +439,7 @@ export default function ProjectPostClient({ project }: ProjectPostClientProps) {
         </div>
       </div>
 
-      <main className="w-full max-[820px]:px-6 pt-32 pb-16">
+      <main className="w-full max-[820px]:px-6 pt-8 pb-16">
         <article className="max-w-[800px] mx-auto">
           <div className={`prose max-w-none ${
             theme === 'dark'
