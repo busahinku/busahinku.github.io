@@ -85,6 +85,11 @@ export default function AboutPage() {
           </p>
           
           <SocialGrid />
+          <ul className={`list-disc pl-8 mt-4 space-y-2 text-[14px] ${
+            theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'
+          }`}>
+            <li className="pl-2">Apps I Use: Toggl Track, Obsidian, ShareX, Notion Calendar</li>
+          </ul>
         </div>
       </main>
     </div>

@@ -1,17 +1,17 @@
 'use client';
 
-import { ThemeProvider } from '@/app/context/ThemeContext';
-import ProjectPostClient from './ProjectPostClient';
+import dynamic from 'next/dynamic';
+import { Suspense } from 'react';
 import type { Project } from '@/app/utils/getProjects';
 
-interface ClientWrapperProps {
-  project: Project;
-}
+const ProjectPostClient = dynamic(() => import('./ProjectPostClient'), {
+  ssr: false
+});
 
-export default function ClientWrapper({ project }: ClientWrapperProps) {
+export default function ClientWrapper({ project }: { project: Project }) {
   return (
-    <ThemeProvider>
+    <Suspense fallback={<div>Loading...</div>}>
       <ProjectPostClient project={project} />
-    </ThemeProvider>
+    </Suspense>
   );
 } 

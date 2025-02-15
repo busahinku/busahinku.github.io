@@ -1,4 +1,5 @@
 'use client';
+'use client';
 
 import { useTheme } from '@/app/context/ThemeContext';
 import Image from 'next/image';
@@ -11,18 +12,318 @@ import 'katex/dist/katex.min.css';
 import rehypeSlug from 'rehype-slug';
 import remarkEmoji from 'remark-emoji';
 import remarkToc from 'remark-toc';
-import type { Project } from '@/app/utils/getProjects';
-import { useState } from 'react';
+import type { Components } from 'react-markdown';
+import { useState, } from 'react';
 import rehypeRaw from 'rehype-raw';
-import { markdownComponents } from '@/app/blog/components/MarkdownComponents';
+import { Highlight, themes } from 'prism-react-renderer';
+import type { Project } from '@/app/utils/getProjects';
 
 interface ProjectPostClientProps {
   project: Project;
 }
 
+interface CodeProps {
+  inline?: boolean;
+  className?: string;
+  children?: React.ReactNode;
+}
+
+interface HeadingProps {
+  children: React.ReactNode;
+  id?: string;
+}
+
+interface ListProps {
+  children: React.ReactNode;
+}
+
+interface ParagraphProps {
+  children: React.ReactNode;
+  node?: {
+    children: Array<{
+      type: string;
+      tagName?: string;
+    }>;
+    parent?: {
+      type: string;
+      tagName?: string;
+    };
+  };
+}
+
+
 export default function ProjectPostClient({ project }: ProjectPostClientProps) {
   const { theme, toggleTheme } = useTheme();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const CodeBlock = ({ inline, className, children, ...props }: CodeProps) => {
+    const match = /language-(\w+)/.exec(className || '');
+    const language = match ? match[1] : '';
+    const code = children as string;
+    const isCopied = copiedCode === code;
+
+    if (inline) {
+      return (
+        <code
+          className={`px-1.5 py-0.5 rounded text-sm font-mono ${
+            theme === 'dark' 
+              ? 'bg-[#1A1A1E] text-[#EEEEEE]' 
+              : 'bg-gray-100 text-gray-800'
+          }`}
+          {...props}
+        >
+          {children}
+        </code>
+      );
+    }
+
+    const handleCopy = async () => {
+      if (typeof window !== 'undefined') {
+        await navigator.clipboard.writeText(code);
+        setCopiedCode(code);
+        setTimeout(() => {
+          setCopiedCode(null);
+        }, 2000);
+      }
+    };
+
+    return (
+      <div className="relative group">
+        <Highlight
+          theme={theme === 'dark' ? themes.nightOwl : themes.github}
+          code={code}
+          language={language || 'text'}
+        >
+          {({ className, style, tokens, getLineProps, getTokenProps }) => (
+            <pre
+              className={`p-5 rounded-lg overflow-auto text-sm font-mono my-4 border ${
+                theme === 'dark'
+                  ? 'bg-[#1A1A1E] border-gray-800'
+                  : 'bg-gray-50 border-gray-200'
+              }`}
+              style={style}
+            >
+              <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                {language && (
+                  <div className={`px-2 py-1 rounded text-xs font-mono ${
+                    theme === 'dark'
+                      ? 'bg-white/10 text-white/60'
+                      : 'bg-gray-200 text-gray-600'
+                  }`}>
+                    {language}
+                  </div>
+                )}
+                <button
+                  onClick={handleCopy}
+                  className={`px-2 py-1 rounded text-xs transition-all duration-200 flex items-center gap-1.5 ${
+                    theme === 'dark'
+                      ? isCopied
+                        ? 'bg-green-500/20 text-green-400'
+                        : 'bg-white/10 text-white/60 hover:bg-white/20'
+                      : isCopied
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                  }`}
+                >
+                  {isCopied ? (
+                    <>
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8 5H6C4.89543 5 4 5.89543 4 7V19C4 20.1046 4.89543 21 6 21H16C17.1046 21 18 20.1046 18 19V17M8 5C8 6.10457 8.89543 7 10 7H12C13.1046 7 14 6.10457 14 5M8 5C8 3.89543 8.89543 3 10 3H12C13.1046 3 14 3.89543 14 5M14 5H16C17.1046 5 18 5.89543 18 7V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
+                      Copy
+                    </>
+                  )}
+                </button>
+              </div>
+              <code className={className}>
+                {tokens.map((line, i) => (
+                  <div key={i} {...getLineProps({ line })}>
+                    {line.map((token, key) => (
+                      <span key={key} {...getTokenProps({ token })} />
+                    ))}
+                  </div>
+                ))}
+              </code>
+            </pre>
+          )}
+        </Highlight>
+      </div>
+    );
+  };
+
+  const components = {
+    code: CodeBlock,
+    h1: ({ children, id }: HeadingProps) => (
+      <h1 
+        id={id} 
+        className={`text-[24px] font-bold mt-8 mb-3 scroll-mt-20 group ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}
+        onClick={() => id && document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })}
+      >
+        <span className="cursor-pointer">
+          {children}
+          {id && (
+            <span className="inline-block ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 dark:text-gray-500">
+              #
+            </span>
+          )}
+        </span>
+      </h1>
+    ),
+    h2: ({ children, id }: HeadingProps) => (
+      <h2 
+        id={id} 
+        className={`text-2xl font-bold mt-6 mb-4 scroll-mt-20 group ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}
+        onClick={() => id && document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })}
+      >
+        <span className="cursor-pointer">
+          {children}
+          {id && (
+            <span className="inline-block ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 dark:text-gray-500">
+              #
+            </span>
+          )}
+        </span>
+      </h2>
+    ),
+    h3: ({ children, id }: HeadingProps) => (
+      <h3 
+        id={id} 
+        className={`text-xl font-bold mt-5 mb-3 scroll-mt-20 group ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}
+        onClick={() => id && document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })}
+      >
+        <span className="cursor-pointer">
+          {children}
+          {id && (
+            <span className="inline-block ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 dark:text-gray-500">
+              #
+            </span>
+          )}
+        </span>
+      </h3>
+    ),
+    h4: ({ children, id }: HeadingProps) => (
+      <h4 
+        id={id} 
+        className={`text-lg font-bold mt-4 mb-2 scroll-mt-20 group ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}
+        onClick={() => id && document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })}
+      >
+        <span className="cursor-pointer">
+          {children}
+          {id && (
+            <span className="inline-block ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 dark:text-gray-500">
+              #
+            </span>
+          )}
+        </span>
+      </h4>
+    ),
+    p: ({ children, node }: ParagraphProps) => {
+      if (node?.children.some(child => 
+        child.type === 'element' && 
+        (child.tagName === 'code' || child.tagName === 'pre' || 
+         child.tagName === 'div' || child.tagName === 'img' ||
+         child.tagName === 'span')
+      )) {
+        return <>{children}</>;
+      }
+      if (node?.parent?.type === 'element' && 
+          (node.parent.tagName === 'p' || 
+           node.parent.tagName === 'blockquote' || 
+           node.parent.tagName === 'li')) {
+        return <>{children}</>;
+      }
+      return (
+        <p className={`text-base my-3 leading-relaxed ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}>
+          {children}
+        </p>
+      );
+    },
+    ul: ({ children }: ListProps) => (
+      <ul className={`list-disc list-inside my-3 space-y-2 text-base ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}>
+        {children}
+      </ul>
+    ),
+    ol: ({ children }: ListProps) => (
+      <ol className={`list-decimal list-inside my-3 space-y-2 text-base ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}>
+        {children}
+      </ol>
+    ),
+    li: ({ children }: ListProps) => (
+      <li className={`ml-4 text-base ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}>
+        {children}
+      </li>
+    ),
+    blockquote: ({ children }: ListProps) => (
+      <blockquote className={`border-l-4 border-gray-300 dark:border-gray-600 pl-4 my-4 italic text-base ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}>
+        {children}
+      </blockquote>
+    ),
+    a: ({ href, children }) => {
+      if (href?.startsWith('#')) {
+        return (
+          <span
+            onClick={(e) => {
+              e.preventDefault();
+              const element = document.getElementById(href.slice(1));
+              if (element) {
+                element.scrollIntoView({ behavior: 'smooth' });
+              }
+            }}
+            className="text-blue-600 dark:text-blue-400 hover:opacity-80 transition-opacity no-underline cursor-pointer"
+          >
+            {children}
+          </span>
+        );
+      }
+      
+      return (
+        <a
+          href={href}
+          className="text-blue-600 dark:text-blue-400 hover:opacity-80 transition-opacity no-underline"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {children}
+        </a>
+      );
+    },
+    img: ({ src, alt }) => {
+      if (!src) return null;
+      
+      return (
+        <span className="block my-6">
+          <div className="relative w-full aspect-[16/9]">
+            <Image
+              src={src}
+              alt={alt || ''}
+              fill
+              className="rounded-lg object-cover"
+              sizes="(max-width: 800px) 100vw, 800px"
+            />
+          </div>
+          {alt && (
+            <span className="block text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
+              {alt}
+            </span>
+          )}
+        </span>
+      );
+    },
+    hr: () => (
+      <hr className={`my-8 border-t ${
+        theme === 'dark'
+          ? 'border-gray-800'
+          : 'border-gray-300'
+      }`} />
+    ),
+  } as Components;
 
   return (
     <div className={`min-h-screen w-full ${theme === 'dark' ? 'bg-[#0D0D0F]' : 'bg-[rgb(253,253,253)]'}`}>
@@ -157,7 +458,7 @@ export default function ProjectPostClient({ project }: ProjectPostClientProps) {
                 rehypeSlug,
                 rehypeRaw
               ]}
-              components={markdownComponents}
+              components={components}
             >
               {project.content}
             </ReactMarkdown>
