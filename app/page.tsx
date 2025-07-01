@@ -278,7 +278,7 @@ export default function Home() {
       `}</style>
 
       <main className="max-w-[800px] mx-auto relative z-10 min-h-screen flex items-center">
-        <div className="flex flex-col items-start justify-center w-full py-16 px-2 sm:px-4 md:px-0">
+        <div className="flex flex-col items-start justify-center w-full py-16 px-2 sm:px-4 md:px-0 mt-20 sm:mt-24">
           {/* About Section */}
           <div className="mb-8 w-full">
             <div className={`w-full text-left ${

@@ -221,7 +221,7 @@ export default function ProjectClient({ initialProjects }: ProjectClientProps) {
           {paginatedProjects.map((project, index) => (
             <Link
               key={project.slug}
-              href={'/projects/${project.slug}'}
+              href={`/projects/${project.slug}`}
               className={`group relative overflow-hidden rounded-xl backdrop-blur-lg border transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 ${
                 theme === 'dark' 
                   ? 'bg-black/20 border-white/10 hover:bg-black/30 hover:border-white/20' 
