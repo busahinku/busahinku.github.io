@@ -1,68 +1,54 @@
 'use client';
 
-import Link from 'next/link';
 import { useTheme } from '../context/ThemeContext';
 
 const Footer = () => {
   const { theme } = useTheme();
   
-  const footerLinks = [
-    { label: 'Home', path: '/' },
-    { label: 'Blog', path: '/blog' },
-    { label: 'Projects', path: '/projects' },
-    { label: 'About', path: '/about' },
-    { label: 'Misc', path: '/misc' },
-    { label: 'References', path: '/references' },
-  ];
-
+  const handleScrollToTop = () => {
+    try {
+      // Multiple approaches to ensure it works
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      window.scrollTo(0, 0);
+    } catch (error) {
+      console.log('Scroll to top failed:', error);
+    }
+  };
 
   return (
-    <footer className={`w-full py-8 border-t ${
+    <footer className={`w-full border-t mt-auto ${
       theme === 'dark' 
-        ? 'border-[#2B2B2B] bg-[#141418]' 
-        : 'border-gray-200 bg-[#FAFAFA]'
+        ? 'border-gray-800 bg-black' 
+        : 'border-gray-200 bg-black'
     }`}>
-      <div className="w-full max-[820px]:px-6">
-        <div className="max-w-[800px] mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            {/* Navigation Links */}
-            <nav className="flex items-center gap-4 flex-wrap justify-center">
-              {footerLinks.map((link) => (
-                <Link
-                  key={link.path}
-                  href={link.path}
-                  className={`text-sm transition-colors ${
-                    theme === 'dark'
-                      ? 'text-[#EEEEEE] hover:text-white'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
-
-            {/* Back to Top Link */}
-            <button
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className={`text-sm transition-colors ${
-                theme === 'dark'
-                  ? 'text-[#EEEEEE] hover:text-white'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+      <div className="max-w-[800px] mx-auto px-6 py-4">
+        <div className="flex justify-between items-center">
+          {/* Left side - Copyright */}
+          <div className="text-sm text-gray-400">
+            © {new Date().getFullYear()} busahinku
+          </div>
+          
+          {/* Right side - Back to top */}
+          <button
+            onClick={handleScrollToTop}
+            className="flex items-center space-x-1 px-3 py-1 rounded-md text-sm font-medium transition-colors text-gray-300 hover:text-white hover:bg-gray-800"
+          >
+            <span>Back to top</span>
+            <svg 
+              className="w-4 h-4" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
             >
-              To the top
-            </button>
-          </div>
-
-          {/* Copyright and License */}
-          <div className={`text-sm mt-6 ${
-            theme === 'dark'
-              ? 'text-[#EEEEEE]/60'
-              : 'text-gray-500'
-          }`}>
-            <p>All Rights Reserved - {new Date().getFullYear()}, busahinku</p>
-          </div>
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M5 10l7-7m0 0l7 7m-7-7v18" 
+              />
+            </svg>
+          </button>
         </div>
       </div>
     </footer>

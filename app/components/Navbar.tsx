@@ -18,19 +18,26 @@ const Navbar = () => {
     const controlNavbar = () => {
       const currentScrollY = window.scrollY;
       
-      // Remove timeout to make transitions immediate
-      if (currentScrollY < lastScrollY) {
-        // Scrolling up - show navbar immediately
+      // Simple logic: 
+      // - Scrolling down: hide navbar (after 50px)
+      // - Scrolling up: show navbar immediately
+      // - At top: always show navbar
+      
+      if (currentScrollY < 50) {
+        // Always show at the top
         setIsVisible(true);
       } else if (currentScrollY > lastScrollY) {
-        // Scrolling down - hide navbar immediately
+        // Scrolling down - hide navbar
         setIsVisible(false);
+      } else if (currentScrollY < lastScrollY) {
+        // Scrolling up - show navbar
+        setIsVisible(true);
       }
       
       setLastScrollY(currentScrollY);
     };
 
-    window.addEventListener('scroll', controlNavbar);
+    window.addEventListener('scroll', controlNavbar, { passive: true });
     
     return () => {
       window.removeEventListener('scroll', controlNavbar);
@@ -47,36 +54,38 @@ const Navbar = () => {
 
   return (
     <>
-      <header className={`fixed top-0 w-full z-50 pt-8 ${
+      <header className={`fixed top-0 w-full z-50 pt-8 transition-all duration-300 ease-out ${
         isVisible 
-          ? 'transition-all duration-300 ease-in-out translate-y-0' 
-          : 'transition-all duration-300 ease-in-out -translate-y-full'
+          ? 'translate-y-0 opacity-100' 
+          : '-translate-y-full opacity-0'
       }`}>
         <div className="w-full max-[820px]:px-6">
           <div className="max-w-[800px] mx-auto relative flex items-center justify-between">
-            <Link href="/" className="flex items-center font-medium">
-              <Image
-                src={theme === 'dark' ? '/icons/logo-white.svg' : '/icons/logo-dark.svg'}
-                alt="Logo"
-                width={28}
-                height={40}
-                priority
-                className="h-10 w-auto"
-              />
+            <Link href="/" className="flex items-center font-medium group">
+              <div className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12">
+                <Image
+                  src={theme === 'dark' ? '/icons/logo-white.svg' : '/icons/logo-dark.svg'}
+                  alt="Logo"
+                  width={28}
+                  height={40}
+                  priority
+                  className="h-10 w-auto"
+                />
+              </div>
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className={`absolute left-1/2 -translate-x-1/2 rounded-3xl px-2 shadow-sm hidden min-[820px]:block ${
+            <nav className={`absolute left-1/2 -translate-x-1/2 rounded-3xl px-2 shadow-sm hidden min-[820px]:block transition-all duration-300 ${
               theme === 'dark' 
-                ? 'bg-[#1A1A1E] border border-[#2B2B2B]' 
-                : 'bg-[#FBFBFB] border border-[#DADADA] shadow-[0_2px_8px_rgba(0,0,0,0.1)]'
+                ? 'bg-[#1A1A1E]/80 backdrop-blur-md border border-[#2B2B2B]' 
+                : 'bg-[#FBFBFB]/80 backdrop-blur-md border border-[#DADADA] shadow-[0_2px_8px_rgba(0,0,0,0.1)]'
             }`}>
               <div className="flex items-center h-10">
                 {navItems.map((item) => (
                   <Link
                     key={item.path}
                     href={item.path}
-                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                    className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-300 relative group ${
                       pathname === item.path
                         ? 'text-[#FB2549]'
                         : theme === 'dark'
@@ -84,7 +93,19 @@ const Navbar = () => {
                           : 'text-[#1A1A1E] hover:text-black'
                     }`}
                   >
-                    {item.label}
+                    <span className="relative z-10">{item.label}</span>
+                    {pathname === item.path && (
+                      <div className={`absolute inset-0 rounded-full transition-all duration-300 ${
+                        theme === 'dark' 
+                          ? 'bg-[#FB2549]/10' 
+                          : 'bg-[#FB2549]/10'
+                      }`}></div>
+                    )}
+                    <div className={`absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 ${
+                      theme === 'dark' 
+                        ? 'bg-white/5' 
+                        : 'bg-black/5'
+                    }`}></div>
                   </Link>
                 ))}
               </div>
@@ -93,33 +114,58 @@ const Navbar = () => {
             <div className="flex items-center gap-4">
               <button
                 onClick={toggleTheme}
-                className={`h-10 w-10 flex items-center justify-center rounded-full transition-colors ${
+                className={`h-10 w-10 flex items-center justify-center rounded-full transition-all duration-300 group ${
                   theme === 'dark'
-                    ? 'bg-[#1A1A1E] border border-[#2B2B2B] hover:border-[#FB2549]'
-                    : 'bg-[#FCFCFC] border border-[#DADADA] hover:border-[#FB2549] shadow-[0_2px_8px_rgba(0,0,0,0.08)]'
+                    ? 'bg-[#1A1A1E]/80 backdrop-blur-md border border-[#2B2B2B] hover:border-[#FB2549] hover:bg-[#232327]'
+                    : 'bg-[#FCFCFC]/80 backdrop-blur-md border border-[#DADADA] hover:border-[#FB2549] hover:bg-gray-50 shadow-[0_2px_8px_rgba(0,0,0,0.08)]'
                 }`}
                 aria-label="Toggle theme"
               >
-                <Image
-                  src={theme === 'dark' ? '/icons/sun.svg' : '/icons/moon.svg'}
-                  alt="Theme toggle"
-                  width={20}
-                  height={20}
-                  className={theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}
-                />
+                <div className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12">
+                  {theme === 'dark' ? (
+                    <Image
+                      src="/icons/sun.svg"
+                      alt="Theme toggle"
+                      width={20}
+                      height={20}
+                      className="text-[#EEEEEE]"
+                    />
+                  ) : (
+                    <svg 
+                      width="20" 
+                      height="20" 
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      className="text-[#1A1A1E]"
+                    >
+                      <path d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.752-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      <circle cx="16" cy="8" r="1" fill="currentColor" opacity="0.6"/>
+                      <circle cx="14" cy="6" r="0.5" fill="currentColor" opacity="0.4"/>
+                      <circle cx="18.5" cy="10.5" r="0.5" fill="currentColor" opacity="0.4"/>
+                    </svg>
+                  )}
+                </div>
               </button>
 
               {/* Mobile Menu Button */}
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className={`h-10 w-10 flex items-center justify-center rounded-full min-[820px]:hidden transition-colors ${
+                className={`h-10 w-10 flex items-center justify-center rounded-full min-[820px]:hidden transition-all duration-300 group ${
                   theme === 'dark'
-                    ? 'bg-[#1A1A1E] border border-[#2B2B2B]'
-                    : 'bg-[#FCFCFC] border border-[#DADADA] shadow-[0_2px_8px_rgba(0,0,0,0.08)]'
+                    ? 'bg-[#1A1A1E]/80 backdrop-blur-md border border-[#2B2B2B] hover:bg-[#232327]'
+                    : 'bg-[#FCFCFC]/80 backdrop-blur-md border border-[#DADADA] hover:bg-gray-50 shadow-[0_2px_8px_rgba(0,0,0,0.08)]'
                 }`}
                 aria-label="Open menu"
               >
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg 
+                  width="20" 
+                  height="20" 
+                  viewBox="0 0 20 20" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2"
+                  className="transition-transform duration-300 group-hover:scale-110"
+                >
                   <path d="M3 5h14M3 10h14M3 15h14" />
                 </svg>
               </button>

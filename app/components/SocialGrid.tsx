@@ -16,9 +16,11 @@ export default function SocialGrid() {
       },
       href: 'https://github.com/busahinku',
       description: 'Explore my coding projects & contributions',
-      darkGradient: 'from-[#1A1A1E] to-[#2D2D2D]',
-      lightGradient: 'from-[#F0F0F0] to-[#E0E0E0]',
       gridArea: 'md:col-span-2 md:row-start-1',
+      pastelColor: {
+        dark: 'bg-purple-500/3 hover:bg-purple-500/6',
+        light: 'bg-purple-100/30 hover:bg-purple-100/50'
+      }
     },
     {
       name: 'Spotify',
@@ -28,9 +30,11 @@ export default function SocialGrid() {
       },
       href: 'https://open.spotify.com/user/bzmah384nndroig0y2dh22saw?si=c7dc8de070df45a7',
       description: 'Listening to music is my go-to habit while working.',
-      darkGradient: 'from-[#166D2B] to-[#0C3E19]',
-      lightGradient: 'from-[#E8F5E9] to-[#C8E6C9]',
       gridArea: 'md:col-span-2 md:row-span-2 md:row-start-1',
+      pastelColor: {
+        dark: 'bg-green-500/3 hover:bg-green-500/6',
+        light: 'bg-green-100/30 hover:bg-green-100/50'
+      }
     },
     {
       name: 'LinkedIn',
@@ -40,9 +44,11 @@ export default function SocialGrid() {
       },
       href: 'https://linkedin.com/in/sahinkucuk',
       description: 'I like to connect with new people',
-      darkGradient: 'from-[#163581] to-[#10265E]',
-      lightGradient: 'from-[#E3F2FD] to-[#BBDEFB]',
       gridArea: 'md:col-span-2 md:row-span-3 md:row-start-1',
+      pastelColor: {
+        dark: 'bg-blue-500/3 hover:bg-blue-500/6',
+        light: 'bg-blue-100/30 hover:bg-blue-100/50'
+      }
     },
     {
       name: 'Instagram',
@@ -52,9 +58,11 @@ export default function SocialGrid() {
       },
       href: 'https://instagram.com/busahinku',
       description: 'My instagram account I do not use much',
-      darkGradient: 'from-[#9C1552] to-[#8C154A]',
-      lightGradient: 'from-[#FCE4EC] to-[#F8BBD0]',
       gridArea: 'md:col-span-2 md:row-start-2',
+      pastelColor: {
+        dark: 'bg-pink-500/3 hover:bg-pink-500/6',
+        light: 'bg-pink-100/30 hover:bg-pink-100/50'
+      }
     },
     {
       name: 'X',
@@ -64,9 +72,11 @@ export default function SocialGrid() {
       },
       href: 'https://twitter.com/busahinku',
       description: 'Instant actions',
-      darkGradient: 'from-[#131313] to-[#0E0E0E]',
-      lightGradient: 'from-[#FAFAFA] to-[#F5F5F5]',
       gridArea: 'md:col-span-1 md:row-start-3',
+      pastelColor: {
+        dark: 'bg-slate-500/3 hover:bg-slate-500/6',
+        light: 'bg-slate-100/30 hover:bg-slate-100/50'
+      }
     },
     {
       name: 'Email me',
@@ -76,29 +86,46 @@ export default function SocialGrid() {
       },
       href: 'mailto:sahin.kucuk@metu.edu.tr',
       description: 'You can freely reach me! --> sahin.kucuk@metu.edu.tr',
-      darkGradient: 'from-[#111F23] to-[#111F23]',
-      lightGradient: 'from-[#E0F7FA] to-[#B2EBF2]',
       gridArea: 'md:col-span-3 md:row-start-3',
+      pastelColor: {
+        dark: 'bg-cyan-500/3 hover:bg-cyan-500/6',
+        light: 'bg-cyan-100/30 hover:bg-cyan-100/50'
+      }
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-6 auto-rows-[120px] gap-2.5 mt-4">
+    <div className="grid grid-cols-1 md:grid-cols-6 auto-rows-[120px] gap-4 mt-6 w-full">
       {socialLinks.map((link) => (
         <Link
           key={link.name}
           href={link.href}
           target="_blank"
           rel="noopener noreferrer"
-          className={`bg-gradient-to-br ${
-            theme === 'dark' ? link.darkGradient : link.lightGradient
-          } ${link.gridArea} rounded-lg p-4 transition-transform hover:scale-[1.02] group relative overflow-hidden col-span-1 ${
-            theme === 'dark' ? 'border border-[#313131]' : 'border border-[#DADADA]'
-          }`}
+          className={`
+            ${link.gridArea} 
+            col-span-1
+            rounded-2xl p-6
+            transition-all duration-500 ease-out 
+            transform hover:scale-105
+            group relative overflow-hidden
+            ${theme === 'dark' 
+              ? `backdrop-blur-xl ${link.pastelColor.dark} border border-white/10 hover:border-white/20` 
+              : `backdrop-blur-xl ${link.pastelColor.light} border border-white/30 hover:border-white/50`
+            }
+            shadow-lg hover:shadow-2xl
+          `}
         >
-          <div className="flex items-start justify-between h-full flex-col">
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 relative rounded p-1">
+          {/* Glass effect overlay */}
+          <div className={`absolute inset-0 rounded-2xl ${
+            theme === 'dark' 
+              ? 'bg-gradient-to-br from-white/5 to-white/0' 
+              : 'bg-gradient-to-br from-white/40 to-white/10'
+          }`} />
+          
+          <div className="flex items-start justify-between h-full flex-col relative z-10">
+            <div className="flex items-center gap-3 w-full">
+              <div className="w-6 h-6 relative">
                 <Image
                   src={theme === 'dark' ? link.icon.dark : link.icon.light}
                   alt={link.name}
@@ -106,19 +133,17 @@ export default function SocialGrid() {
                   className="object-contain"
                 />
               </div>
-              <span className={`font-medium ${
-                theme === 'dark' ? 'text-white' : 'text-[#1A1A1E]'
+              <span className={`font-medium text-base ${
+                theme === 'dark' ? 'text-white/90' : 'text-gray-800'
               }`}>{link.name}</span>
-              {link.name !== 'Instagram' && (
-                <svg className={`w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity ${
-                  theme === 'dark' ? 'text-white' : 'text-[#1A1A1E]'
-                }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M7 17L17 7M17 7H8M17 7V16" />
-                </svg>
-              )}
+              <svg className={`w-4 h-4 ml-auto transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
+                theme === 'dark' ? 'text-white/60' : 'text-gray-600'
+              }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M7 17L17 7M17 7H8M17 7V16" />
+              </svg>
             </div>
-            <p className={`text-sm mt-2 ${
-              theme === 'dark' ? 'text-white/60' : 'text-[#1A1A1E]/60'
+            <p className={`text-sm mt-3 leading-relaxed ${
+              theme === 'dark' ? 'text-white/70' : 'text-gray-600'
             }`}>{link.description}</p>
           </div>
         </Link>

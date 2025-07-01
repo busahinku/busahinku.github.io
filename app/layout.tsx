@@ -55,13 +55,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} flex flex-col min-h-screen`}>
+    <html lang="en" className="h-full">
+      <body className={`${inter.className} flex flex-col min-h-screen overflow-x-hidden`}>
         <ThemeProvider>
-          <main className="flex-grow flex flex-col">
-            {children}
-          </main>
-          <Footer />
+            <main className="flex-grow">
+              {children}
+            </main>
+            <Footer />
         </ThemeProvider>
       </body>
     </html>

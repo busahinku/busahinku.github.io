@@ -3,7 +3,7 @@ title: metuans.tech development process
 description: A collection of my notes and thoughts on the development process of metuans.tech.
 date: '01-01-2025'
 tags: ['NextJS', 'Python', 'JavaScript', 'TypeScript', 'TailwindCSS', 'ShadcnUI', 'Firebase', 'Vercel']
-mainPhoto: 'https://mir-s3-cdn-cf.behance.net/project_modules/max_632/52997f219345373.67b08b292a41e.png'
+mainPhoto: 'https://mir-s3-cdn-cf.behance.net/project_modules/fs/ac35eb219345373.6863db731a1ae.png'
 demoUrl: 'https://metuans.tech'
 githubUrl: 'https://private-for-a-while'
 type: "web-app"
