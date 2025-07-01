@@ -246,7 +246,7 @@ export default function AboutPage() {
         </div>
 
         {/* Experience Section - Full Width */}
-        <div className={`relative overflow-hidden rounded-2xl backdrop-blur-md border p-8 mb-8 transition-all duration-500 hover:scale-[1.02] ${
+        <div className={`relative overflow-hidden rounded-2xl backdrop-blur-md border p-4 sm:p-8 mb-8 transition-all duration-500 hover:scale-[1.02] ${
           theme === 'dark' 
             ? 'bg-white/5 border-white/10 hover:bg-white/10' 
             : 'bg-white/70 border-white/20 hover:bg-white/90'
@@ -264,49 +264,64 @@ export default function AboutPage() {
               <div className="space-y-8">
                 
                 {/* Experience 1 */}
-                <div className="flex items-start gap-6">
+                <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
                   {/* Logo */}
-                  <div 
-                    className={`rounded-xl flex items-center justify-center flex-shrink-0`}
-                  >
-                    <div className={`text-xs font-bold ${
-                      theme === 'dark' ? 'text-white/60' : 'text-gray-400'
-                    }`}>
-                      <Image
-                        src="/icons/companies/uabtr.png"
-                        alt="UAB T.C."
-                        width={48}
-                        height={48}
-                      />
+                  <div className="flex sm:block items-center gap-3 sm:gap-0">
+                    <div 
+                      className={`rounded-xl flex items-center justify-center flex-shrink-0`}
+                    >
+                      <div className={`text-xs font-bold ${
+                        theme === 'dark' ? 'text-white/60' : 'text-gray-400'
+                      }`}>
+                        <Image
+                          src="/icons/companies/uabtr.png"
+                          alt="UAB T.C."
+                          width={48}
+                          height={48}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Mobile: Company name next to logo */}
+                    <div className="sm:hidden">
+                      <h4 className={`text-lg font-semibold ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        Ministry of Transport and Infrastructure of Turkey
+                      </h4>
                     </div>
                   </div>
                   
                   {/* Company & Position */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-3">
+                    {/* Desktop: Company name */}
+                    <div className="hidden sm:block mb-3">
+                      <h4 className={`text-lg font-semibold ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        Ministry of Transport and Infrastructure of Turkey
+                      </h4>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3">
                       <div className="flex-1 min-w-0">
-                        <h4 className={`text-lg font-semibold ${
-                          theme === 'dark' ? 'text-white' : 'text-gray-900'
-                        }`}>
-                          Ministry of Transport and Infrastructure of Turkey
-                        </h4>
-                        <p className={`text-base ${
+                        <p className={`text-base font-medium ${
                           theme === 'dark' ? 'text-white/80' : 'text-gray-700'
                         }`}>
                           Intern
                         </p>
                       </div>
                       
-                      {/* Country & Date */}
-                      <div className="ml-4 flex-shrink-0 pr-8" style={{ textAlign: 'right' }}>
+                      {/* Location & Date */}
+                      <div className="mt-2 sm:mt-0 sm:ml-4 sm:flex-shrink-0 sm:text-right">
                         <p className={`text-sm font-medium ${
                           theme === 'dark' ? 'text-white/80' : 'text-gray-700'
-                        }`} style={{ textAlign: 'right' }}>
+                        }`}>
                           Ankara, Turkey
                         </p>
                         <p className={`text-sm ${
                           theme === 'dark' ? 'text-white/60' : 'text-gray-500'
-                        }`} style={{ textAlign: 'right' }}>
+                        }`}>
                           July 2025 - Aug 2025
                         </p>
                       </div>
@@ -317,7 +332,6 @@ export default function AboutPage() {
                       theme === 'dark' ? 'text-white/75' : 'text-gray-600'
                     }`}>
                       <li>• Data Analysis and Visualization Tasks</li>
-
                     </ul>
                   </div>
                 </div>
@@ -334,7 +348,7 @@ export default function AboutPage() {
         </div>
 
         {/* Projects Section - Full Width */}
-        <div className={`relative overflow-hidden rounded-2xl backdrop-blur-md border p-8 mb-8 transition-all duration-500 hover:scale-[1.02] ${
+        <div className={`relative overflow-hidden rounded-2xl backdrop-blur-md border p-4 sm:p-8 mb-8 transition-all duration-500 hover:scale-[1.02] ${
           theme === 'dark' 
             ? 'bg-white/5 border-white/10 hover:bg-white/10' 
             : 'bg-white/70 border-white/20 hover:bg-white/90'
@@ -352,48 +366,77 @@ export default function AboutPage() {
               <div className="space-y-8">
                 
                 {/* Project 1 */}
-                <div className="flex items-start gap-6">
-                  {/* Logo */}
-                  <div 
-                    className={`rounded-xl flex items-center justify-center flex-shrink-0shadow-lg`}
-                    style={{ width: '48px', height: '48px' }}
-                  >
-                    <div className={`text-lg ${
-                      theme === 'dark' ? 'text-white/60' : 'text-gray-400'
-                    }`}>
-                      <Image
-                        src="/icons/companies/metuansTECH.png"
-                        alt="METUANS"
-                        width={48}
-                        height={48}
-                      />
+                <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
+                  {/* Logo & Mobile Title */}
+                  <div className="flex sm:block items-center gap-3 sm:gap-0">
+                    <div 
+                      className={`rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg`}
+                      style={{ width: '48px', height: '48px' }}
+                    >
+                      <div className={`text-lg ${
+                        theme === 'dark' ? 'text-white/60' : 'text-gray-400'
+                      }`}>
+                        <Image
+                          src="/icons/companies/metuansTECH.png"
+                          alt="METUANS"
+                          width={48}
+                          height={48}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Mobile: Project name next to logo */}
+                    <div className="sm:hidden">
+                      <h4 className={`text-lg font-semibold ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        <a 
+                          href="https://metuans.tech" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
+                            theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
+                          }`}
+                        >
+                          metuans.tech
+                          <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
+                            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
+                          }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M7 17L17 7M17 7H8M17 7V16" />
+                          </svg>
+                        </a>
+                      </h4>
                     </div>
                   </div>
                   
-                  {/* Project Name & Description */}
+                  {/* Project Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-3">
+                    {/* Desktop: Project name */}
+                    <div className="hidden sm:block mb-3">
+                      <h4 className={`text-lg font-semibold ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        <a 
+                          href="https://metuans.tech" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
+                            theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
+                          }`}
+                        >
+                          metuans.tech
+                          <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
+                            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
+                          }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M7 17L17 7M17 7H8M17 7V16" />
+                          </svg>
+                        </a>
+                      </h4>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3">
                       <div className="flex-1 min-w-0">
-                        <h4 className={`text-lg font-semibold ${
-                          theme === 'dark' ? 'text-white' : 'text-gray-900'
-                        }`}>
-                          <a 
-                            href="https://metuans.tech" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
-                              theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
-                            }`}
-                          >
-                            metuans.tech
-                            <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
-                              theme === 'dark' ? 'text-white/70' : 'text-gray-600'
-                            }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M7 17L17 7M17 7H8M17 7V16" />
-                            </svg>
-                          </a>
-                        </h4>
-                        <p className={`text-base ${
+                        <p className={`text-base font-medium ${
                           theme === 'dark' ? 'text-white/80' : 'text-gray-700'
                         }`}>
                           Course Planning Platform
@@ -401,15 +444,15 @@ export default function AboutPage() {
                       </div>
                       
                       {/* Tech Stack & Date */}
-                      <div className="ml-4 flex-shrink-0" style={{ textAlign: 'right' }}>
+                      <div className="mt-2 sm:mt-0 sm:ml-4 sm:flex-shrink-0 sm:text-right">
                         <p className={`text-sm font-medium ${
                           theme === 'dark' ? 'text-white/80' : 'text-gray-700'
-                        }`} style={{ textAlign: 'right' }}>
+                        }`}>
                           Next.js, TypeScript
                         </p>
                         <p className={`text-sm ${
                           theme === 'dark' ? 'text-white/60' : 'text-gray-500'
-                        }`} style={{ textAlign: 'right' }}>
+                        }`}>
                           2024
                         </p>
                       </div>
@@ -427,47 +470,76 @@ export default function AboutPage() {
                 </div>
 
                 {/* Project 2 */}
-                <div className="flex items-start gap-6">
-                  {/* Logo */}
-                  <div 
-                    className={`rounded-xl flex items-center justify-center flex-shrink-0 ${
-                      theme === 'dark' 
-                        ? 'bg-white/10 border border-white/20' 
-                        : 'bg-gray-100 border border-gray-200'
-                    } shadow-lg`}
-                    style={{ width: '48px', height: '48px' }}
-                  >
-                    <div className={`text-lg ${
-                      theme === 'dark' ? 'text-white/60' : 'text-gray-400'
-                    }`}>
-                      📊
+                <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
+                  {/* Logo & Mobile Title */}
+                  <div className="flex sm:block items-center gap-3 sm:gap-0">
+                    <div 
+                      className={`rounded-xl flex items-center justify-center flex-shrink-0 ${
+                        theme === 'dark' 
+                          ? 'bg-white/10 border border-white/20' 
+                          : 'bg-gray-100 border border-gray-200'
+                      } shadow-lg`}
+                      style={{ width: '48px', height: '48px' }}
+                    >
+                      <div className={`text-lg ${
+                        theme === 'dark' ? 'text-white/60' : 'text-gray-400'
+                      }`}>
+                        📊
+                      </div>
+                    </div>
+                    
+                    {/* Mobile: Project name next to logo */}
+                    <div className="sm:hidden">
+                      <h4 className={`text-lg font-semibold ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        <a 
+                          href="/projects/analysis_of_crime_dynamics" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
+                            theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
+                          }`}
+                        >
+                          Crime Dynamics Analysis
+                          <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
+                            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
+                          }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M7 17L17 7M17 7H8M17 7V16" />
+                          </svg>
+                        </a>
+                      </h4>
                     </div>
                   </div>
                   
-                  {/* Project Name & Description */}
+                  {/* Project Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-3">
+                    {/* Desktop: Project name */}
+                    <div className="hidden sm:block mb-3">
+                      <h4 className={`text-lg font-semibold ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        <a 
+                          href="/projects/analysis_of_crime_dynamics" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
+                            theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
+                          }`}
+                        >
+                          Crime Dynamics Analysis
+                          <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
+                            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
+                          }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M7 17L17 7M17 7H8M17 7V16" />
+                          </svg>
+                        </a>
+                      </h4>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3">
                       <div className="flex-1 min-w-0">
-                        <h4 className={`text-lg font-semibold ${
-                          theme === 'dark' ? 'text-white' : 'text-gray-900'
-                        }`}>
-                          <a 
-                            href="/projects/analysis_of_crime_dynamics" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
-                              theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
-                            }`}
-                          >
-                            Crime Dynamics Analysis
-                            <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
-                              theme === 'dark' ? 'text-white/70' : 'text-gray-600'
-                            }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M7 17L17 7M17 7H8M17 7V16" />
-                            </svg>
-                          </a>
-                        </h4>
-                        <p className={`text-base ${
+                        <p className={`text-base font-medium ${
                           theme === 'dark' ? 'text-white/80' : 'text-gray-700'
                         }`}>
                           Statistical Research Project
@@ -475,15 +547,15 @@ export default function AboutPage() {
                       </div>
                       
                       {/* Tech Stack & Date */}
-                      <div className="ml-4 flex-shrink-0" style={{ textAlign: 'right' }}>
+                      <div className="mt-2 sm:mt-0 sm:ml-4 sm:flex-shrink-0 sm:text-right">
                         <p className={`text-sm font-medium ${
                           theme === 'dark' ? 'text-white/80' : 'text-gray-700'
-                        }`} style={{ textAlign: 'right' }}>
+                        }`}>
                           R, Python, Shiny
                         </p>
                         <p className={`text-sm ${
                           theme === 'dark' ? 'text-white/60' : 'text-gray-500'
-                        }`} style={{ textAlign: 'right' }}>
+                        }`}>
                           2023
                         </p>
                       </div>
@@ -501,48 +573,77 @@ export default function AboutPage() {
                 </div>
 
                 {/* Project 3 */}
-                <div className="flex items-start gap-6">
-                  {/* Logo */}
-                  <div 
-                    className={`rounded-xl flex items-center justify-center flex-shrink-0shadow-lg`}
-                    style={{ width: '48px', height: '48px' }}
-                  >
-                    <div className={`text-lg ${
-                      theme === 'dark' ? 'text-white/60' : 'text-gray-400'
-                    }`}>
-                      <Image
-                        src={theme === 'dark' ? "/icons/companies/logoWHITE.png" : "/icons/companies/logoDARK.png"}
-                        alt="Personal Portfolio and Blog"
-                        width={40}
-                        height={48}
-                      />
+                <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
+                  {/* Logo & Mobile Title */}
+                  <div className="flex sm:block items-center gap-3 sm:gap-0">
+                    <div 
+                      className={`rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg`}
+                      style={{ width: '48px', height: '48px' }}
+                    >
+                      <div className={`text-lg ${
+                        theme === 'dark' ? 'text-white/60' : 'text-gray-400'
+                      }`}>
+                        <Image
+                          src={theme === 'dark' ? "/icons/companies/logoWHITE.png" : "/icons/companies/logoDARK.png"}
+                          alt="Personal Portfolio and Blog"
+                          width={40}
+                          height={48}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Mobile: Project name next to logo */}
+                    <div className="sm:hidden">
+                      <h4 className={`text-lg font-semibold ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        <a 
+                          href="https://github.com/busahinku/busahinku.github.io" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
+                            theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
+                          }`}
+                        >
+                          Personal Portfolio and Blog
+                          <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
+                            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
+                          }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M7 17L17 7M17 7H8M17 7V16" />
+                          </svg>
+                        </a>
+                      </h4>
                     </div>
                   </div>
                   
-                  {/* Project Name & Description */}
+                  {/* Project Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-3">
+                    {/* Desktop: Project name */}
+                    <div className="hidden sm:block mb-3">
+                      <h4 className={`text-lg font-semibold ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        <a 
+                          href="https://github.com/busahinku/busahinku.github.io" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
+                            theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
+                          }`}
+                        >
+                          Personal Portfolio and Blog
+                          <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
+                            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
+                          }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M7 17L17 7M17 7H8M17 7V16" />
+                          </svg>
+                        </a>
+                      </h4>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3">
                       <div className="flex-1 min-w-0">
-                        <h4 className={`text-lg font-semibold ${
-                          theme === 'dark' ? 'text-white' : 'text-gray-900'
-                        }`}>
-                          <a 
-                            href="https://github.com/busahinku/busahinku.github.io" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
-                              theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
-                            }`}
-                          >
-                            Personal Portfolio and Blog
-                            <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
-                              theme === 'dark' ? 'text-white/70' : 'text-gray-600'
-                            }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M7 17L17 7M17 7H8M17 7V16" />
-                            </svg>
-                          </a>
-                        </h4>
-                        <p className={`text-base ${
+                        <p className={`text-base font-medium ${
                           theme === 'dark' ? 'text-white/80' : 'text-gray-700'
                         }`}>
                           Modern Web Portfolio
@@ -550,15 +651,15 @@ export default function AboutPage() {
                       </div>
                       
                       {/* Tech Stack & Date */}
-                      <div className="ml-4 flex-shrink-0" style={{ textAlign: 'right' }}>
+                      <div className="mt-2 sm:mt-0 sm:ml-4 sm:flex-shrink-0 sm:text-right">
                         <p className={`text-sm font-medium ${
                           theme === 'dark' ? 'text-white/80' : 'text-gray-700'
-                        }`} style={{ textAlign: 'right' }}>
+                        }`}>
                           Next.js, Tailwind CSS
                         </p>
                         <p className={`text-sm ${
                           theme === 'dark' ? 'text-white/60' : 'text-gray-500'
-                        }`} style={{ textAlign: 'right' }}>
+                        }`}>
                           2024
                         </p>
                       </div>
@@ -571,7 +672,7 @@ export default function AboutPage() {
                       <li>• Beautiful responsive design with dark/light mode toggle</li>
                       <li>• Interactive blog system with markdown support</li>
                       <li>• Optimized performance and SEO-friendly architecture</li>
-          </ul>
+                    </ul>
                   </div>
                 </div>
 
@@ -697,7 +798,7 @@ export default function AboutPage() {
         </div>
 
         {/* Courses and Certifications Section - Full Width */}
-        <div className={`relative overflow-hidden rounded-2xl backdrop-blur-md border p-8 mb-8 transition-all duration-500 hover:scale-[1.02] ${
+        <div className={`relative overflow-hidden rounded-2xl backdrop-blur-md border p-4 sm:p-8 mb-8 transition-all duration-500 hover:scale-[1.02] ${
           theme === 'dark' 
             ? 'bg-white/5 border-white/10 hover:bg-white/10' 
             : 'bg-white/70 border-white/20 hover:bg-white/90'
@@ -715,48 +816,77 @@ export default function AboutPage() {
               <div className="space-y-8">
                 
                 {/* Course 1 */}
-                <div className="flex items-start gap-6">
-                  {/* Logo */}
-                  <div 
-                    className={`rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg`}
-                    style={{ width: '48px', height: '48px' }}
-                  >
-                    <div className={`text-lg ${
-                      theme === 'dark' ? 'text-white/60' : 'text-gray-400'
-                    }`}>
-                      <Image
-                        src="/icons/companies/DeepLearning.svg"
-                        alt="Deep Learning Specialization"
-                        width={48}
-                        height={48}
-                      />
+                <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
+                  {/* Logo & Mobile Title */}
+                  <div className="flex sm:block items-center gap-3 sm:gap-0">
+                    <div 
+                      className={`rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg`}
+                      style={{ width: '48px', height: '48px' }}
+                    >
+                      <div className={`text-lg ${
+                        theme === 'dark' ? 'text-white/60' : 'text-gray-400'
+                      }`}>
+                        <Image
+                          src="/icons/companies/DeepLearning.svg"
+                          alt="Deep Learning Specialization"
+                          width={48}
+                          height={48}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Mobile: Course name next to logo */}
+                    <div className="sm:hidden">
+                      <h4 className={`text-lg font-semibold ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        <a 
+                          href="https://coursera.org/share/0c2e9bb182ed3a65f5a839eef2575be2" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
+                            theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
+                          }`}
+                        >
+                          Machine Learning Specialization
+                          <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
+                            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
+                          }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M7 17L17 7M17 7H8M17 7V16" />
+                          </svg>
+                        </a>
+                      </h4>
                     </div>
                   </div>
                   
-                  {/* Course Name & Provider */}
+                  {/* Course Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-3">
+                    {/* Desktop: Course name */}
+                    <div className="hidden sm:block mb-3">
+                      <h4 className={`text-lg font-semibold ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        <a 
+                          href="https://coursera.org/share/0c2e9bb182ed3a65f5a839eef2575be2" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
+                            theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
+                          }`}
+                        >
+                          Machine Learning Specialization
+                          <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
+                            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
+                          }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M7 17L17 7M17 7H8M17 7V16" />
+                          </svg>
+                        </a>
+                      </h4>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3">
                       <div className="flex-1 min-w-0">
-                        <h4 className={`text-lg font-semibold ${
-                          theme === 'dark' ? 'text-white' : 'text-gray-900'
-                        }`}>
-                          <a 
-                            href="https://coursera.org/share/0c2e9bb182ed3a65f5a839eef2575be2" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
-                              theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
-                            }`}
-                          >
-                            Machine Learning Specialization
-                            <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
-                              theme === 'dark' ? 'text-white/70' : 'text-gray-600'
-                            }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M7 17L17 7M17 7H8M17 7V16" />
-                            </svg>
-                          </a>
-                        </h4>
-                        <p className={`text-base ${
+                        <p className={`text-base font-medium ${
                           theme === 'dark' ? 'text-white/80' : 'text-gray-700'
                         }`}>
                           Stanford University, Deeplearning.ai (Coursera)
@@ -764,10 +894,10 @@ export default function AboutPage() {
                       </div>
                       
                       {/* Date */}
-                      <div className="ml-4 flex-shrink-0" style={{ textAlign: 'right' }}>
+                      <div className="mt-2 sm:mt-0 sm:ml-4 sm:flex-shrink-0 sm:text-right">
                         <p className={`text-sm ${
                           theme === 'dark' ? 'text-white/60' : 'text-gray-500'
-                        }`} style={{ textAlign: 'right' }}>
+                        }`}>
                           Sep 2024
                         </p>
                       </div>
@@ -776,48 +906,77 @@ export default function AboutPage() {
                 </div>
 
                 {/* Course 2 */}
-                <div className="flex items-start gap-6">
-                  {/* Logo */}
-                  <div 
-                    className={`rounded-xl flex items-center justify-center flex-shrink-0`}
-                    style={{ width: '48px', height: '48px' }}
-                  >
-                    <div className={`text-lg ${
-                      theme === 'dark' ? 'text-white/60' : 'text-gray-400'
-                    }`}>
-                      <Image
-                        src="/icons/companies/IBMLogo.svg.png"
-                        alt="IBM LOGO"
-                        width={48}
-                        height={48}
-                      />
+                <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
+                  {/* Logo & Mobile Title */}
+                  <div className="flex sm:block items-center gap-3 sm:gap-0">
+                    <div 
+                      className={`rounded-xl flex items-center justify-center flex-shrink-0`}
+                      style={{ width: '48px', height: '48px' }}
+                    >
+                      <div className={`text-lg ${
+                        theme === 'dark' ? 'text-white/60' : 'text-gray-400'
+                      }`}>
+                        <Image
+                          src="/icons/companies/IBMLogo.svg.png"
+                          alt="IBM LOGO"
+                          width={48}
+                          height={48}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Mobile: Course name next to logo */}
+                    <div className="sm:hidden">
+                      <h4 className={`text-lg font-semibold ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        <a 
+                          href="https://coursera.org/share/56ddf198b626ae52d50259fce412c9c3" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
+                            theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
+                          }`}
+                        >
+                          Data Science Specialization (Full)
+                          <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
+                            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
+                          }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M7 17L17 7M17 7H8M17 7V16" />
+                          </svg>
+                        </a>
+                      </h4>
                     </div>
                   </div>
                   
-                  {/* Course Name & Provider */}
+                  {/* Course Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-3">
+                    {/* Desktop: Course name */}
+                    <div className="hidden sm:block mb-3">
+                      <h4 className={`text-lg font-semibold ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        <a 
+                          href="https://coursera.org/share/56ddf198b626ae52d50259fce412c9c3" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
+                            theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
+                          }`}
+                        >
+                          Data Science Specialization (Full)
+                          <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
+                            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
+                          }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M7 17L17 7M17 7H8M17 7V16" />
+                          </svg>
+                        </a>
+                      </h4>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3">
                       <div className="flex-1 min-w-0">
-                        <h4 className={`text-lg font-semibold ${
-                          theme === 'dark' ? 'text-white' : 'text-gray-900'
-                        }`}>
-                          <a 
-                            href="https://coursera.org/share/56ddf198b626ae52d50259fce412c9c3" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
-                              theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
-                            }`}
-                          >
-                            Data Science Specialization (Full)
-                            <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
-                              theme === 'dark' ? 'text-white/70' : 'text-gray-600'
-                            }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M7 17L17 7M17 7H8M17 7V16" />
-                            </svg>
-                          </a>
-                        </h4>
-                        <p className={`text-base ${
+                        <p className={`text-base font-medium ${
                           theme === 'dark' ? 'text-white/80' : 'text-gray-700'
                         }`}>
                           IBM (Coursera)
@@ -825,10 +984,10 @@ export default function AboutPage() {
                       </div>
                       
                       {/* Date */}
-                      <div className="ml-4 flex-shrink-0" style={{ textAlign: 'right' }}>
+                      <div className="mt-2 sm:mt-0 sm:ml-4 sm:flex-shrink-0 sm:text-right">
                         <p className={`text-sm ${
                           theme === 'dark' ? 'text-white/60' : 'text-gray-500'
-                        }`} style={{ textAlign: 'right' }}>
+                        }`}>
                           Feb 2024
                         </p>
                       </div>
