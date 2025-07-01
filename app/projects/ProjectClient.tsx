@@ -54,19 +54,6 @@ export default function ProjectClient({ initialProjects }: ProjectClientProps) {
     setCurrentPage(1);
   };
 
-  const getTypeColor = (index: number) => {
-    const colors = [
-      'from-purple-500 to-pink-500',
-      'from-blue-500 to-cyan-500', 
-      'from-green-500 to-teal-500',
-      'from-orange-500 to-red-500',
-      'from-indigo-500 to-purple-500',
-      'from-cyan-500 to-blue-500',
-      'from-pink-500 to-rose-500'
-    ];
-    return colors[index % colors.length];
-  };
-
   return (
     <div className="w-full max-[820px]:px-6 relative overflow-hidden">
       {/* Beautiful Background */}
@@ -221,7 +208,7 @@ export default function ProjectClient({ initialProjects }: ProjectClientProps) {
                   <span className={`px-2 py-1 rounded-md text-xs font-medium ${
                     theme === 'dark' ? 'bg-white/10 text-white/80' : 'bg-gray-100 text-gray-700'
                   }`}>
-                    "{searchQuery}"
+                    &quot;{searchQuery}&quot;
                   </span>
                 )}
               </span>
@@ -234,7 +221,7 @@ export default function ProjectClient({ initialProjects }: ProjectClientProps) {
           {paginatedProjects.map((project, index) => (
             <Link
               key={project.slug}
-              href={`/projects/${project.slug}`}
+              href={'/projects/${project.slug}'}
               className={`group relative overflow-hidden rounded-xl backdrop-blur-lg border transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 ${
                 theme === 'dark' 
                   ? 'bg-black/20 border-white/10 hover:bg-black/30 hover:border-white/20' 

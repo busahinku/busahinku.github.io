@@ -248,7 +248,7 @@ export default function ResourcesClient() {
               <p className={`text-sm ${
                 theme === 'dark' ? 'text-white/60' : 'text-gray-600'
               }`}>
-                I'm curating an amazing collection of learning resources. Check back soon!
+                I&apos;m curating an amazing collection of learning resources. Check back soon!
               </p>
             </div>
           )}

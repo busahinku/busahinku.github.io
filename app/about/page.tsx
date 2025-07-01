@@ -175,7 +175,7 @@ export default function AboutPage() {
               <p className={`leading-relaxed ${
                 theme === 'dark' ? 'text-white/80' : 'text-gray-700'
               }`}>
-                I like to consider myself as someone who likes to create things and present them to people. I'm passionate about Design, Data Science, Some Type of Computing, and Bayesian Statistics.
+                I like to consider myself as someone who likes to create things and present them to people. I am passionate about Design, Data Science, Some Type of Computing, and Bayesian Statistics.
               </p>
             </div>
             
@@ -859,7 +859,7 @@ export default function AboutPage() {
               <h3 className={`text-2xl font-bold mb-2 ${
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
               }`}>
-                Let's Connect
+                Let&apos;s Connect
               </h3>
               <p className={`${
                 theme === 'dark' ? 'text-white/70' : 'text-gray-600'

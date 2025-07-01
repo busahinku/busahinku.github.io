@@ -123,7 +123,7 @@ export default function BlogClient({ initialPosts }: BlogClientProps) {
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
-                Clear "{selectedTag}"
+                Clear &quot;{selectedTag}&quot;
               </button>
             )}
           </div>
@@ -261,7 +261,7 @@ export default function BlogClient({ initialPosts }: BlogClientProps) {
                   <span className={`px-2 py-1 rounded-md text-xs font-medium ${
                     theme === 'dark' ? 'bg-white/10 text-white/80' : 'bg-gray-100 text-gray-700'
                   }`}>
-                    "{searchQuery}"
+                    &quot;{searchQuery}&quot;
                   </span>
                 )}
               </span>
