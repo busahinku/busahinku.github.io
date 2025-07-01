@@ -49,7 +49,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="w-full max-[820px]:px-2 page-transition relative overflow-hidden min-h-screen">
+    <div className="w-full px-4 sm:px-6 md:px-8 max-[820px]:px-6 page-transition relative overflow-hidden min-h-screen">
       {/* Interactive Subtle Animated Background */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
                  {/* Primary interactive orbs with subtle animations */}
@@ -278,14 +278,14 @@ export default function Home() {
       `}</style>
 
       <main className="max-w-[800px] mx-auto relative z-10 min-h-screen flex items-center">
-        <div className="flex flex-col items-start justify-center w-full py-16">
+        <div className="flex flex-col items-start justify-center w-full py-16 px-2 sm:px-4 md:px-0">
           {/* About Section */}
-          <div className="mb-8">
+          <div className="mb-8 w-full">
             <div className={`w-full text-left ${
               theme === 'dark' ? 'text-[#EEEEEE]/90' : 'text-[#1A1A1E]/90'
             } transition-all duration-300`}>
 
-              <p className="text-sm md:text-base leading-relaxed">
+              <p className="text-sm sm:text-base leading-relaxed sm:leading-loose px-1 sm:px-0">
                                  <span className="font-semibold">Burak Sahin Kucuk</span><br/>
                  <span className="text-red-500 font-semibold">Education:</span> Junior, <span className="relative group cursor-pointer font-semibold underline decoration-dotted decoration-1 underline-offset-2 hover:decoration-2 transition-all duration-300">Statistics<span className={`absolute -top-12 left-1/2 transform -translate-x-1/2 px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap z-20 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-300 ease-out shadow-2xl border backdrop-blur-3xl ${theme === 'dark' ? 'bg-white/5 text-white border-white/10' : 'bg-white/20 text-gray-800 border-white/30'}`} style={{backdropFilter: 'blur(20px)'}}>GPA: 3.95/4</span></span> & <span className="relative group cursor-pointer font-semibold underline decoration-dotted decoration-1 underline-offset-2 hover:decoration-2 transition-all duration-300">Computer Eng.<span className={`absolute -top-12 left-1/2 transform -translate-x-1/2 px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap z-20 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-300 ease-out shadow-2xl border backdrop-blur-3xl ${theme === 'dark' ? 'bg-white/5 text-white border-white/10' : 'bg-white/20 text-gray-800 border-white/30'}`} style={{backdropFilter: 'blur(20px)'}}>GPA: 3.09/4</span></span> Student @METU<br/>
                  <span className="text-red-500 font-semibold">Location:</span> Ankara, Türkiye<br/>
@@ -299,7 +299,7 @@ export default function Home() {
           
           {/* Social Grid - 800px width and centered */}
           <div className="w-full flex justify-center relative">
-            <div className="w-full max-w-[800px]">
+            <div className="w-full max-w-[800px] px-1 sm:px-0">
             <SocialGrid />
             </div>
           </div>

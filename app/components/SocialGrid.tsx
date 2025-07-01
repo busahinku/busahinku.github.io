@@ -95,7 +95,7 @@ export default function SocialGrid() {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-6 auto-rows-[120px] gap-4 mt-6 w-full">
+    <div className="grid grid-cols-1 md:grid-cols-6 auto-rows-[120px] gap-3 sm:gap-4 mt-6 w-full">
       {socialLinks.map((link) => (
         <Link
           key={link.name}
@@ -105,7 +105,7 @@ export default function SocialGrid() {
           className={`
             ${link.gridArea} 
             col-span-1
-            rounded-2xl p-6
+            rounded-2xl p-4 sm:p-6
             transition-all duration-500 ease-out 
             transform hover:scale-105
             group relative overflow-hidden
