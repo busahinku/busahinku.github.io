@@ -20,19 +20,25 @@ const Footer = () => {
     <footer className={`w-full border-t mt-auto ${
       theme === 'dark' 
         ? 'border-gray-800 bg-black' 
-        : 'border-gray-200 bg-black'
+        : 'border-gray-200 bg-white'
     }`}>
       <div className="max-w-[800px] mx-auto px-6 py-4">
         <div className="flex justify-between items-center">
           {/* Left side - Copyright */}
-          <div className="text-sm text-gray-400">
+          <div className={`text-sm ${
+            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+          }`}>
             © {new Date().getFullYear()} busahinku
           </div>
           
           {/* Right side - Back to top */}
           <button
             onClick={handleScrollToTop}
-            className="flex items-center space-x-1 px-3 py-1 rounded-md text-sm font-medium transition-colors text-gray-300 hover:text-white hover:bg-gray-800"
+            className={`flex items-center space-x-1 px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+              theme === 'dark'
+                ? 'text-gray-300 hover:text-white hover:bg-gray-800'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+            }`}
           >
             <span>Back to top</span>
             <svg 

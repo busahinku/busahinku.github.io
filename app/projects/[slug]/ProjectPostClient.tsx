@@ -298,22 +298,19 @@ export default function ProjectPostClient({ project }: ProjectPostClientProps) {
       if (!src) return null;
       
       return (
-        <span className="block my-6">
-          <div className="relative w-full aspect-[16/9]">
-            <Image
-              src={src}
-              alt={alt || ''}
-              fill
-              className="rounded-lg object-cover"
-              sizes="(max-width: 800px) 100vw, 800px"
-            />
-          </div>
+        <div className="block my-6 w-full">
+          <img
+            src={src}
+            alt={alt || ''}
+            className="rounded-lg max-w-full h-auto mx-auto block"
+            style={{ maxWidth: '800px' }}
+          />
           {alt && (
-            <span className="block text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
+            <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
               {alt}
-            </span>
+            </div>
           )}
-        </span>
+        </div>
       );
     },
     hr: () => (
