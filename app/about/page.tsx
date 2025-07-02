@@ -17,13 +17,11 @@ export default function AboutPage() {
             : 'bg-white'
         }`} />
         
-        {/* Floating Orbs - Only for dark mode */}
+        {/* Floating Orbs - Optimized for performance */}
         {theme === 'dark' && (
           <>
-            <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full blur-3xl opacity-20 bg-purple-500 animate-float" />
-            <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full blur-3xl opacity-15 bg-blue-500 animate-float-delayed" />
-            <div className="absolute top-1/2 right-1/3 w-32 h-32 rounded-full blur-2xl opacity-25 bg-cyan-500 animate-pulse" />
-            <div className="absolute top-3/4 left-1/3 w-40 h-40 rounded-full blur-3xl opacity-10 bg-green-500 animate-float" />
+            <div className="absolute top-1/4 left-1/4 w-32 h-32 rounded-full blur-xl opacity-10 bg-purple-500" />
+            <div className="absolute bottom-1/4 right-1/4 w-32 h-32 rounded-full blur-xl opacity-10 bg-blue-500" />
           </>
         )}
       </div>
@@ -32,7 +30,7 @@ export default function AboutPage() {
 
 
         {/* Profile Section */}
-        <div className={`relative overflow-hidden rounded-2xl backdrop-blur-md border p-8 mb-8 transition-all duration-500 ${
+        <div className={`relative overflow-hidden rounded-2xl border p-8 mb-8 transition-colors duration-300 ${
           theme === 'dark' 
             ? 'bg-white/5 border-white/10' 
             : 'bg-white/70 border-white/20'
@@ -92,7 +90,7 @@ export default function AboutPage() {
                        theme === 'dark' 
                          ? 'bg-white/10 hover:bg-white/20 text-white border border-white/20' 
                          : 'bg-gray-900 hover:bg-gray-800 text-white'
-                     } shadow-lg hover:shadow-xl backdrop-blur-sm`}
+                     } shadow-lg hover:shadow-xl`}
                    >
                      <svg
                        width="16"
@@ -118,7 +116,7 @@ export default function AboutPage() {
                        theme === 'dark' 
                          ? 'bg-gray-800/50 hover:bg-gray-700/60 text-white border border-gray-600/30' 
                          : 'bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300'
-                     } shadow-lg hover:shadow-xl backdrop-blur-sm`}
+                     } shadow-lg hover:shadow-xl`}
           >
             <svg
                        width="16"
@@ -142,7 +140,7 @@ export default function AboutPage() {
           </div>
           
           {/* Shimmer Effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-700 animate-shimmer" />
+                      {/* Shimmer effect removed for performance */}
         </div>
 
 
@@ -151,11 +149,11 @@ export default function AboutPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           
           {/* About Section */}
-          <div className={`relative overflow-hidden rounded-2xl backdrop-blur-md border p-6 transition-all duration-500 hover:scale-[1.02] ${
+          <div className={`relative overflow-hidden rounded-2xl border p-6 transition-[colors,transform] duration-500 hover:scale-[1.02] ${
             theme === 'dark' 
-              ? 'bg-white/5 border-white/10 hover:bg-white/10' 
-              : 'bg-white/70 border-white/20 hover:bg-white/90'
-          } shadow-xl hover:shadow-2xl`}>
+              ? 'bg-white/5 border-white/10 hover:bg-white/8' 
+              : 'bg-white/70 border-white/20 hover:bg-white/85'
+          } shadow-xl hover:shadow-lg`}>
             
             <div className="absolute inset-0 opacity-5 bg-gradient-to-br from-blue-500 to-cyan-500" />
             
@@ -179,15 +177,15 @@ export default function AboutPage() {
               </p>
             </div>
             
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-400/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-700 animate-shimmer" />
+            {/* Shimmer effect removed for performance */}
           </div>
 
           {/* Education Section */}
-          <div className={`relative overflow-hidden rounded-2xl backdrop-blur-md border p-6 transition-all duration-500 hover:scale-[1.02] ${
+          <div className={`relative overflow-hidden rounded-2xl border p-6 transition-[colors,transform] duration-500 hover:scale-[1.02] ${
             theme === 'dark' 
-              ? 'bg-white/5 border-white/10 hover:bg-white/10' 
-              : 'bg-white/70 border-white/20 hover:bg-white/90'
-          } shadow-xl hover:shadow-2xl`}>
+              ? 'bg-white/5 border-white/10 hover:bg-white/8' 
+              : 'bg-white/70 border-white/20 hover:bg-white/85'
+          } shadow-xl hover:shadow-lg`}>
             
             <div className="absolute inset-0 opacity-5 bg-gradient-to-br from-purple-500 to-pink-500" />
             
@@ -201,11 +199,11 @@ export default function AboutPage() {
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <h4 className={`font-semibold ${
+                    <h5 className={`font-semibold ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
                     }`}>
                       BSc in Statistics
-                    </h4>
+                    </h5>
                     <div className={`px-2 py-1 rounded-md text-xs font-medium ${
                       theme === 'dark' ? 'bg-green-500/20 text-green-300' : 'bg-green-100 text-green-700'
                     }`}>
@@ -217,15 +215,28 @@ export default function AboutPage() {
                   }`}>
                     Middle East Technical University
                   </p>
+                  
+                  {/* Selected Courseworks */}
+                  <div className="mt-2">
+                    <div className="flex flex-wrap gap-1">
+                      {['Data Processing and Visualization', 'Stat & Data Science', 'Object Oriented Prog.', 'Statistical Programming'].map((course) => (
+                        <span key={course} className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${
+                          theme === 'dark' ? 'bg-white/10 text-white/70' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {course}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <h4 className={`font-semibold ${
+                    <h5 className={`font-semibold ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
                     }`}>
-                      BSc in Computer Eng. (DM)
-                    </h4>
+                      BSc in Computer Eng.
+                    </h5>
                     <div className={`px-2 py-1 rounded-md text-xs font-medium ${
                       theme === 'dark' ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-700'
                     }`}>
@@ -237,83 +248,81 @@ export default function AboutPage() {
                   }`}>
                     Middle East Technical University
                   </p>
+                  
+                  {/* Selected Courseworks */}
+                  <div className="mt-2">
+                    <div className="flex flex-wrap gap-1">
+                      {['Discrete Computational Structures', 'C Programming'].map((course) => (
+                        <span key={course} className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${
+                          theme === 'dark' ? 'bg-white/10 text-white/70' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {course}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
             
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-400/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-700 animate-shimmer" />
+            {/* Shimmer effect removed for performance */}
           </div>
         </div>
 
         {/* Experience Section - Full Width */}
-        <div className={`relative overflow-hidden rounded-2xl backdrop-blur-md border p-4 sm:p-8 mb-8 transition-all duration-500 hover:scale-[1.02] ${
+        <div className={`relative overflow-hidden rounded-2xl border p-4 sm:p-8 mb-8 transition-[colors,transform] duration-500 hover:scale-[1.02] ${
           theme === 'dark' 
-            ? 'bg-white/5 border-white/10 hover:bg-white/10' 
-            : 'bg-white/70 border-white/20 hover:bg-white/90'
-        } shadow-xl hover:shadow-2xl`}>
+            ? 'bg-white/5 border-white/10 hover:bg-white/8' 
+            : 'bg-white/70 border-white/20 hover:bg-white/85'
+        } shadow-xl hover:shadow-lg`}>
             
             <div className="absolute inset-0 opacity-5 bg-gradient-to-br from-indigo-500 to-purple-500" />
             
             <div className="relative z-10">
-              <h3 className={`text-xl font-bold mb-8 ${
+              <h3 className={`text-lg sm:text-xl font-bold mb-4 sm:mb-8 ${
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
               }`}>
                 Experience
               </h3>
               
-              <div className="space-y-8">
+              <div className="space-y-10 sm:space-y-8">
                 
                 {/* Experience 1 */}
-                <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
+                <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-6">
                   {/* Logo */}
-                  <div className="flex sm:block items-center gap-3 sm:gap-0">
-                    <div 
-                      className={`rounded-xl flex items-center justify-center flex-shrink-0`}
-                    >
-                      <div className={`text-xs font-bold ${
-                        theme === 'dark' ? 'text-white/60' : 'text-gray-400'
-                      }`}>
-                        <Image
-                          src="/icons/companies/uabtr.png"
-                          alt="UAB T.C."
-                          width={48}
-                          height={48}
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Mobile: Company name next to logo */}
-                    <div className="sm:hidden">
-                      <h4 className={`text-lg font-semibold ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        Ministry of Transport and Infrastructure of Turkey
-                      </h4>
+                  <div 
+                    className={`rounded-xl flex items-center justify-center flex-shrink-0`}
+                  >
+                    <div className={`text-xs font-bold ${
+                      theme === 'dark' ? 'text-white/60' : 'text-gray-400'
+                    }`}>
+                      <Image
+                        src="/icons/companies/uabtr.png"
+                        alt="UAB T.C."
+                        width={36}
+                        height={36}
+                      />
                     </div>
                   </div>
                   
                   {/* Company & Position */}
-                  <div className="flex-1 min-w-0">
-                    {/* Desktop: Company name */}
-                    <div className="hidden sm:block mb-3">
-                      <h4 className={`text-lg font-semibold ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        Ministry of Transport and Infrastructure of Turkey
-                      </h4>
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3">
+                  <div className="flex-1 min-w-0 w-full">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2 sm:mb-3">
                       <div className="flex-1 min-w-0">
-                        <p className={`text-base font-medium ${
+                        <h4 className={`text-base sm:text-lg font-semibold ${
+                          theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        }`}>
+                          Internship
+                        </h4>
+                        <p className={`text-sm sm:text-base ${
                           theme === 'dark' ? 'text-white/80' : 'text-gray-700'
                         }`}>
-                          Intern
+                          Ministry of Transport and Infrastructure of Turkey (UAB T.C.)
                         </p>
                       </div>
                       
-                      {/* Location & Date */}
-                      <div className="mt-2 sm:mt-0 sm:ml-4 sm:flex-shrink-0 sm:text-right">
+                      {/* Country & Date */}
+                      <div className="mt-3 sm:mt-0 sm:ml-4 sm:flex-shrink-0 sm:pr-8 sm:text-right">
                         <p className={`text-sm font-medium ${
                           theme === 'dark' ? 'text-white/80' : 'text-gray-700'
                         }`}>
@@ -332,6 +341,7 @@ export default function AboutPage() {
                       theme === 'dark' ? 'text-white/75' : 'text-gray-600'
                     }`}>
                       <li>• Data Analysis and Visualization Tasks</li>
+
                     </ul>
                   </div>
                 </div>
@@ -344,99 +354,70 @@ export default function AboutPage() {
               </div>
             </div>
             
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-indigo-400/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-700 animate-shimmer" />
+            {/* Shimmer effect removed for performance */}
         </div>
 
         {/* Projects Section - Full Width */}
-        <div className={`relative overflow-hidden rounded-2xl backdrop-blur-md border p-4 sm:p-8 mb-8 transition-all duration-500 hover:scale-[1.02] ${
+        <div className={`relative overflow-hidden rounded-2xl border p-4 sm:p-8 mb-8 transition-[colors,transform] duration-500 hover:scale-[1.02] ${
           theme === 'dark' 
-            ? 'bg-white/5 border-white/10 hover:bg-white/10' 
-            : 'bg-white/70 border-white/20 hover:bg-white/90'
-        } shadow-xl hover:shadow-2xl`}>
+            ? 'bg-white/5 border-white/10 hover:bg-white/8' 
+            : 'bg-white/70 border-white/20 hover:bg-white/85'
+        } shadow-xl hover:shadow-lg`}>
             
             <div className="absolute inset-0 opacity-5 bg-gradient-to-br from-green-500 to-cyan-500" />
             
             <div className="relative z-10">
-              <h3 className={`text-xl font-bold mb-8 ${
+              <h3 className={`text-lg sm:text-xl font-bold mb-4 sm:mb-8 ${
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
               }`}>
                 Projects
               </h3>
               
-              <div className="space-y-8">
+              <div className="space-y-10 sm:space-y-8">
                 
                 {/* Project 1 */}
-                <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
-                  {/* Logo & Mobile Title */}
-                  <div className="flex sm:block items-center gap-3 sm:gap-0">
-                    <div 
-                      className={`rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg`}
-                      style={{ width: '48px', height: '48px' }}
-                    >
-                      <div className={`text-lg ${
-                        theme === 'dark' ? 'text-white/60' : 'text-gray-400'
-                      }`}>
-                        <Image
-                          src="/icons/companies/metuansTECH.png"
-                          alt="METUANS"
-                          width={48}
-                          height={48}
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Mobile: Project name next to logo */}
-                    <div className="sm:hidden">
-                      <h4 className={`text-lg font-semibold ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        <a 
-                          href="https://metuans.tech" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
-                            theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
-                          }`}
-                        >
-                          metuans.tech
-                          <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
-                            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
-                          }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M7 17L17 7M17 7H8M17 7V16" />
-                          </svg>
-                        </a>
-                      </h4>
+                <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-6">
+                  {/* Logo */}
+                  <div 
+                    className={`rounded-xl flex items-center justify-center flex-shrink-0`}
+                    style={{ width: '36px', height: '36px' }}
+                  >
+                    <div className={`text-lg ${
+                      theme === 'dark' ? 'text-white/60' : 'text-gray-400'
+                    }`}>
+                      <Image
+                        src="/icons/companies/metuansTECH.png"
+                        alt="METUANS"
+                        width={36}
+                        height={36}
+                      />
                     </div>
                   </div>
                   
-                  {/* Project Content */}
-                  <div className="flex-1 min-w-0">
-                    {/* Desktop: Project name */}
-                    <div className="hidden sm:block mb-3">
-                      <h4 className={`text-lg font-semibold ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        <a 
-                          href="https://metuans.tech" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
-                            theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
-                          }`}
-                        >
-                          metuans.tech
-                          <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
-                            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
-                          }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M7 17L17 7M17 7H8M17 7V16" />
-                          </svg>
-                        </a>
-                      </h4>
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3">
+                  {/* Project Name & Description */}
+                  <div className="flex-1 min-w-0 w-full">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2 sm:mb-3">
                       <div className="flex-1 min-w-0">
-                        <p className={`text-base font-medium ${
+                        <h4 className={`text-base sm:text-lg font-semibold ${
+                          theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        }`}>
+                          <a 
+                            href="https://metuans.tech" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
+                              theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
+                            }`}
+                          >
+                            metuans.tech
+                            <svg className={`w-3 sm:w-4 h-3 sm:h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
+                              theme === 'dark' ? 'text-white/70' : 'text-gray-600'
+                            }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M7 17L17 7M17 7H8M17 7V16" />
+                            </svg>
+                          </a>
+                        </h4>
+                        <p className={`text-sm sm:text-base ${
                           theme === 'dark' ? 'text-white/80' : 'text-gray-700'
                         }`}>
                           Course Planning Platform
@@ -444,7 +425,7 @@ export default function AboutPage() {
                       </div>
                       
                       {/* Tech Stack & Date */}
-                      <div className="mt-2 sm:mt-0 sm:ml-4 sm:flex-shrink-0 sm:text-right">
+                      <div className="mt-3 sm:mt-0 sm:ml-4 sm:flex-shrink-0 sm:text-right">
                         <p className={`text-sm font-medium ${
                           theme === 'dark' ? 'text-white/80' : 'text-gray-700'
                         }`}>
@@ -469,181 +450,50 @@ export default function AboutPage() {
                   </div>
                 </div>
 
-                {/* Project 2 */}
-                <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
-                  {/* Logo & Mobile Title */}
-                  <div className="flex sm:block items-center gap-3 sm:gap-0">
-                    <div 
-                      className={`rounded-xl flex items-center justify-center flex-shrink-0 ${
-                        theme === 'dark' 
-                          ? 'bg-white/10 border border-white/20' 
-                          : 'bg-gray-100 border border-gray-200'
-                      } shadow-lg`}
-                      style={{ width: '48px', height: '48px' }}
-                    >
-                      <div className={`text-lg ${
-                        theme === 'dark' ? 'text-white/60' : 'text-gray-400'
-                      }`}>
-                        📊
-                      </div>
-                    </div>
-                    
-                    {/* Mobile: Project name next to logo */}
-                    <div className="sm:hidden">
-                      <h4 className={`text-lg font-semibold ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        <a 
-                          href="/projects/analysis_of_crime_dynamics" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
-                            theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
-                          }`}
-                        >
-                          Crime Dynamics Analysis
-                          <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
-                            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
-                          }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M7 17L17 7M17 7H8M17 7V16" />
-                          </svg>
-                        </a>
-                      </h4>
-                    </div>
-                  </div>
-                  
-                  {/* Project Content */}
-                  <div className="flex-1 min-w-0">
-                    {/* Desktop: Project name */}
-                    <div className="hidden sm:block mb-3">
-                      <h4 className={`text-lg font-semibold ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        <a 
-                          href="/projects/analysis_of_crime_dynamics" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
-                            theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
-                          }`}
-                        >
-                          Crime Dynamics Analysis
-                          <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
-                            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
-                          }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M7 17L17 7M17 7H8M17 7V16" />
-                          </svg>
-                        </a>
-                      </h4>
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3">
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-base font-medium ${
-                          theme === 'dark' ? 'text-white/80' : 'text-gray-700'
-                        }`}>
-                          Statistical Research Project
-                        </p>
-                      </div>
-                      
-                      {/* Tech Stack & Date */}
-                      <div className="mt-2 sm:mt-0 sm:ml-4 sm:flex-shrink-0 sm:text-right">
-                        <p className={`text-sm font-medium ${
-                          theme === 'dark' ? 'text-white/80' : 'text-gray-700'
-                        }`}>
-                          R, Python, Shiny
-                        </p>
-                        <p className={`text-sm ${
-                          theme === 'dark' ? 'text-white/60' : 'text-gray-500'
-                        }`}>
-                          2023
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* Bullet Points */}
-                    <ul className={`text-sm space-y-2 ${
-                      theme === 'dark' ? 'text-white/75' : 'text-gray-600'
-                    }`}>
-                      <li>• Statistical analysis of crime patterns using advanced modeling techniques</li>
-                      <li>• Interactive R Shiny dashboard for data visualization</li>
-                      <li>• Time series analysis and geospatial crime mapping</li>
-                    </ul>
-                  </div>
-                </div>
-
+                
                 {/* Project 3 */}
-                <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
-                  {/* Logo & Mobile Title */}
-                  <div className="flex sm:block items-center gap-3 sm:gap-0">
-                    <div 
-                      className={`rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg`}
-                      style={{ width: '48px', height: '48px' }}
-                    >
-                      <div className={`text-lg ${
-                        theme === 'dark' ? 'text-white/60' : 'text-gray-400'
-                      }`}>
-                        <Image
-                          src={theme === 'dark' ? "/icons/companies/logoWHITE.png" : "/icons/companies/logoDARK.png"}
-                          alt="Personal Portfolio and Blog"
-                          width={40}
-                          height={48}
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Mobile: Project name next to logo */}
-                    <div className="sm:hidden">
-                      <h4 className={`text-lg font-semibold ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        <a 
-                          href="https://github.com/busahinku/busahinku.github.io" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
-                            theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
-                          }`}
-                        >
-                          Personal Portfolio and Blog
-                          <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
-                            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
-                          }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M7 17L17 7M17 7H8M17 7V16" />
-                          </svg>
-                        </a>
-                      </h4>
+                <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-6">
+                  {/* Logo */}
+                  <div 
+                    className={`rounded-xl flex items-center justify-center flex-shrink-0`}
+                    style={{ width: '36px', height: '36px' }}
+                  >
+                    <div className={`text-lg ${
+                      theme === 'dark' ? 'text-white/60' : 'text-gray-400'
+                    }`}>
+                      <Image
+                        src={theme === 'dark' ? "/icons/companies/logoWHITE.png" : "/icons/companies/logoDARK.png"}
+                        alt="Personal Portfolio and Blog"
+                        width={40}
+                        height={36}
+                      />
                     </div>
                   </div>
                   
-                  {/* Project Content */}
-                  <div className="flex-1 min-w-0">
-                    {/* Desktop: Project name */}
-                    <div className="hidden sm:block mb-3">
-                      <h4 className={`text-lg font-semibold ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        <a 
-                          href="https://github.com/busahinku/busahinku.github.io" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
-                            theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
-                          }`}
-                        >
-                          Personal Portfolio and Blog
-                          <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
-                            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
-                          }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M7 17L17 7M17 7H8M17 7V16" />
-                          </svg>
-                        </a>
-                      </h4>
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3">
+                  {/* Project Name & Description */}
+                  <div className="flex-1 min-w-0 w-full">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2 sm:mb-3">
                       <div className="flex-1 min-w-0">
-                        <p className={`text-base font-medium ${
+                        <h4 className={`text-base sm:text-lg font-semibold ${
+                          theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        }`}>
+                          <a 
+                            href="https://github.com/busahinku/busahinku.github.io" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
+                              theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
+                            }`}
+                          >
+                            Personal Portfolio and Blog
+                            <svg className={`w-3 sm:w-4 h-3 sm:h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
+                              theme === 'dark' ? 'text-white/70' : 'text-gray-600'
+                            }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M7 17L17 7M17 7H8M17 7V16" />
+                            </svg>
+                          </a>
+                        </h4>
+                        <p className={`text-sm sm:text-base ${
                           theme === 'dark' ? 'text-white/80' : 'text-gray-700'
                         }`}>
                           Modern Web Portfolio
@@ -651,7 +501,7 @@ export default function AboutPage() {
                       </div>
                       
                       {/* Tech Stack & Date */}
-                      <div className="mt-2 sm:mt-0 sm:ml-4 sm:flex-shrink-0 sm:text-right">
+                      <div className="mt-3 sm:mt-0 sm:ml-4 sm:flex-shrink-0 sm:text-right">
                         <p className={`text-sm font-medium ${
                           theme === 'dark' ? 'text-white/80' : 'text-gray-700'
                         }`}>
@@ -672,25 +522,25 @@ export default function AboutPage() {
                       <li>• Beautiful responsive design with dark/light mode toggle</li>
                       <li>• Interactive blog system with markdown support</li>
                       <li>• Optimized performance and SEO-friendly architecture</li>
-                    </ul>
+          </ul>
                   </div>
                 </div>
 
               </div>
             </div>
             
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-green-400/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-700 animate-shimmer" />
+            {/* Shimmer effect removed for performance */}
         </div>
 
         {/* Second Content Grid - Personal & Interests */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           
           {/* Personal Section */}
-          <div className={`relative overflow-hidden rounded-2xl backdrop-blur-md border p-6 transition-all duration-500 hover:scale-[1.02] ${
+          <div className={`relative overflow-hidden rounded-2xl border p-6 transition-[colors,transform] duration-500 hover:scale-[1.02] ${
             theme === 'dark' 
-              ? 'bg-white/5 border-white/10 hover:bg-white/10' 
-              : 'bg-white/70 border-white/20 hover:bg-white/90'
-          } shadow-xl hover:shadow-2xl`}>
+              ? 'bg-white/5 border-white/10 hover:bg-white/8' 
+              : 'bg-white/70 border-white/20 hover:bg-white/85'
+          } shadow-xl hover:shadow-lg`}>
             
             <div className="absolute inset-0 opacity-5 bg-gradient-to-br from-orange-500 to-red-500" />
             
@@ -737,15 +587,15 @@ export default function AboutPage() {
               </div>
             </div>
             
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-orange-400/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-700 animate-shimmer" />
+            {/* Shimmer effect removed for performance */}
           </div>
 
           {/* Interests Section */}
-          <div className={`relative overflow-hidden rounded-2xl backdrop-blur-md border p-6 transition-all duration-500 hover:scale-[1.02] ${
+          <div className={`relative overflow-hidden rounded-2xl border p-6 transition-[colors,transform] duration-500 hover:scale-[1.02] ${
             theme === 'dark' 
-              ? 'bg-white/5 border-white/10 hover:bg-white/10' 
-              : 'bg-white/70 border-white/20 hover:bg-white/90'
-          } shadow-xl hover:shadow-2xl`}>
+              ? 'bg-white/5 border-white/10 hover:bg-white/8' 
+              : 'bg-white/70 border-white/20 hover:bg-white/85'
+          } shadow-xl hover:shadow-lg`}>
             
             <div className="absolute inset-0 opacity-5 bg-gradient-to-br from-green-500 to-teal-500" />
             
@@ -793,100 +643,71 @@ export default function AboutPage() {
               </div>
             </div>
             
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-green-400/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-700 animate-shimmer" />
+            {/* Shimmer effect removed for performance */}
           </div>
         </div>
 
         {/* Courses and Certifications Section - Full Width */}
-        <div className={`relative overflow-hidden rounded-2xl backdrop-blur-md border p-4 sm:p-8 mb-8 transition-all duration-500 hover:scale-[1.02] ${
+        <div className={`relative overflow-hidden rounded-2xl border p-4 sm:p-8 mb-8 transition-[colors,transform] duration-500 hover:scale-[1.02] ${
           theme === 'dark' 
-            ? 'bg-white/5 border-white/10 hover:bg-white/10' 
-            : 'bg-white/70 border-white/20 hover:bg-white/90'
-        } shadow-xl hover:shadow-2xl`}>
+            ? 'bg-white/5 border-white/10 hover:bg-white/8' 
+            : 'bg-white/70 border-white/20 hover:bg-white/85'
+        } shadow-xl hover:shadow-lg`}>
             
             <div className="absolute inset-0 opacity-5 bg-gradient-to-br from-purple-500 to-pink-500" />
             
             <div className="relative z-10">
-              <h3 className={`text-xl font-bold mb-8 ${
+              <h3 className={`text-lg sm:text-xl font-bold mb-4 sm:mb-8 ${
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
               }`}>
                 Courses and Certifications
               </h3>
               
-              <div className="space-y-8">
+              <div className="space-y-10 sm:space-y-8">
                 
                 {/* Course 1 */}
-                <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
-                  {/* Logo & Mobile Title */}
-                  <div className="flex sm:block items-center gap-3 sm:gap-0">
-                    <div 
-                      className={`rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg`}
-                      style={{ width: '48px', height: '48px' }}
-                    >
-                      <div className={`text-lg ${
-                        theme === 'dark' ? 'text-white/60' : 'text-gray-400'
-                      }`}>
-                        <Image
-                          src="/icons/companies/DeepLearning.svg"
-                          alt="Deep Learning Specialization"
-                          width={48}
-                          height={48}
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Mobile: Course name next to logo */}
-                    <div className="sm:hidden">
-                      <h4 className={`text-lg font-semibold ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        <a 
-                          href="https://coursera.org/share/0c2e9bb182ed3a65f5a839eef2575be2" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
-                            theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
-                          }`}
-                        >
-                          Machine Learning Specialization
-                          <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
-                            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
-                          }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M7 17L17 7M17 7H8M17 7V16" />
-                          </svg>
-                        </a>
-                      </h4>
+                <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-6">
+                  {/* Logo */}
+                  <div 
+                    className={`rounded-xl flex items-center justify-center flex-shrink-0`}
+                    style={{ width: '36px', height: '36px' }}
+                  >
+                    <div className={`text-lg ${
+                      theme === 'dark' ? 'text-white/60' : 'text-gray-400'
+                    }`}>
+                      <Image
+                        src="/icons/companies/DeepLearning.svg"
+                        alt="Deep Learning Specialization"
+                        width={36}
+                        height={36}
+                      />
                     </div>
                   </div>
                   
-                  {/* Course Content */}
-                  <div className="flex-1 min-w-0">
-                    {/* Desktop: Course name */}
-                    <div className="hidden sm:block mb-3">
-                      <h4 className={`text-lg font-semibold ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        <a 
-                          href="https://coursera.org/share/0c2e9bb182ed3a65f5a839eef2575be2" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
-                            theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
-                          }`}
-                        >
-                          Machine Learning Specialization
-                          <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
-                            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
-                          }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M7 17L17 7M17 7H8M17 7V16" />
-                          </svg>
-                        </a>
-                      </h4>
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3">
+                  {/* Course Name & Provider */}
+                  <div className="flex-1 min-w-0 w-full">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2 sm:mb-3">
                       <div className="flex-1 min-w-0">
-                        <p className={`text-base font-medium ${
+                        <h4 className={`text-base sm:text-lg font-semibold ${
+                          theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        }`}>
+                          <a 
+                            href="https://coursera.org/share/0c2e9bb182ed3a65f5a839eef2575be2" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
+                              theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
+                            }`}
+                          >
+                            Machine Learning Specialization
+                            <svg className={`w-3 sm:w-4 h-3 sm:h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
+                              theme === 'dark' ? 'text-white/70' : 'text-gray-600'
+                            }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M7 17L17 7M17 7H8M17 7V16" />
+                            </svg>
+                          </a>
+                        </h4>
+                        <p className={`text-sm sm:text-base ${
                           theme === 'dark' ? 'text-white/80' : 'text-gray-700'
                         }`}>
                           Stanford University, Deeplearning.ai (Coursera)
@@ -894,7 +715,7 @@ export default function AboutPage() {
                       </div>
                       
                       {/* Date */}
-                      <div className="mt-2 sm:mt-0 sm:ml-4 sm:flex-shrink-0 sm:text-right">
+                      <div className="mt-3 sm:mt-0 sm:ml-4 sm:flex-shrink-0 sm:text-right">
                         <p className={`text-sm ${
                           theme === 'dark' ? 'text-white/60' : 'text-gray-500'
                         }`}>
@@ -906,77 +727,48 @@ export default function AboutPage() {
                 </div>
 
                 {/* Course 2 */}
-                <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
-                  {/* Logo & Mobile Title */}
-                  <div className="flex sm:block items-center gap-3 sm:gap-0">
-                    <div 
-                      className={`rounded-xl flex items-center justify-center flex-shrink-0`}
-                      style={{ width: '48px', height: '48px' }}
-                    >
-                      <div className={`text-lg ${
-                        theme === 'dark' ? 'text-white/60' : 'text-gray-400'
-                      }`}>
-                        <Image
-                          src="/icons/companies/IBMLogo.svg.png"
-                          alt="IBM LOGO"
-                          width={48}
-                          height={48}
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Mobile: Course name next to logo */}
-                    <div className="sm:hidden">
-                      <h4 className={`text-lg font-semibold ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        <a 
-                          href="https://coursera.org/share/56ddf198b626ae52d50259fce412c9c3" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
-                            theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
-                          }`}
-                        >
-                          Data Science Specialization (Full)
-                          <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
-                            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
-                          }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M7 17L17 7M17 7H8M17 7V16" />
-                          </svg>
-                        </a>
-                      </h4>
+                <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-6">
+                  {/* Logo */}
+                  <div 
+                    className={`rounded-xl flex items-center justify-center flex-shrink-0`}
+                    style={{ width: '36px', height: '36px' }}
+                  >
+                    <div className={`text-lg ${
+                      theme === 'dark' ? 'text-white/60' : 'text-gray-400'
+                    }`}>
+                      <Image
+                        src="/icons/companies/IBMLogo.svg.png"
+                        alt="IBM LOGO"
+                        width={36}
+                        height={36}
+                      />
                     </div>
                   </div>
                   
-                  {/* Course Content */}
-                  <div className="flex-1 min-w-0">
-                    {/* Desktop: Course name */}
-                    <div className="hidden sm:block mb-3">
-                      <h4 className={`text-lg font-semibold ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        <a 
-                          href="https://coursera.org/share/56ddf198b626ae52d50259fce412c9c3" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
-                            theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
-                          }`}
-                        >
-                          Data Science Specialization (Full)
-                          <svg className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
-                            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
-                          }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M7 17L17 7M17 7H8M17 7V16" />
-                          </svg>
-                        </a>
-                      </h4>
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3">
+                  {/* Course Name & Provider */}
+                  <div className="flex-1 min-w-0 w-full">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2 sm:mb-3">
                       <div className="flex-1 min-w-0">
-                        <p className={`text-base font-medium ${
+                        <h4 className={`text-base sm:text-lg font-semibold ${
+                          theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        }`}>
+                          <a 
+                            href="https://coursera.org/share/56ddf198b626ae52d50259fce412c9c3" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className={`hover:underline transition-colors duration-300 inline-flex items-center gap-2 group ${
+                              theme === 'dark' ? 'hover:text-blue-300' : 'hover:text-blue-600'
+                            }`}
+                          >
+                            Data Science Specialization (Full)
+                            <svg className={`w-3 sm:w-4 h-3 sm:h-4 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 ${
+                              theme === 'dark' ? 'text-white/70' : 'text-gray-600'
+                            }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M7 17L17 7M17 7H8M17 7V16" />
+                            </svg>
+                          </a>
+                        </h4>
+                        <p className={`text-sm sm:text-base ${
                           theme === 'dark' ? 'text-white/80' : 'text-gray-700'
                         }`}>
                           IBM (Coursera)
@@ -984,7 +776,7 @@ export default function AboutPage() {
                       </div>
                       
                       {/* Date */}
-                      <div className="mt-2 sm:mt-0 sm:ml-4 sm:flex-shrink-0 sm:text-right">
+                      <div className="mt-3 sm:mt-0 sm:ml-4 sm:flex-shrink-0 sm:text-right">
                         <p className={`text-sm ${
                           theme === 'dark' ? 'text-white/60' : 'text-gray-500'
                         }`}>
@@ -1001,11 +793,11 @@ export default function AboutPage() {
               </div>
             </div>
             
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-400/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-700 animate-shimmer" />
+            {/* Shimmer effect removed for performance */}
         </div>
 
         {/* Connect Section */}
-        <div className={`relative overflow-hidden rounded-2xl backdrop-blur-md border p-8 transition-all duration-500 ${
+        <div className={`relative overflow-hidden rounded-2xl border p-8 transition-colors duration-300 ${
           theme === 'dark' 
             ? 'bg-white/5 border-white/10' 
             : 'bg-white/70 border-white/20'
@@ -1030,7 +822,7 @@ export default function AboutPage() {
           <SocialGrid />
           </div>
           
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-700 animate-shimmer" />
+          {/* Shimmer effect removed for performance */}
         </div>
       </main>
     </div>
