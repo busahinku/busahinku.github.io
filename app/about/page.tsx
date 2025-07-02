@@ -84,7 +84,7 @@ export default function AboutPage() {
                                  {/* Download CV Buttons */}
                  <div className="flex flex-col sm:flex-row gap-3">
                    <a
-                     href="/about/CV_censored_sophomore_Burak.pdf"
+                     href="/about/CVlight.pdf"
                      download
                      className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105 ${
                        theme === 'dark' 
@@ -110,7 +110,7 @@ export default function AboutPage() {
                    </a>
                    
           <a
-            href="/about/CV_censored_sophomore_Burak.pdf"
+            href="/about/CVdark.pdf"
             download
                      className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105 ${
                        theme === 'dark' 
