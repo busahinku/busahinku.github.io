@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "./context/ThemeContext";
-import { Inter } from 'next/font/google';
+import { Sora } from 'next/font/google';
 import Footer from './components/Footer';
 
-const inter = Inter({ subsets: ['latin'] });
+const sora = Sora({ 
+  subsets: ['latin'],
+  weight: ['100', '200', '300', '400', '500', '600', '700', '800'],
+  display: 'swap'
+});
 
 export const metadata: Metadata = {
   title: {
@@ -56,7 +60,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full">
-      <body className={`${inter.className} flex flex-col min-h-screen overflow-x-hidden`}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
+      <body className={`${sora.className} flex flex-col min-h-screen overflow-x-hidden`}>
         <ThemeProvider>
             <main className="flex-grow">
               {children}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { db, auth } from '@/app/lib/firebase';
 import { collection, addDoc, query, where, onSnapshot, Timestamp, doc, deleteDoc, orderBy } from 'firebase/firestore';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
@@ -24,9 +24,11 @@ interface CommentsProps {
   theme: 'dark' | 'light';
 }
 
-// Avatar bileşeni
+// Avatar bileşeni - Fixed version without DOM manipulation
 const Avatar = ({ src, name }: { src: string | null, name: string }) => {
-  if (!src) {
+  const [imageError, setImageError] = useState(false);
+  
+  if (!src || imageError) {
     return (
       <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium bg-blue-100 text-blue-600">
         {name
@@ -47,22 +49,7 @@ const Avatar = ({ src, name }: { src: string | null, name: string }) => {
         width={40}
         height={40}
         className="rounded-full"
-        onError={(e) => {
-          const target = e.target as HTMLImageElement;
-          target.style.display = 'none';
-          const parent = target.parentElement;
-          if (parent) {
-            const fallback = document.createElement('div');
-            fallback.className = "w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium bg-blue-100 text-blue-600";
-            fallback.textContent = name
-              .split(' ')
-              .map(word => word[0])
-              .join('')
-              .toUpperCase()
-              .slice(0, 2);
-            parent.appendChild(fallback);
-          }
-        }}
+        onError={() => setImageError(true)}
       />
     </div>
   );
@@ -108,6 +95,104 @@ const organizeComments = (comments: Comment[]): Comment[] => {
   return rootComments;
 };
 
+// CommentItem component - moved outside to prevent recreation
+const CommentItem = ({ 
+  comment, 
+  level = 0, 
+  theme, 
+  onReply, 
+  onDelete,
+  currentUserId 
+}: { 
+  comment: Comment; 
+  level?: number; 
+  theme: 'dark' | 'light';
+  onReply: (id: string, authorName: string) => void;
+  onDelete: (id: string) => void;
+  currentUserId: string | null;
+}) => {
+  if (level > 3) return null; // Maximum 3 seviye iç içe yanıt sınırı
+
+  const marginClass = level === 0 
+    ? '' 
+    : level === 1 
+      ? 'ml-4 sm:ml-8' 
+      : level === 2 
+        ? 'ml-6 sm:ml-12' 
+        : 'ml-8 sm:ml-16';
+
+  return (
+    <div className={`flex gap-2 sm:gap-3 ${marginClass} ${level > 0 ? 'mt-4' : ''}`}>
+      <div className="flex-shrink-0">
+        <Avatar 
+          src={comment.author.photoURL} 
+          name={comment.author.name} 
+        />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium truncate">{comment.author.name}</span>
+            <span className={`text-xs sm:text-sm ${
+              theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+            }`}>
+              {comment.createdAt.toDate().toLocaleDateString('tr-TR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </span>
+          </div>
+          <div className="flex items-center gap-1 sm:gap-2">
+            {currentUserId && level < 3 && (
+              <button
+                onClick={() => onReply(comment.id, comment.author.name)}
+                className={`text-xs sm:text-sm transition-colors px-2 py-1 rounded-full ${
+                  theme === 'dark'
+                    ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10'
+                    : 'text-gray-500 hover:text-blue-500 hover:bg-blue-50'
+                }`}
+              >
+                Reply
+              </button>
+            )}
+            {currentUserId === comment.author.uid && (
+              <button
+                onClick={() => onDelete(comment.id)}
+                className={`text-xs sm:text-sm transition-colors px-2 py-1 rounded-full ${
+                  theme === 'dark'
+                    ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10'
+                    : 'text-gray-500 hover:text-red-500 hover:bg-red-50'
+                }`}
+              >
+                Delete
+              </button>
+            )}
+          </div>
+        </div>
+        <div className={`mt-1 text-sm break-words ${
+          theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+        }`}>
+          {comment.text}
+        </div>
+        {comment.replies?.map((reply) => (
+          <CommentItem 
+            key={reply.id} 
+            comment={reply} 
+            level={level + 1} 
+            theme={theme}
+            onReply={onReply}
+            onDelete={onDelete}
+            currentUserId={currentUserId}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export default function Comments({ slug, theme }: CommentsProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -125,8 +210,8 @@ export default function Comments({ slug, theme }: CommentsProps) {
     return () => unsubscribe();
   }, []);
 
+  // Memoize the comments listener to prevent unnecessary re-renders
   useEffect(() => {
-    // Yorumları gerçek zamanlı olarak dinle
     console.log('Setting up comments listener for slug:', slug);
     
     const q = query(
@@ -142,10 +227,28 @@ export default function Comments({ slug, theme }: CommentsProps) {
       });
 
       setComments(organizeComments(commentsData));
+    }, (error) => {
+      console.error('Error listening to comments:', error);
     });
 
     return () => unsubscribe();
   }, [slug]);
+
+  // Memoize callback functions to prevent unnecessary re-renders
+  const handleReply = useCallback((id: string, authorName: string) => {
+    setReplyTo({ id, authorName });
+  }, []);
+
+  const handleDelete = useCallback(async (commentId: string) => {
+    if (!auth.currentUser) return;
+    
+    try {
+      const commentRef = doc(db, 'comments', commentId);
+      await deleteDoc(commentRef);
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+    }
+  }, []);
 
   const handleSignIn = async () => {
     setIsLoading(true);
@@ -159,6 +262,9 @@ export default function Comments({ slug, theme }: CommentsProps) {
       setIsLoading(false);
     }
   };
+
+  // Memoize current user ID to prevent unnecessary re-renders
+  const currentUserId = useMemo(() => auth.currentUser?.uid || null, [auth.currentUser]);
 
   if (isAuthChecking) {
     return (
@@ -200,93 +306,6 @@ export default function Comments({ slug, theme }: CommentsProps) {
       console.error('Error adding comment:', error);
     }
     setIsLoading(false);
-  };
-
-  const handleDelete = async (commentId: string) => {
-    if (!auth.currentUser) return;
-    
-    try {
-      const commentRef = doc(db, 'comments', commentId);
-      await deleteDoc(commentRef);
-    } catch (error) {
-      console.error('Error deleting comment:', error);
-    }
-  };
-
-  // Yorum bileşeni
-  const CommentItem = ({ comment, level = 0 }: { comment: Comment; level?: number }) => {
-    if (level > 3) return null; // Maximum 3 seviye iç içe yanıt sınırı
-
-    const marginClass = level === 0 
-      ? '' 
-      : level === 1 
-        ? 'ml-4 sm:ml-8' 
-        : level === 2 
-          ? 'ml-6 sm:ml-12' 
-          : 'ml-8 sm:ml-16';
-
-    return (
-      <div className={`flex gap-2 sm:gap-3 ${marginClass} ${level > 0 ? 'mt-4' : ''}`}>
-        <div className="flex-shrink-0">
-          <Avatar 
-            src={comment.author.photoURL} 
-            name={comment.author.name} 
-          />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium truncate">{comment.author.name}</span>
-              <span className={`text-xs sm:text-sm ${
-                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-              }`}>
-                {comment.createdAt.toDate().toLocaleDateString('tr-TR', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </span>
-            </div>
-            <div className="flex items-center gap-1 sm:gap-2">
-              {auth.currentUser && level < 3 && (
-                <button
-                  onClick={() => setReplyTo({ id: comment.id, authorName: comment.author.name })}
-                  className={`text-xs sm:text-sm transition-colors px-2 py-1 rounded-full ${
-                    theme === 'dark'
-                      ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10'
-                      : 'text-gray-500 hover:text-blue-500 hover:bg-blue-50'
-                  }`}
-                >
-                  Reply
-                </button>
-              )}
-              {auth.currentUser?.uid === comment.author.uid && (
-                <button
-                  onClick={() => handleDelete(comment.id)}
-                  className={`text-xs sm:text-sm transition-colors px-2 py-1 rounded-full ${
-                    theme === 'dark'
-                      ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10'
-                      : 'text-gray-500 hover:text-red-500 hover:bg-red-50'
-                  }`}
-                >
-                  Delete
-                </button>
-              )}
-            </div>
-          </div>
-          <div className={`mt-1 text-sm break-words ${
-            theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-          }`}>
-            {comment.text}
-          </div>
-          {comment.replies?.map((reply) => (
-            <CommentItem key={reply.id} comment={reply} level={level + 1} />
-          ))}
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -379,7 +398,14 @@ export default function Comments({ slug, theme }: CommentsProps) {
       {/* Yorumlar Listesi */}
       <div className="space-y-8">
         {comments.map((comment) => (
-          <CommentItem key={comment.id} comment={comment} />
+          <CommentItem 
+            key={comment.id} 
+            comment={comment} 
+            theme={theme}
+            onReply={handleReply}
+            onDelete={handleDelete}
+            currentUserId={currentUserId}
+          />
         ))}
       </div>
     </div>
