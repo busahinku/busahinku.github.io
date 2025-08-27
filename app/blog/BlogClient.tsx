@@ -1,16 +1,19 @@
 'use client';
 
 import { useTheme } from '../context/ThemeContext';
+import BackgroundPattern from '../components/BackgroundPattern';
+import Navbar from '../components/Navbar';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo, useCallback, useMemo } from 'react';
 import type { BlogPost } from '../utils/getBlogPosts';
+import { Search, X } from 'lucide-react';
 
 interface BlogClientProps {
   initialPosts: BlogPost[];
 }
 
-export default function BlogClient({ initialPosts }: BlogClientProps) {
+const BlogClient = memo(function BlogClient({ initialPosts }: BlogClientProps) {
   const { theme } = useTheme();
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [showAllTags, setShowAllTags] = useState(false);
@@ -18,65 +21,51 @@ export default function BlogClient({ initialPosts }: BlogClientProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const postsPerPage = 6;
 
-  const allTags = Array.from(new Set(initialPosts.flatMap(post => post.tags)));
+  const allTags = useMemo(() => Array.from(new Set(initialPosts.flatMap(post => post.tags))), [initialPosts]);
   const displayedTags = showAllTags ? allTags : allTags.slice(0, 12);
   
   // Filter posts based on search query and selected tag
-  const filteredPosts = initialPosts
+  const filteredPosts = useMemo(() => initialPosts
     .filter(post => {
       const matchesSearch = searchQuery === '' || 
         post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         post.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesTag = !selectedTag || post.tags.includes(selectedTag);
       return matchesSearch && matchesTag;
-    });
+    }), [initialPosts, searchQuery, selectedTag]);
 
   // Calculate pagination
-  const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
-  const startIndex = (currentPage - 1) * postsPerPage;
-  const endIndex = startIndex + postsPerPage;
-  const currentPosts = filteredPosts.slice(startIndex, endIndex);
+  const { totalPages, currentPosts } = useMemo(() => {
+    const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
+    const startIndex = (currentPage - 1) * postsPerPage;
+    const currentPosts = filteredPosts.slice(startIndex, startIndex + postsPerPage);
+    return { totalPages, currentPosts };
+  }, [filteredPosts, currentPage, postsPerPage]);
 
   // Reset to first page when search query changes
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedTag, searchQuery]);
 
-  const handlePageChange = (pageNumber: number) => {
+  const handlePageChange = useCallback((pageNumber: number) => {
     setCurrentPage(pageNumber);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, []);
 
-  const handleSearchChange = (query: string) => {
+  const handleSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleTagChange = (tag: string | null) => {
+  const handleTagChange = useCallback((tag: string | null) => {
     setSelectedTag(selectedTag === tag ? null : tag);
     setCurrentPage(1);
-  };
+  }, [selectedTag]);
 
   return (
     <div className="w-full max-[820px]:px-6 relative overflow-hidden">
-      {/* Beautiful Background */}
-      <div className="fixed inset-0 -z-10">
-        <div className={`absolute inset-0 ${
-          theme === 'dark' 
-            ? 'bg-[#0D0D0F]' 
-            : 'bg-white'
-        }`} />
-        
-        {/* Floating Orbs - Only for dark mode */}
-        {theme === 'dark' && (
-          <>
-            <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full blur-3xl opacity-20 bg-purple-500 animate-float" />
-            <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full blur-3xl opacity-15 bg-blue-500 animate-float-delayed" />
-            <div className="absolute top-1/2 right-1/3 w-32 h-32 rounded-full blur-2xl opacity-25 bg-cyan-500 animate-pulse" />
-            <div className="absolute top-3/4 left-1/2 w-40 h-40 rounded-full blur-3xl opacity-10 bg-green-500 animate-float" />
-          </>
-        )}
-      </div>
+      <Navbar />
+      <BackgroundPattern variant="simple" />
 
       <main className="max-w-[800px] mx-auto pt-24 pb-16 relative z-10">
         {/* Enhanced Header Section */}
@@ -205,11 +194,9 @@ export default function BlogClient({ initialPosts }: BlogClientProps) {
             : 'bg-white border-gray-300 focus-within:border-blue-400 focus-within:shadow-md'
         }`}>
           <div className="relative flex items-center">
-            <svg className={`w-5 h-5 ml-4 transition-colors ${
+            <Search className={`w-5 h-5 ml-4 transition-colors ${
               theme === 'dark' ? 'text-white/70' : 'text-gray-600'
-            }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+            }`} />
             <input
               type="text"
               placeholder="Search posts by title or description..."
@@ -234,9 +221,7 @@ export default function BlogClient({ initialPosts }: BlogClientProps) {
                     : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X className="w-4 h-4" />
               </button>
             )}
           </div>
@@ -463,4 +448,6 @@ export default function BlogClient({ initialPosts }: BlogClientProps) {
       </main>
     </div>
   );
-} 
+});
+
+export default BlogClient; 

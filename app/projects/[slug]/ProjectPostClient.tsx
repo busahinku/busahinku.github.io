@@ -17,6 +17,7 @@ import { useState, } from 'react';
 import rehypeRaw from 'rehype-raw';
 import { Highlight, themes } from 'prism-react-renderer';
 import type { Project } from '@/app/utils/getProjects';
+import { Sun, Moon, ArrowLeft } from 'lucide-react';
 
 interface ProjectPostClientProps {
   project: Project;
@@ -338,12 +339,11 @@ export default function ProjectPostClient({ project }: ProjectPostClientProps) {
         }`}
         aria-label="Toggle theme"
       >
-        <Image
-          src={theme === 'dark' ? '/icons/sun.svg' : '/icons/moon.svg'}
-          alt="Theme toggle"
-          width={20}
-          height={20}
-        />
+        {theme === 'dark' ? (
+          <Sun className="w-5 h-5" />
+        ) : (
+          <Moon className="w-5 h-5" />
+        )}
       </button>
 
       <Link

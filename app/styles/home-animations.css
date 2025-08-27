@@ -1,0 +1,138 @@
+/* Optimized Homepage Animations */
+
+/* Enhanced keyframes with better performance */
+@keyframes gentle-float {
+  0%, 100% { 
+    transform: translateY(0px) scale(1); 
+    filter: brightness(1);
+  }
+  50% { 
+    transform: translateY(-5px) scale(1.01); 
+    filter: brightness(1.05);
+  }
+}
+
+@keyframes gentle-float-delayed {
+  0%, 100% { 
+    transform: translateY(0px) scale(1); 
+    filter: brightness(1);
+  }
+  50% { 
+    transform: translateY(-8px) scale(1.02); 
+    filter: brightness(1.1);
+  }
+}
+
+@keyframes gentle-float-slow {
+  0%, 100% { 
+    transform: translateY(0px) scale(1); 
+    filter: brightness(1);
+  }
+  50% { 
+    transform: translateY(-3px) scale(1.005); 
+    filter: brightness(1.02);
+  }
+}
+
+@keyframes sparkle {
+  0%, 100% { 
+    opacity: 0.3; 
+    transform: scale(1); 
+  }
+  25% { 
+    opacity: 0.8; 
+    transform: scale(1.1); 
+  }
+  50% { 
+    opacity: 0.4; 
+    transform: scale(0.9); 
+  }
+  75% { 
+    opacity: 0.7; 
+    transform: scale(1.05); 
+  }
+}
+
+@keyframes sparkle-delayed {
+  0%, 100% { 
+    opacity: 0.2; 
+    transform: scale(1); 
+  }
+  30% { 
+    opacity: 0.6; 
+    transform: scale(1.15); 
+  }
+  60% { 
+    opacity: 0.35; 
+    transform: scale(0.85); 
+  }
+}
+
+@keyframes gentle-twinkle {
+  0%, 100% { opacity: 0.6; }
+  33% { opacity: 0.9; }
+  66% { opacity: 0.4; }
+}
+
+/* Animation classes with better performance */
+.animate-gentle-float {
+  animation: gentle-float 8s ease-in-out infinite;
+  will-change: transform, filter;
+}
+
+.animate-gentle-float-delayed {
+  animation: gentle-float-delayed 10s ease-in-out infinite;
+  animation-delay: 2s;
+  will-change: transform, filter;
+}
+
+.animate-gentle-float-slow {
+  animation: gentle-float-slow 12s ease-in-out infinite;
+  animation-delay: 4s;
+  will-change: transform, filter;
+}
+
+.animate-sparkle {
+  animation: sparkle 4s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+.animate-sparkle-delayed {
+  animation: sparkle-delayed 5s ease-in-out infinite;
+  animation-delay: 1.5s;
+  will-change: opacity, transform;
+}
+
+.animate-gentle-twinkle {
+  animation: gentle-twinkle 6s ease-in-out infinite;
+  will-change: opacity;
+}
+
+/* Performance optimizations */
+.interactive-orb {
+  will-change: transform;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.starfield-bg {
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .animate-gentle-float,
+  .animate-gentle-float-delayed,
+  .animate-gentle-float-slow,
+  .animate-sparkle,
+  .animate-sparkle-delayed,
+  .animate-gentle-twinkle {
+    animation: none;
+  }
+  
+  .interactive-orb,
+  .starfield-bg {
+    will-change: auto;
+  }
+}

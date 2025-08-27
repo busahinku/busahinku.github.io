@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTheme } from '@/app/context/ThemeContext';
+import { HelpCircle } from 'lucide-react';
 
 interface ConceptCheckProps {
   question: string;
@@ -21,7 +22,7 @@ export default function ConceptCheck({ question, answer }: ConceptCheckProps) {
       <div className={`font-medium text-base mb-2 flex items-center gap-2 ${
         theme === 'dark' ? 'text-white/90' : 'text-gray-900'
       }`}>
-        <span>🤔</span>
+        <HelpCircle className="w-5 h-5" />
         <span className="uppercase">Concept Check</span>
       </div>
       <div className={`mb-3 ${

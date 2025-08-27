@@ -1,48 +1,49 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { useTheme } from '../context/ThemeContext';
 import MobileMenu from './MobileMenu';
+import { Sun, Moon, Menu } from 'lucide-react';
 
-const Navbar = () => {
+const Navbar = memo(function Navbar() {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   
-  useEffect(() => {
-    const controlNavbar = () => {
-      const currentScrollY = window.scrollY;
-      
-      // Simple logic: 
-      // - Scrolling down: hide navbar (after 50px)
-      // - Scrolling up: show navbar immediately
-      // - At top: always show navbar
-      
-      if (currentScrollY < 50) {
-        // Always show at the top
-        setIsVisible(true);
-      } else if (currentScrollY > lastScrollY) {
-        // Scrolling down - hide navbar
-        setIsVisible(false);
-      } else if (currentScrollY < lastScrollY) {
-        // Scrolling up - show navbar
-        setIsVisible(true);
-      }
-      
-      setLastScrollY(currentScrollY);
-    };
+  const controlNavbar = useCallback(() => {
+    const currentScrollY = window.scrollY;
+    
+    // Simple logic: 
+    // - Scrolling down: hide navbar (after 50px)
+    // - Scrolling up: show navbar immediately
+    // - At top: always show navbar
+    
+    if (currentScrollY < 50) {
+      // Always show at the top
+      setIsVisible(true);
+    } else if (currentScrollY > lastScrollY) {
+      // Scrolling down - hide navbar
+      setIsVisible(false);
+    } else if (currentScrollY < lastScrollY) {
+      // Scrolling up - show navbar
+      setIsVisible(true);
+    }
+    
+    setLastScrollY(currentScrollY);
+  }, [lastScrollY]);
 
+  useEffect(() => {
     window.addEventListener('scroll', controlNavbar, { passive: true });
     
     return () => {
       window.removeEventListener('scroll', controlNavbar);
     };
-  }, [lastScrollY]);
+  }, [controlNavbar]);
   
   const navItems = [
     { label: 'Home', path: '/' },
@@ -123,26 +124,9 @@ const Navbar = () => {
               >
                 <div className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12">
                   {theme === 'dark' ? (
-                    <Image
-                      src="/icons/sun.svg"
-                      alt="Theme toggle"
-                      width={20}
-                      height={20}
-                      className="text-[#EEEEEE]"
-                    />
+                    <Sun className="w-5 h-5 text-[#EEEEEE]" />
                   ) : (
-                    <svg 
-                      width="20" 
-                      height="20" 
-                      viewBox="0 0 24 24" 
-                      fill="none" 
-                      className="text-[#1A1A1E]"
-                    >
-                      <path d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.752-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      <circle cx="16" cy="8" r="1" fill="currentColor" opacity="0.6"/>
-                      <circle cx="14" cy="6" r="0.5" fill="currentColor" opacity="0.4"/>
-                      <circle cx="18.5" cy="10.5" r="0.5" fill="currentColor" opacity="0.4"/>
-                    </svg>
+                    <Moon className="w-5 h-5 text-[#1A1A1E]" />
                   )}
                 </div>
               </button>
@@ -157,17 +141,7 @@ const Navbar = () => {
                 }`}
                 aria-label="Open menu"
               >
-                <svg 
-                  width="20" 
-                  height="20" 
-                  viewBox="0 0 20 20" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2"
-                  className="transition-transform duration-300 group-hover:scale-110"
-                >
-                  <path d="M3 5h14M3 10h14M3 15h14" />
-                </svg>
+                <Menu className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />
               </button>
             </div>
           </div>
@@ -182,6 +156,6 @@ const Navbar = () => {
       />
     </>
   );
-};
+});
 
 export default Navbar; 

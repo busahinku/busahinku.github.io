@@ -264,7 +264,7 @@ export default function Comments({ slug, theme }: CommentsProps) {
   };
 
   // Memoize current user ID to prevent unnecessary re-renders
-  const currentUserId = useMemo(() => auth.currentUser?.uid || null, [auth.currentUser]);
+  const currentUserId = useMemo(() => auth.currentUser?.uid || null, []);
 
   if (isAuthChecking) {
     return (

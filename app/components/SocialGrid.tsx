@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { memo } from 'react';
 import { useTheme } from '../context/ThemeContext';
 
-export default function SocialGrid() {
+const SocialGrid = memo(function SocialGrid() {
   const { theme } = useTheme();
 
   const socialLinks = [
@@ -150,4 +151,6 @@ export default function SocialGrid() {
       ))}
     </div>
   );
-} 
+});
+
+export default SocialGrid; 

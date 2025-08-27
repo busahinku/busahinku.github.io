@@ -3,6 +3,7 @@
 import { useTheme } from '../context/ThemeContext';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { X } from 'lucide-react';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -45,9 +46,7 @@ export default function MobileMenu({ isOpen, onClose, navItems }: MobileMenuProp
                   : 'text-[#1A1A1E] hover:text-[#FB2549]'
               }`}
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
+              <X className="w-6 h-6" />
             </button>
           </div>
           <nav className="flex flex-col space-y-4">

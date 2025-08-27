@@ -1,10 +1,13 @@
 'use client';
 
 import { useTheme } from '../context/ThemeContext';
+import BackgroundPattern from '../components/BackgroundPattern';
+import Navbar from '../components/Navbar';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, memo, useCallback, useMemo } from 'react';
 import type { Project } from '../utils/getProjects';
+import { Search, X } from 'lucide-react';
 
 interface ProjectClientProps {
   initialProjects: Project[];
@@ -12,7 +15,7 @@ interface ProjectClientProps {
 
 const PROJECTS_PER_PAGE = 9;
 
-export default function ProjectClient({ initialProjects }: ProjectClientProps) {
+const ProjectClient = memo(function ProjectClient({ initialProjects }: ProjectClientProps) {
   const { theme } = useTheme();
   const [selectedType, setSelectedType] = useState<string>('All');
   const [currentPage, setCurrentPage] = useState(1);
@@ -21,59 +24,50 @@ export default function ProjectClient({ initialProjects }: ProjectClientProps) {
   const allTypes = ['All', 'Web App', 'Data Science', 'Computing', 'Finance', 'Design', 'Data Analysis', 'ML', 'DL', 'CV', 'Visualization', 'Report', 'Other'];
 
   // Filter projects by type and search query
-  let filteredProjects = selectedType === 'All'
-    ? initialProjects
-    : initialProjects.filter(project => project.type === selectedType.toLowerCase().replace(' ', '-'));
-  
-  // Apply search filter
-  if (searchQuery.trim()) {
-    filteredProjects = filteredProjects.filter(project =>
-      project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
-  }
+  const filteredProjects = useMemo(() => {
+    let filtered = selectedType === 'All'
+      ? initialProjects
+      : initialProjects.filter(project => project.type === selectedType.toLowerCase().replace(' ', '-'));
+    
+    // Apply search filter
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(project =>
+        project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        project.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        project.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
+    }
+    
+    return filtered;
+  }, [initialProjects, selectedType, searchQuery]);
 
   // Pagination calculations
-  const totalPages = Math.ceil(filteredProjects.length / PROJECTS_PER_PAGE);
-  const startIndex = (currentPage - 1) * PROJECTS_PER_PAGE;
-  const paginatedProjects = filteredProjects.slice(startIndex, startIndex + PROJECTS_PER_PAGE);
+  const { totalPages, paginatedProjects } = useMemo(() => {
+    const totalPages = Math.ceil(filteredProjects.length / PROJECTS_PER_PAGE);
+    const startIndex = (currentPage - 1) * PROJECTS_PER_PAGE;
+    const paginatedProjects = filteredProjects.slice(startIndex, startIndex + PROJECTS_PER_PAGE);
+    return { totalPages, paginatedProjects };
+  }, [filteredProjects, currentPage]);
 
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, []);
 
-  const handleTypeChange = (type: string) => {
+  const handleTypeChange = useCallback((type: string) => {
     setSelectedType(type);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleSearchChange = (query: string) => {
+  const handleSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
     setCurrentPage(1);
-  };
+  }, []);
 
   return (
     <div className="w-full max-[820px]:px-6 relative overflow-hidden">
-      {/* Beautiful Background */}
-      <div className="fixed inset-0 -z-10">
-        <div className={`absolute inset-0 ${
-          theme === 'dark' 
-            ? 'bg-[#0D0D0F]' 
-            : 'bg-white'
-        }`} />
-        
-        {/* Floating Orbs - Only for dark mode */}
-        {theme === 'dark' && (
-          <>
-            <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full blur-3xl opacity-20 bg-purple-500 animate-float" />
-            <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full blur-3xl opacity-15 bg-blue-500 animate-float-delayed" />
-            <div className="absolute top-1/2 right-1/3 w-32 h-32 rounded-full blur-2xl opacity-25 bg-cyan-500 animate-pulse" />
-            <div className="absolute top-3/4 left-1/2 w-40 h-40 rounded-full blur-3xl opacity-10 bg-green-500 animate-float" />
-          </>
-        )}
-      </div>
+      <Navbar />
+      <BackgroundPattern variant="simple" />
 
       <main className="max-w-[800px] mx-auto pt-24 pb-16 relative z-10">
         {/* Enhanced Header Section */}
@@ -152,11 +146,9 @@ export default function ProjectClient({ initialProjects }: ProjectClientProps) {
             : 'bg-white border-gray-300 focus-within:border-blue-400 focus-within:shadow-md'
         }`}>
           <div className="relative flex items-center">
-            <svg className={`w-5 h-5 ml-4 transition-colors ${
+            <Search className={`w-5 h-5 ml-4 transition-colors ${
               theme === 'dark' ? 'text-white/70' : 'text-gray-600'
-            }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+            }`} />
             <input
               type="text"
               placeholder="Search by title, description, or tags..."
@@ -181,9 +173,7 @@ export default function ProjectClient({ initialProjects }: ProjectClientProps) {
                     : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X className="w-4 h-4" />
               </button>
             )}
           </div>
@@ -451,4 +441,6 @@ export default function ProjectClient({ initialProjects }: ProjectClientProps) {
       </main>
     </div>
   );
-}
+});
+
+export default ProjectClient;

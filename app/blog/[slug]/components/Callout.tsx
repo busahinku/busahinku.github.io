@@ -1,5 +1,7 @@
 'use client';
 
+import { Lightbulb, AlertTriangle, AlertCircle, MessageCircle, Info } from 'lucide-react';
+
 interface CalloutProps {
   type: string;
   children: React.ReactNode;
@@ -9,11 +11,11 @@ export default function Callout({ type, children }: CalloutProps) {
   const getCalloutStyles = (type: string) => {
     const baseStyles = 'p-4 rounded-lg my-4 border-l-4';
     const icons = {
-      note: '💡',
-      warning: '⚠️',
-      important: '❗',
-      tip: '💭',
-      default: 'ℹ️'
+      note: <Lightbulb className="w-5 h-5" />,
+      warning: <AlertTriangle className="w-5 h-5" />,
+      important: <AlertCircle className="w-5 h-5" />,
+      tip: <MessageCircle className="w-5 h-5" />,
+      default: <Info className="w-5 h-5" />
     };
     
     switch (type.toLowerCase()) {
@@ -50,7 +52,7 @@ export default function Callout({ type, children }: CalloutProps) {
   return (
     <div className={styles.className}>
       <div className="font-medium mb-2 capitalize flex items-center gap-2">
-        <span className="text-lg">{styles.icon}</span>
+        <span>{styles.icon}</span>
         {type}
       </div>
       <div className="text-sm prose-p:my-1 prose-p:leading-relaxed">
