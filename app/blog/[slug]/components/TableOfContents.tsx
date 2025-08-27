@@ -91,41 +91,6 @@ export default function TableOfContents({ content, theme }: TableOfContentsProps
     document.body.style.userSelect = 'none'; // Prevent text selection
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDragging) return;
-    
-    const deltaX = e.clientX - startX.current;
-    const newPosition = startScroll.current + deltaX;
-    setScrollPosition(newPosition);
-
-    // Update active index based on position immediately
-    const targetIndex = Math.round(-newPosition / 180);
-    const clampedIndex = Math.max(0, Math.min(targetIndex, tocItems.length - 1));
-    setActiveIndex(clampedIndex);
-  };
-
-  const handleMouseUp = () => {
-    if (!isDragging) return;
-    setIsDragging(false);
-    document.body.style.userSelect = ''; // Restore text selection
-    
-    // Snap to nearest position
-    const targetIndex = Math.round(-scrollPosition / 180);
-    const clampedIndex = Math.max(0, Math.min(targetIndex, tocItems.length - 1));
-    
-    setActiveIndex(clampedIndex);
-    setScrollPosition(-clampedIndex * 180);
-    
-    // Scroll to section
-    const item = tocItems[clampedIndex];
-    if (item) {
-      const element = document.getElementById(item.id);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }
-  };
-
   // Touch events
   const handleTouchStart = (e: React.TouchEvent) => {
     setIsDragging(true);
@@ -134,52 +99,87 @@ export default function TableOfContents({ content, theme }: TableOfContentsProps
     e.preventDefault();
   };
 
-  const handleTouchMove = (e: TouchEvent) => {
-    if (!isDragging) return;
-    
-    const deltaX = e.touches[0].clientX - startX.current;
-    const newPosition = startScroll.current + deltaX;
-    setScrollPosition(newPosition);
-
-    const targetIndex = Math.round(-newPosition / 180);
-    const clampedIndex = Math.max(0, Math.min(targetIndex, tocItems.length - 1));
-    setActiveIndex(clampedIndex);
-    e.preventDefault();
-  };
-
-  const handleTouchEnd = () => {
-    if (!isDragging) return;
-    setIsDragging(false);
-    
-    const targetIndex = Math.round(-scrollPosition / 180);
-    const clampedIndex = Math.max(0, Math.min(targetIndex, tocItems.length - 1));
-    
-    setActiveIndex(clampedIndex);
-    setScrollPosition(-clampedIndex * 180);
-    
-    const item = tocItems[clampedIndex];
-    if (item) {
-      const element = document.getElementById(item.id);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }
-  };
-
   // Event listeners
   useEffect(() => {
+    const handleMouseMoveLocal = (e: MouseEvent) => {
+      if (!isDragging) return;
+      
+      const deltaX = e.clientX - startX.current;
+      const newPosition = startScroll.current + deltaX;
+      setScrollPosition(newPosition);
+
+      // Update active index based on position immediately
+      const targetIndex = Math.round(-newPosition / 180);
+      const clampedIndex = Math.max(0, Math.min(targetIndex, tocItems.length - 1));
+      setActiveIndex(clampedIndex);
+    };
+
+    const handleMouseUpLocal = () => {
+      if (!isDragging) return;
+      setIsDragging(false);
+      document.body.style.userSelect = ''; // Restore text selection
+      
+      // Snap to nearest position
+      const targetIndex = Math.round(-scrollPosition / 180);
+      const clampedIndex = Math.max(0, Math.min(targetIndex, tocItems.length - 1));
+      
+      setActiveIndex(clampedIndex);
+      setScrollPosition(-clampedIndex * 180);
+      
+      // Scroll to section
+      const item = tocItems[clampedIndex];
+      if (item) {
+        const element = document.getElementById(item.id);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    };
+
+    const handleTouchMoveLocal = (e: TouchEvent) => {
+      if (!isDragging) return;
+      
+      const deltaX = e.touches[0].clientX - startX.current;
+      const newPosition = startScroll.current + deltaX;
+      setScrollPosition(newPosition);
+
+      const targetIndex = Math.round(-newPosition / 180);
+      const clampedIndex = Math.max(0, Math.min(targetIndex, tocItems.length - 1));
+      setActiveIndex(clampedIndex);
+      e.preventDefault();
+    };
+
+    const handleTouchEndLocal = () => {
+      if (!isDragging) return;
+      setIsDragging(false);
+      
+      const targetIndex = Math.round(-scrollPosition / 180);
+      const clampedIndex = Math.max(0, Math.min(targetIndex, tocItems.length - 1));
+      
+      setActiveIndex(clampedIndex);
+      setScrollPosition(-clampedIndex * 180);
+      
+      const item = tocItems[clampedIndex];
+      if (item) {
+        const element = document.getElementById(item.id);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    };
+
     if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.addEventListener('touchmove', handleTouchMove, { passive: false });
-      document.addEventListener('touchend', handleTouchEnd);
+      document.addEventListener('mousemove', handleMouseMoveLocal);
+      document.addEventListener('mouseup', handleMouseUpLocal);
+      document.addEventListener('touchmove', handleTouchMoveLocal, { passive: false });
+      document.addEventListener('touchend', handleTouchEndLocal);
     }
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('mousemove', handleMouseMoveLocal);
+      document.removeEventListener('mouseup', handleMouseUpLocal);
+      document.removeEventListener('touchmove', handleTouchMoveLocal);
+      document.removeEventListener('touchend', handleTouchEndLocal);
     };
   }, [isDragging, scrollPosition, tocItems]);
 

@@ -9,7 +9,7 @@ import MarkdownProcessor from '@/app/components/MarkdownProcessor';
 import { createMarkdownComponents } from '@/app/components/MarkdownComponents';
 import LikeButton from './components/LikeButton';
 import Comments from './components/Comments';
-import { Sun, Moon, Share2, ArrowLeft } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
 
 interface BlogPostClientProps {
   post: BlogPost;

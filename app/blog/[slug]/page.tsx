@@ -32,9 +32,38 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
+  const publishedTime = new Date(post.date).toISOString();
+
   return {
-    title: `${post.title} - busahinku`,
+    title: `${post.title}`,
     description: post.description,
+    keywords: post.tags,
+    authors: [{ name: "Burak Sahin Kucuk" }],
+    openGraph: {
+      title: post.title,
+      description: post.description,
+      type: 'article',
+      publishedTime,
+      authors: ['Burak Sahin Kucuk'],
+      tags: post.tags,
+      images: post.mainPhoto ? [
+        {
+          url: post.mainPhoto,
+          width: 1200,
+          height: 630,
+          alt: post.title,
+        }
+      ] : undefined,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: post.title,
+      description: post.description,
+      images: post.mainPhoto ? [post.mainPhoto] : undefined,
+    },
+    alternates: {
+      canonical: `https://busahinku.github.io/blog/${slug}`,
+    },
   };
 }
 

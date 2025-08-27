@@ -1,0 +1,26 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": "Burak Sahin Kucuk",
+  "url": "https://busahinku.github.io",
+  "image": "https://busahinku.github.io/images/profile.jpg",
+  "sameAs": [
+    "https://github.com/busahinku",
+    "https://linkedin.com/in/burak-sahin-kucuk",
+    "https://twitter.com/busahinku"
+  ],
+  "jobTitle": "Data Scientist & Researcher",
+  "worksFor": {
+    "@type": "Organization",
+    "name": "Research"
+  },
+  "knowsAbout": [
+    "Statistics",
+    "Data Science", 
+    "Machine Learning",
+    "Computer Science",
+    "Programming",
+    "Research"
+  ],
+  "description": "Data scientist and researcher passionate about statistics, technology, and sharing knowledge through writing and teaching."
+}

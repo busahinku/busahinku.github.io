@@ -17,7 +17,7 @@ import { useState, } from 'react';
 import rehypeRaw from 'rehype-raw';
 import { Highlight, themes } from 'prism-react-renderer';
 import type { Project } from '@/app/utils/getProjects';
-import { Sun, Moon, ArrowLeft } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
 
 interface ProjectPostClientProps {
   project: Project;

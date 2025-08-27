@@ -1,0 +1,11 @@
+# *
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+
+# Host
+Host: https://busahinku.github.io
+
+# Sitemaps
+Sitemap: https://busahinku.github.io/sitemap.xml
