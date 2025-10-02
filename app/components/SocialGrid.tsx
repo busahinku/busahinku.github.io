@@ -129,7 +129,7 @@ const SocialGrid = memo(function SocialGrid() {
               <div className="w-6 h-6 relative">
                 <Image
                   src={theme === 'dark' ? link.icon.dark : link.icon.light}
-                  alt={link.name}
+                  alt={`${link.name} social media icon`}
                   fill
                   className="object-contain"
                 />

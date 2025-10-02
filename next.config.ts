@@ -15,6 +15,23 @@ const nextConfig = {
       'rehype-katex',
       'prism-react-renderer'
     ]
+  },
+  // Bundle analysis configuration
+  webpack: (config: any, { isServer }: { isServer: boolean }) => {
+    // Only run bundle analyzer in production build with ANALYZE=true
+    if (!isServer && process.env.ANALYZE === 'true') {
+      const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+      config.plugins.push(
+        new BundleAnalyzerPlugin({
+          analyzerMode: 'static',
+          openAnalyzer: true,
+          generateStatsFile: true,
+          statsFilename: 'bundle-stats.json',
+          reportFilename: 'bundle-report.html'
+        })
+      );
+    }
+    return config;
   }
 }
 

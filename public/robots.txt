@@ -3,9 +3,32 @@ User-agent: *
 Allow: /
 Disallow: /admin/
 Disallow: /api/
+Disallow: /_next/
+Disallow: /out/
+Disallow: *.json
+Disallow: /404
+Disallow: /500
+
+# GPTBot
+User-agent: GPTBot
+Disallow: /
+
+# ChatGPT-User
+User-agent: ChatGPT-User
+Disallow: /
+
+# CCBot
+User-agent: CCBot
+Disallow: /
+
+# anthropic-ai
+User-agent: anthropic-ai
+Disallow: /
 
 # Host
 Host: https://busahinku.github.io
 
 # Sitemaps
 Sitemap: https://busahinku.github.io/sitemap.xml
+Sitemap: https://busahinku.github.io/rss
+Sitemap: https://busahinku.github.io/feed

@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import matter from 'gray-matter';
+import { calculateReadingTime } from './readingTime';
 
 export interface BlogPost {
   slug: string;
@@ -10,6 +11,11 @@ export interface BlogPost {
   content: string;
   tags: string[];
   mainPhoto: string;
+  readingTime: {
+    minutes: number;
+    words: number;
+    text: string;
+  };
 }
 
 export async function getBlogPosts(): Promise<BlogPost[]> {
@@ -40,6 +46,9 @@ export async function getBlogPosts(): Promise<BlogPost[]> {
           return null;
         }
 
+        // Calculate reading time
+        const readingTime = calculateReadingTime(content);
+
         // Combine the data with the slug
         return {
           slug,
@@ -49,6 +58,7 @@ export async function getBlogPosts(): Promise<BlogPost[]> {
           date: data.date,
           tags: data.tags,
           mainPhoto: data.mainPhoto,
+          readingTime,
         };
       });
 

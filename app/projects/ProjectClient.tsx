@@ -70,22 +70,6 @@ const ProjectClient = memo(function ProjectClient({ initialProjects }: ProjectCl
       <BackgroundPattern variant="simple" />
 
       <main className="max-w-[800px] mx-auto pt-24 pb-16 relative z-10">
-        {/* Enhanced Header Section */}
-        <div className="text-center mb-8">
-          <h1 className={`text-3xl font-bold bg-gradient-to-r mb-3 ${
-            theme === 'dark' 
-              ? 'from-white via-purple-200 to-cyan-200' 
-              : 'from-gray-900 via-purple-600 to-blue-600'
-          } bg-clip-text text-transparent`}>
-            Projects
-          </h1>
-          
-          <p className={`text-base max-w-xl mx-auto leading-relaxed ${
-            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
-          }`}>
-            A showcase of my projects and experiments across different domains.
-          </p>
-        </div>
 
         {/* Categories Filter */}
         <div className="mb-6">
@@ -95,7 +79,7 @@ const ProjectClient = memo(function ProjectClient({ initialProjects }: ProjectCl
                 ? 'from-white via-purple-200 to-blue-200' 
                 : 'from-gray-900 via-purple-600 to-blue-600'
             }`}>
-              Categories
+              Projects
             </h3>
             <div className={`h-px flex-1 bg-gradient-to-r ${
               theme === 'dark' 

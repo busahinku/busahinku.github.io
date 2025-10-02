@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { generateTableOfContents, shouldShowTOC, getFlatHeadings } from '@/app/utils/tableOfContents';
 
 interface TOCItem {
   id: string;
@@ -22,38 +23,29 @@ export default function TableOfContents({ content, theme }: TableOfContentsProps
   const startX = useRef(0);
   const startScroll = useRef(0);
 
-  // Extract only H1 and H2 headings from markdown
+  // Extract headings from markdown using the utility function
   useEffect(() => {
-    const lines = content.split('\n');
-    const items: TOCItem[] = [];
-    
-    for (const line of lines) {
-      // Match ## headings (H2) and # headings (H1)
-      const h2Match = line.match(/^##\s+(.+)$/);
-      const h1Match = line.match(/^#\s+(.+)$/);
-      
-      if (h1Match || h2Match) {
-        const text = (h1Match?.[1] || h2Match?.[1] || '').trim();
-        const level = h1Match ? 1 : 2;
-        
-        // Skip "Table of Contents" heading itself
-        if (text.toLowerCase().includes('table of contents')) {
-          continue;
-        }
-        
-        const id = text
-          .toLowerCase()
-          .replace(/[^\w\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/^-+|-+$/g, '')
-          .replace(/-+/g, '-');
-        
-        if (text && id) {
-          items.push({ id, text, level });
-        }
-      }
+    // Check if content has enough headings to show TOC
+    if (!shouldShowTOC(content, 2)) {
+      setTocItems([]);
+      return;
     }
-    
+
+    // Generate TOC structure
+    const tocStructure = generateTableOfContents(content);
+
+    // Convert to flat list for the current UI
+    const flatHeadings = getFlatHeadings(tocStructure);
+
+    // Convert to the format expected by this component
+    const items: TOCItem[] = flatHeadings
+      .filter(item => item.level <= 3) // Only show H1, H2, H3
+      .map(item => ({
+        id: item.id,
+        text: item.title,
+        level: item.level
+      }));
+
     console.log('TOC items found:', items);
     setTocItems(items);
   }, [content]);

@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "build:analyze": "cross-env ANALYZE=true next build",
+    "analyze": "cross-env ANALYZE=true next build && npx @next/bundle-analyzer",
     "start": "next start",
     "lint": "next lint",
     "postbuild": "next-sitemap",
@@ -40,9 +42,11 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@next/bundle-analyzer": "^15.1.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^7.0.3",
     "eslint": "^9",
     "eslint-config-next": "15.1.6",
     "postcss": "^8",

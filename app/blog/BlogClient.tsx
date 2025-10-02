@@ -7,7 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect, memo, useCallback, useMemo } from 'react';
 import type { BlogPost } from '../utils/getBlogPosts';
-import { Search, X } from 'lucide-react';
+import { Search, X, SortAsc, SortDesc } from 'lucide-react';
 
 interface BlogClientProps {
   initialPosts: BlogPost[];
@@ -19,20 +19,49 @@ const BlogClient = memo(function BlogClient({ initialPosts }: BlogClientProps) {
   const [showAllTags, setShowAllTags] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'date' | 'title' | 'readingTime'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [searchInContent, setSearchInContent] = useState(false);
   const postsPerPage = 6;
 
   const allTags = useMemo(() => Array.from(new Set(initialPosts.flatMap(post => post.tags))), [initialPosts]);
   const displayedTags = showAllTags ? allTags : allTags.slice(0, 12);
   
-  // Filter posts based on search query and selected tag
-  const filteredPosts = useMemo(() => initialPosts
-    .filter(post => {
-      const matchesSearch = searchQuery === '' || 
-        post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.description.toLowerCase().includes(searchQuery.toLowerCase());
+  // Filter and sort posts based on search query, selected tag, and sort options
+  const filteredPosts = useMemo(() => {
+    let filtered = initialPosts.filter(post => {
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch = searchQuery === '' ||
+        post.title.toLowerCase().includes(searchLower) ||
+        post.description.toLowerCase().includes(searchLower) ||
+        (searchInContent && post.content.toLowerCase().includes(searchLower)) ||
+        post.tags.some(tag => tag.toLowerCase().includes(searchLower));
+
       const matchesTag = !selectedTag || post.tags.includes(selectedTag);
       return matchesSearch && matchesTag;
-    }), [initialPosts, searchQuery, selectedTag]);
+    });
+
+    // Sort posts
+    filtered = filtered.sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortBy) {
+        case 'date':
+          comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+          break;
+        case 'title':
+          comparison = a.title.localeCompare(b.title);
+          break;
+        case 'readingTime':
+          comparison = a.readingTime.minutes - b.readingTime.minutes;
+          break;
+      }
+
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+    return filtered;
+  }, [initialPosts, searchQuery, selectedTag, sortBy, sortOrder, searchInContent]);
 
   // Calculate pagination
   const { totalPages, currentPosts } = useMemo(() => {
@@ -68,32 +97,16 @@ const BlogClient = memo(function BlogClient({ initialPosts }: BlogClientProps) {
       <BackgroundPattern variant="simple" />
 
       <main className="max-w-[800px] mx-auto pt-24 pb-16 relative z-10">
-        {/* Enhanced Header Section */}
-        <div className="text-center mb-8">
-          <h1 className={`text-3xl font-bold bg-gradient-to-r mb-3 ${
-            theme === 'dark' 
-              ? 'from-white via-purple-200 to-cyan-200' 
-              : 'from-gray-900 via-purple-600 to-blue-600'
-          } bg-clip-text text-transparent`}>
-            Blog
-          </h1>
-          
-          <p className={`text-base max-w-xl mx-auto leading-relaxed ${
-            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
-          }`}>
-            My ideas, thoughts, experiences and notes on various topics.
-          </p>
-        </div>
 
         {/* Beautiful Tags Section */}
-        <div className="mb-6">
+        <div className="mb-4">
           <div className="flex items-center gap-3 mb-4">
             <h3 className={`text-md font-semibold bg-gradient-to-r bg-clip-text text-transparent ${
               theme === 'dark' 
                 ? 'from-white via-purple-200 to-blue-200' 
                 : 'from-gray-900 via-purple-600 to-blue-600'
             }`}>
-              Explore Topics
+              Blog
             </h3>
             <div className={`h-px flex-1 bg-gradient-to-r ${
               theme === 'dark' 
@@ -117,7 +130,7 @@ const BlogClient = memo(function BlogClient({ initialPosts }: BlogClientProps) {
             )}
           </div>
           
-          <div className="flex flex-wrap gap-2 mb-4 mx-2">
+          <div className="flex flex-wrap gap-2">
             {displayedTags.map((tag, index) => (
               <button
                 key={tag}
@@ -188,7 +201,7 @@ const BlogClient = memo(function BlogClient({ initialPosts }: BlogClientProps) {
         </div>
 
         {/* Enhanced Search Bar */}
-        <div className={`relative overflow-hidden rounded-lg backdrop-blur-md border transition-all duration-300 mb-6 ${
+        <div className={`relative overflow-hidden rounded-lg backdrop-blur-md border transition-all duration-300 mb-4 ${
           theme === 'dark' 
             ? 'bg-black/30 border-white/20 focus-within:border-white/40' 
             : 'bg-white border-gray-300 focus-within:border-blue-400 focus-within:shadow-md'
@@ -226,6 +239,135 @@ const BlogClient = memo(function BlogClient({ initialPosts }: BlogClientProps) {
             )}
           </div>
         </div>
+
+        {/* Minimalist Filter Bar */}
+        <div className={`flex flex-wrap items-center justify-between gap-4 py-4 mb-6 border-b transition-all duration-300 ${
+          theme === 'dark' ? 'border-white/10' : 'border-gray-200'
+        }`}>
+          {/* Left side - Sort controls */}
+          <div className="flex items-center gap-3">
+            <span className={`text-sm font-medium ${
+              theme === 'dark' ? 'text-white/60' : 'text-gray-500'
+            }`}>
+              Sort by
+            </span>
+
+            <div className="flex items-center gap-1">
+              {(['date', 'title', 'readingTime'] as const).map((option) => (
+                <button
+                  key={option}
+                  onClick={() => setSortBy(option)}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-300 ${
+                    sortBy === option
+                      ? theme === 'dark'
+                        ? 'bg-white text-black'
+                        : 'bg-black text-white'
+                      : theme === 'dark'
+                        ? 'text-white/70 hover:text-white hover:bg-white/10'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  {option === 'readingTime' ? 'Time' : option.charAt(0).toUpperCase() + option.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              className={`p-1.5 rounded-full transition-all duration-300 hover:scale-110 ${
+                theme === 'dark'
+                  ? 'text-white/70 hover:text-white hover:bg-white/10'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+              title={`Sort ${sortOrder === 'asc' ? 'descending' : 'ascending'}`}
+            >
+              {sortOrder === 'asc' ? (
+                <SortAsc className="w-4 h-4" />
+              ) : (
+                <SortDesc className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+
+          {/* Right side - Options */}
+          <div className="flex items-center gap-4">
+            {/* Deep search toggle */}
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={searchInContent}
+                onChange={(e) => setSearchInContent(e.target.checked)}
+                className={`w-4 h-4 rounded transition-all duration-300 ${
+                  theme === 'dark'
+                    ? 'bg-transparent border-white/30 text-white focus:ring-white/20'
+                    : 'bg-transparent border-gray-300 text-black focus:ring-gray-200'
+                }`}
+              />
+              <span className={`text-sm transition-all duration-300 ${
+                searchInContent
+                  ? theme === 'dark' ? 'text-white' : 'text-gray-900'
+                  : theme === 'dark' ? 'text-white/60' : 'text-gray-500'
+              } group-hover:${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                Deep search
+              </span>
+            </label>
+
+            {/* Clear filters */}
+            {(selectedTag || searchQuery || sortBy !== 'date' || sortOrder !== 'desc' || searchInContent) && (
+              <button
+                onClick={() => {
+                  setSelectedTag(null);
+                  setSearchQuery('');
+                  setSortBy('date');
+                  setSortOrder('desc');
+                  setSearchInContent(false);
+                }}
+                className={`px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-300 hover:scale-105 ${
+                  theme === 'dark'
+                    ? 'text-red-400 hover:text-red-300 hover:bg-red-500/10'
+                    : 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                }`}
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Active filters indicator */}
+        {(selectedTag || searchInContent) && (
+          <div className={`flex flex-wrap items-center gap-2 mb-4 ${
+            theme === 'dark' ? 'text-white/70' : 'text-gray-600'
+          }`}>
+            <span className="text-xs font-medium">Active:</span>
+            {selectedTag && (
+              <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${
+                theme === 'dark' ? 'bg-white/10' : 'bg-gray-100'
+              }`}>
+                {selectedTag}
+                <button
+                  onClick={() => setSelectedTag(null)}
+                  className="hover:text-red-500 transition-colors duration-200"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {searchInContent && (
+              <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${
+                theme === 'dark' ? 'bg-white/10' : 'bg-gray-100'
+              }`}>
+                Deep search
+                <button
+                  onClick={() => setSearchInContent(false)}
+                  className="hover:text-red-500 transition-colors duration-200"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Posts Count and Filters */}
         <div className="mb-4">
@@ -275,11 +417,14 @@ const BlogClient = memo(function BlogClient({ initialPosts }: BlogClientProps) {
                 } z-[1]`} />
                 <div className="flex relative">
                   <div className="w-full p-6 relative z-10">
-                    <p className={`text-sm mb-2 ${
+                    <div className={`flex items-center justify-between mb-2 ${
                       theme === 'dark' ? 'text-[#EEEEEE]/60' : 'text-[#1A1A1E]/60'
                     }`}>
-                      {post.date}
-                    </p>
+                      <p className="text-sm">{post.date}</p>
+                      <span className="text-xs font-medium">
+                        {post.readingTime.text}
+                      </span>
+                    </div>
                     <h3 className={`text-xl font-semibold mb-2 transition-colors ${
                       theme === 'dark' 
                         ? 'text-white group-hover:text-[#FB2549]' 
@@ -310,7 +455,7 @@ const BlogClient = memo(function BlogClient({ initialPosts }: BlogClientProps) {
                   <div className="absolute right-0 top-0 h-full w-[60%] overflow-hidden">
                     <Image
                       src={post.mainPhoto}
-                      alt={post.title}
+                      alt={`Featured image for blog post: ${post.title}`}
                       fill
                       className="object-cover transition-all duration-500 ease-in-out transform group-hover:scale-105"
                     />
@@ -320,6 +465,7 @@ const BlogClient = memo(function BlogClient({ initialPosts }: BlogClientProps) {
             ))}
           </div>
         </section>
+
 
         {/* Enhanced Pagination */}
         {totalPages > 1 && (

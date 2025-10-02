@@ -66,7 +66,7 @@ const Navbar = memo(function Navbar() {
               <div className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12">
                 <Image
                   src={theme === 'dark' ? '/icons/logo-white.svg' : '/icons/logo-dark.svg'}
-                  alt="Logo"
+                  alt="Burak Sahin Kucuk - Personal Logo"
                   width={28}
                   height={40}
                   priority
@@ -87,7 +87,7 @@ const Navbar = memo(function Navbar() {
                     key={item.path}
                     href={item.path}
                     className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-300 relative group ${
-                      pathname === item.path
+                      (pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path)))
                         ? 'text-[#FB2549]'
                         : theme === 'dark'
                           ? 'text-[#EEEEEE] hover:text-white'
@@ -95,7 +95,7 @@ const Navbar = memo(function Navbar() {
                     }`}
                   >
                     <span className="relative z-10">{item.label}</span>
-                    {pathname === item.path && (
+                    {(pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path))) && (
                       <div className={`absolute inset-0 rounded-full transition-all duration-300 ${
                         theme === 'dark' 
                           ? 'bg-[#FB2549]/10' 

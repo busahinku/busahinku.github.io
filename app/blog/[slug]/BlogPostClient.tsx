@@ -77,7 +77,7 @@ export default function BlogPostClient({ post }: BlogPostClientProps) {
           <div className="relative w-full max-w-[1000px] h-[500px]">
             <Image
               src={post.mainPhoto}
-              alt={post.title}
+              alt={`Cover image for article: ${post.title}`}
               fill
               className="object-cover"
               priority
