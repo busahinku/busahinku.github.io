@@ -13,10 +13,10 @@ const sora = Sora({
 export const metadata: Metadata = {
   metadataBase: new URL('https://busahinku.github.io'),
   title: {
-    default: "Burak Sahin Kucuk - Statistics, Technology & Life",
+    default: "Burak Sahin Kucuk",
     template: "%s | Burak Sahin Kucuk"
   },
-  description: "Personal blog about statistics, data science, technology, and life experiences. Sharing insights, tutorials, and thoughts on computing, research, and personal growth.",
+  description: "Personal blog about my stuff.",
   keywords: [
     "Burak Sahin Kucuk", 
     "Statistics", 
@@ -49,8 +49,8 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: "https://busahinku.github.io",
-    title: "Burak Sahin Kucuk - Statistics, Technology & Life",
-    description: "Personal blog about statistics, data science, technology, and life experiences. Sharing insights, tutorials, and thoughts on computing, research, and personal growth.",
+    title: "Burak Sahin Kucuk",
+    description: "Personal blog about my stuff.",
     siteName: "Burak Sahin Kucuk",
     images: [
       {
@@ -63,8 +63,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Burak Sahin Kucuk - Statistics, Technology & Life",
-    description: "Personal blog about statistics, data science, technology, and life experiences.",
+    title: "Burak Sahin Kucuk",
+    description: "Personal blog about my stuff.",
     images: ["/og-image.png"],
     creator: "@busahinku"
   },
@@ -128,7 +128,7 @@ export default function RootLayout({
       'Web Development',
       'Data Analysis'
     ],
-    description: 'Statistics and Computer Engineering student at METU, passionate about data science, machine learning, and sharing knowledge through blogging.',
+    description: 'A guy who likes to create things and present them to people.',
     email: 'sahin.kucuk@metu.edu.tr',
     address: {
       '@type': 'PostalAddress',
@@ -137,9 +137,9 @@ export default function RootLayout({
     },
     owns: {
       '@type': 'Website',
-      name: 'Burak Sahin Kucuk - Personal Blog',
+      name: 'Burak Sahin Kucuk',
       url: 'https://busahinku.github.io',
-      description: 'Personal blog about statistics, data science, technology, and life experiences'
+      description: 'Personal blog about my stuff.'
     }
   };
 
@@ -147,9 +147,9 @@ export default function RootLayout({
     '@context': 'https://schema.org',
     '@type': 'Website',
     '@id': 'https://busahinku.github.io/#website',
-    name: 'Burak Sahin Kucuk - Statistics, Technology & Life',
+    name: 'Burak Sahin Kucuk',
     url: 'https://busahinku.github.io',
-    description: 'Personal blog about statistics, data science, technology, and life experiences. Sharing insights, tutorials, and thoughts on computing, research, and personal growth.',
+    description: 'Personal blog about my stuff.',
     publisher: {
       '@id': 'https://busahinku.github.io/#person'
     },
@@ -167,7 +167,7 @@ export default function RootLayout({
     '@context': 'https://schema.org',
     '@type': 'Organization',
     '@id': 'https://busahinku.github.io/#organization',
-    name: 'Burak Sahin Kucuk Blog',
+    name: 'Burak Sahin Kucuk',
     url: 'https://busahinku.github.io',
     logo: {
       '@type': 'ImageObject',
