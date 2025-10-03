@@ -162,9 +162,9 @@ export default function ProjectPostClient({ project }: ProjectPostClientProps) {
   const components = {
     code: CodeBlock,
     h1: ({ children, id }: HeadingProps) => (
-      <h1 
-        id={id} 
-        className={`text-[24px] font-bold mt-8 mb-3 scroll-mt-20 group ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}
+      <h1
+        id={id}
+        className={`text-4xl font-bold font-serif mt-8 mb-3 scroll-mt-20 group ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}
         onClick={() => id && document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })}
       >
         <span className="cursor-pointer">
@@ -178,9 +178,9 @@ export default function ProjectPostClient({ project }: ProjectPostClientProps) {
       </h1>
     ),
     h2: ({ children, id }: HeadingProps) => (
-      <h2 
-        id={id} 
-        className={`text-2xl font-bold mt-6 mb-4 scroll-mt-20 group ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}
+      <h2
+        id={id}
+        className={`text-3xl font-bold font-serif mt-6 mb-4 scroll-mt-20 group ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}
         onClick={() => id && document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })}
       >
         <span className="cursor-pointer">
@@ -194,9 +194,9 @@ export default function ProjectPostClient({ project }: ProjectPostClientProps) {
       </h2>
     ),
     h3: ({ children, id }: HeadingProps) => (
-      <h3 
-        id={id} 
-        className={`text-xl font-bold mt-5 mb-3 scroll-mt-20 group ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}
+      <h3
+        id={id}
+        className={`text-2xl font-bold font-serif mt-5 mb-3 scroll-mt-20 group ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}
         onClick={() => id && document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })}
       >
         <span className="cursor-pointer">
@@ -210,9 +210,9 @@ export default function ProjectPostClient({ project }: ProjectPostClientProps) {
       </h3>
     ),
     h4: ({ children, id }: HeadingProps) => (
-      <h4 
-        id={id} 
-        className={`text-lg font-bold mt-4 mb-2 scroll-mt-20 group ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}
+      <h4
+        id={id}
+        className={`text-xl font-bold font-serif mt-4 mb-2 scroll-mt-20 group ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}
         onClick={() => id && document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })}
       >
         <span className="cursor-pointer">
@@ -241,28 +241,28 @@ export default function ProjectPostClient({ project }: ProjectPostClientProps) {
         return <>{children}</>;
       }
       return (
-        <p className={`text-base my-3 leading-relaxed ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}>
+        <p className={`text-lg my-3 leading-relaxed ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}>
           {children}
         </p>
       );
     },
     ul: ({ children }: ListProps) => (
-      <ul className={`list-disc list-inside my-3 space-y-2 text-base ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}>
+      <ul className={`list-disc list-inside my-3 space-y-2 text-lg ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}>
         {children}
       </ul>
     ),
     ol: ({ children }: ListProps) => (
-      <ol className={`list-decimal list-inside my-3 space-y-2 text-base ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}>
+      <ol className={`list-decimal list-inside my-3 space-y-2 text-lg ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}>
         {children}
       </ol>
     ),
     li: ({ children }: ListProps) => (
-      <li className={`ml-4 text-base ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}>
+      <li className={`ml-4 text-lg ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}>
         {children}
       </li>
     ),
     blockquote: ({ children }: ListProps) => (
-      <blockquote className={`border-l-4 border-gray-300 dark:border-gray-600 pl-4 my-4 italic text-base ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}>
+      <blockquote className={`border-l-4 border-gray-300 dark:border-gray-600 pl-4 my-4 italic text-lg ${theme === 'dark' ? 'text-[#EEEEEE]' : 'text-[#1A1A1E]'}`}>
         {children}
       </blockquote>
     ),
@@ -363,7 +363,7 @@ export default function ProjectPostClient({ project }: ProjectPostClientProps) {
           <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-white/60' : 'text-gray-500'}`}>
             {project.date}
           </p>
-          <h1 className={`text-3xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          <h1 className={`text-3xl font-bold font-serif mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {project.title}
           </h1>
           <div className="flex flex-wrap gap-2 justify-center mb-6">

@@ -183,7 +183,7 @@ export const createMarkdownComponents = ({ theme }: MarkdownComponentsProps): Co
   const SmartParagraph = ({ children }: ParagraphProps) => {
     // Just render as a normal paragraph - let the browser handle selection naturally
     return (
-      <p className={`text-base leading-relaxed my-4 ${textColor}`}>
+      <p className={`text-lg leading-relaxed my-4 ${textColor}`}>
         {children}
       </p>
     );
@@ -192,9 +192,9 @@ export const createMarkdownComponents = ({ theme }: MarkdownComponentsProps): Co
   return {
     // Headings with proper accessibility
     h1: ({ children, id }: HeadingProps) => (
-      <h1 
+      <h1
         id={id}
-        className={`text-3xl font-bold mt-8 mb-4 scroll-mt-20 ${textColor}`}
+        className={`text-4xl font-bold font-serif mt-8 mb-4 scroll-mt-20 ${textColor}`}
         tabIndex={id ? 0 : undefined}
       >
         {children}
@@ -205,11 +205,11 @@ export const createMarkdownComponents = ({ theme }: MarkdownComponentsProps): Co
         )}
       </h1>
     ),
-    
+
     h2: ({ children, id }: HeadingProps) => (
-      <h2 
+      <h2
         id={id}
-        className={`text-2xl font-bold mt-6 mb-3 scroll-mt-20 ${textColor}`}
+        className={`text-3xl font-bold font-serif mt-6 mb-3 scroll-mt-20 ${textColor}`}
         tabIndex={id ? 0 : undefined}
       >
         {children}
@@ -222,9 +222,9 @@ export const createMarkdownComponents = ({ theme }: MarkdownComponentsProps): Co
     ),
 
     h3: ({ children, id }: HeadingProps) => (
-      <h3 
+      <h3
         id={id}
-        className={`text-xl font-bold mt-5 mb-2 scroll-mt-20 ${textColor}`}
+        className={`text-2xl font-bold font-serif mt-5 mb-2 scroll-mt-20 ${textColor}`}
         tabIndex={id ? 0 : undefined}
       >
         {children}
@@ -237,9 +237,9 @@ export const createMarkdownComponents = ({ theme }: MarkdownComponentsProps): Co
     ),
 
     h4: ({ children, id }: HeadingProps) => (
-      <h4 
+      <h4
         id={id}
-        className={`text-lg font-bold mt-4 mb-2 scroll-mt-20 ${textColor}`}
+        className={`text-xl font-bold font-serif mt-4 mb-2 scroll-mt-20 ${textColor}`}
         tabIndex={id ? 0 : undefined}
       >
         {children}
@@ -268,7 +268,7 @@ export const createMarkdownComponents = ({ theme }: MarkdownComponentsProps): Co
     ),
 
     li: ({ children }: BasicProps) => (
-      <li className={`text-base leading-relaxed ${textColor}`}>
+      <li className={`text-lg leading-relaxed ${textColor}`}>
         {children}
       </li>
     ),

@@ -98,7 +98,7 @@ export default function BlogPostClient({ post }: BlogPostClientProps) {
               <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-white/60' : 'text-gray-500'}`}>
                 {post.date}
               </p>
-              <h1 className={`text-2xl md:text-3xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <h1 className={`text-2xl md:text-3xl font-bold font-serif mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 {post.title}
               </h1>
               <div className="flex flex-wrap gap-2 justify-center">

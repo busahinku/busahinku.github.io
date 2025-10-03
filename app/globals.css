@@ -129,28 +129,28 @@ p, li, a { font-size: 14px; }
 
 /* Heading system - consolidated */
 h1, .prose h1 {
-  font-size: 2rem !important;
+  font-size: 2.5rem !important;
   font-weight: 600;
   margin-top: 0;
   margin-bottom: 1.5rem;
 }
 
 h2, .prose h2 {
-  font-size: 1.5rem !important;
+  font-size: 2rem !important;
   font-weight: 600;
   margin-top: 2rem;
   margin-bottom: 1rem;
 }
 
 h3, .prose h3 {
-  font-size: 1.25rem !important;
+  font-size: 1.75rem !important;
   font-weight: 600;
   margin-top: 1.5rem;
   margin-bottom: 0.75rem;
 }
 
 h4, .prose h4 {
-  font-size: 1.125rem !important;
+  font-size: 1.5rem !important;
   font-weight: 600;
   margin-top: 1.25rem;
   margin-bottom: 0.5rem;

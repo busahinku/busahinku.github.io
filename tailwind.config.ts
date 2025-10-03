@@ -14,6 +14,7 @@ export default {
       },
       fontFamily: {
         'sora': ['Sora', 'sans-serif'],
+        'serif': ['Instrument Serif', 'serif'],
       },
     },
   },

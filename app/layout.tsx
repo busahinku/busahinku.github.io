@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "./context/ThemeContext";
-import { Sora } from 'next/font/google';
+import { Sora, Instrument_Serif } from 'next/font/google';
 import Footer from './components/Footer';
 
 const sora = Sora({ 
   subsets: ['latin'],
   weight: ['100', '200', '300', '400', '500', '600', '700', '800'],
   display: 'swap'
+});
+
+const instrumentSerif = Instrument_Serif({ 
+  subsets: ['latin'],
+  weight: ['400'],
+  display: 'swap',
+  variable: '--font-instrument-serif'
 });
 
 export const metadata: Metadata = {
@@ -215,7 +222,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(combinedSchema) }}
         />
       </head>
-      <body className={`${sora.className} flex flex-col min-h-screen overflow-x-hidden`}>
+      <body className={`${sora.className} ${instrumentSerif.variable} flex flex-col min-h-screen overflow-x-hidden`}>
         <ThemeProvider>
             <main className="flex-grow">
               {children}

@@ -62,7 +62,8 @@ const Navbar = memo(function Navbar() {
       }`}>
         <div className="w-full max-[820px]:px-6">
           <div className="max-w-[800px] mx-auto relative flex items-center justify-between">
-            <Link href="/" className="flex items-center font-medium group">
+            {/* Mobile: Centered logo */}
+            <Link href="/" className="flex items-center font-medium group min-[820px]:block absolute left-1/2 -translate-x-1/2 min-[820px]:static min-[820px]:translate-x-0">
               <div className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12">
                 <Image
                   src={theme === 'dark' ? '/icons/logo-white.svg' : '/icons/logo-dark.svg'}
@@ -112,7 +113,7 @@ const Navbar = memo(function Navbar() {
               </div>
             </nav>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 ml-auto">
               <button
                 onClick={toggleTheme}
                 className={`h-10 w-10 flex items-center justify-center rounded-full transition-all duration-300 group ${

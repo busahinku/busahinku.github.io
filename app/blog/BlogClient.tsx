@@ -2,6 +2,7 @@
 
 import { useTheme } from '../context/ThemeContext';
 import BackgroundPattern from '../components/BackgroundPattern';
+import Navbar from '../components/Navbar';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect, memo, useCallback, useMemo } from 'react';
@@ -92,6 +93,7 @@ const BlogClient = memo(function BlogClient({ initialPosts }: BlogClientProps) {
 
   return (
     <div className="w-full max-[820px]:px-6 relative overflow-hidden">
+      <Navbar />
       <BackgroundPattern variant="simple" />
 
       <main className="max-w-[800px] mx-auto pt-24 pb-16 relative z-10">
@@ -99,7 +101,7 @@ const BlogClient = memo(function BlogClient({ initialPosts }: BlogClientProps) {
         {/* Beautiful Tags Section */}
         <div className="mb-4">
           <div className="flex items-center gap-3 mb-4">
-            <h3 className={`text-md font-semibold bg-gradient-to-r bg-clip-text text-transparent ${
+            <h3 className={`text-2xl font-semibold font-serif bg-gradient-to-r bg-clip-text text-transparent ${
               theme === 'dark' 
                 ? 'from-white via-purple-200 to-blue-200' 
                 : 'from-gray-900 via-purple-600 to-blue-600'
@@ -423,13 +425,13 @@ const BlogClient = memo(function BlogClient({ initialPosts }: BlogClientProps) {
                         {post.readingTime.text}
                       </span>
                     </div>
-                    <h3 className={`text-xl font-semibold mb-2 transition-colors ${
+                    <h2 className={`text-lg font-semibold font-serif mb-2 mt-4 transition-colors ${
                       theme === 'dark' 
                         ? 'text-white group-hover:text-[#FB2549]' 
                         : 'text-[#1A1A1E] group-hover:text-[#FB2549]'
                     }`}>
                       {post.title}
-                    </h3>
+                    </h2>
                     <p className={`text-sm mb-4 max-w-[70%] ${
                       theme === 'dark' ? 'text-white/80' : 'text-[#1A1A1E]/80'
                     }`}>

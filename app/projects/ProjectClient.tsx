@@ -2,6 +2,7 @@
 
 import { useTheme } from '../context/ThemeContext';
 import BackgroundPattern from '../components/BackgroundPattern';
+import Navbar from '../components/Navbar';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, memo, useCallback, useMemo } from 'react';
@@ -65,6 +66,7 @@ const ProjectClient = memo(function ProjectClient({ initialProjects }: ProjectCl
 
   return (
     <div className="w-full max-[820px]:px-6 relative overflow-hidden">
+      <Navbar />
       <BackgroundPattern variant="simple" />
 
       <main className="max-w-[800px] mx-auto pt-24 pb-16 relative z-10">
@@ -72,7 +74,7 @@ const ProjectClient = memo(function ProjectClient({ initialProjects }: ProjectCl
         {/* Categories Filter */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-4">
-            <h3 className={`text-md font-medium bg-gradient-to-r bg-clip-text text-transparent ${
+            <h3 className={`text-md font-semibold font-serif bg-gradient-to-r bg-clip-text text-transparent ${
               theme === 'dark' 
                 ? 'from-white via-purple-200 to-blue-200' 
                 : 'from-gray-900 via-purple-600 to-blue-600'
@@ -231,7 +233,7 @@ const ProjectClient = memo(function ProjectClient({ initialProjects }: ProjectCl
 
               {/* Content Section */}
               <div className="p-4 relative z-10">
-                <h3 className={`text-base font-semibold mb-2 line-clamp-2 transition-colors duration-300 ${
+                <h3 className={`text-md font-semibold font-serif mb-2 mt-1 line-clamp-2 transition-colors duration-300 ${
                   theme === 'dark' ? 'text-white group-hover:text-blue-200' : 'text-gray-900 group-hover:text-blue-700'
                 }`}>
                   {project.title}
