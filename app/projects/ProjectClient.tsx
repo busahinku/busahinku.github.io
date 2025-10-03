@@ -2,7 +2,6 @@
 
 import { useTheme } from '../context/ThemeContext';
 import BackgroundPattern from '../components/BackgroundPattern';
-import Navbar from '../components/Navbar';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, memo, useCallback, useMemo } from 'react';
@@ -66,7 +65,6 @@ const ProjectClient = memo(function ProjectClient({ initialProjects }: ProjectCl
 
   return (
     <div className="w-full max-[820px]:px-6 relative overflow-hidden">
-      <Navbar />
       <BackgroundPattern variant="simple" />
 
       <main className="max-w-[800px] mx-auto pt-24 pb-16 relative z-10">
