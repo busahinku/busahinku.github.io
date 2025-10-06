@@ -13,8 +13,8 @@ type ThemeContextType = {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Always start with dark theme to match server render
-  const [theme, setTheme] = useState<Theme>('dark');
+  // Step 1.0: Start with light theme by default
+  const [theme, setTheme] = useState<Theme>('light');
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
@@ -23,8 +23,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     
     // Now we can safely read client-side state
     const savedTheme = localStorage.getItem('theme') as Theme;
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const actualTheme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+    // Step 2.0: Default to light when no saved preference
+    const actualTheme: Theme = savedTheme || 'light';
     
     setTheme(actualTheme);
     

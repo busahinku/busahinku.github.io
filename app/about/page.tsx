@@ -17,7 +17,7 @@ export default function AboutPage() {
         <div className="mb-10">
           <div className="flex items-start gap-6 mb-14">
             <div className="relative flex-shrink-0">
-              <div className="w-20 h-20 rounded-full overflow-hidden">
+              <div className="w-20 h-20 rounded-xl overflow-hidden">
                 <Image
                   src="/images/profile.jpg"
                   alt="Burak Sahin Kucuk"
@@ -531,7 +531,7 @@ export default function AboutPage() {
                 }`}>
                   • I have loved designing since childhood. Now, I do it for fun during my breaks.
                 </p>
-                <p className={`text-sm ${
+                <p className={`text-sm $
                   theme === 'dark' ? 'text-white/80' : 'text-gray-700'
                 }`}>
                   • This website is my graph of thoughts, notes, and ideas.

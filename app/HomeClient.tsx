@@ -2,7 +2,7 @@
 
 import { useTheme } from './context/ThemeContext';
 import SocialGrid from './components/SocialGrid';
-import BackgroundPattern from './components/BackgroundPattern';
+import { BackgroundBeams } from './components/ui/background-beams';
 
 interface HomeClientProps {
   latestBlogTitle: string;
@@ -13,7 +13,9 @@ export default function HomeClient({ latestBlogTitle }: HomeClientProps) {
 
   return (
     <div className="w-full px-4 sm:px-6 md:px-8 max-[820px]:px-6 page-transition relative overflow-hidden min-h-screen">
-      <BackgroundPattern variant="minimal" />
+      {isHydrated && theme === 'light' && (
+        <BackgroundBeams className="absolute inset-0" />
+      )}
 
       <main className="max-w-[800px] mx-auto relative z-10 min-h-screen">
         <div className="flex flex-col items-start w-full py-16 px-2 sm:px-4 md:px-0 mt-20 sm:mt-24">

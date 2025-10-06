@@ -20,7 +20,7 @@ const SocialGrid = memo(function SocialGrid() {
       gridArea: 'md:col-span-2 md:row-start-1',
       pastelColor: {
         dark: 'bg-purple-500/3 hover:bg-purple-500/6',
-        light: 'bg-purple-100/30 hover:bg-purple-100/50'
+        light: 'bg-purple-100/25 hover:bg-purple-100/12'
       }
     },
     {
@@ -34,7 +34,7 @@ const SocialGrid = memo(function SocialGrid() {
       gridArea: 'md:col-span-2 md:row-span-2 md:row-start-1',
       pastelColor: {
         dark: 'bg-green-500/3 hover:bg-green-500/6',
-        light: 'bg-green-100/30 hover:bg-green-100/50'
+        light: 'bg-green-100/25 hover:bg-green-100/12'
       }
     },
     {
@@ -48,7 +48,7 @@ const SocialGrid = memo(function SocialGrid() {
       gridArea: 'md:col-span-2 md:row-span-3 md:row-start-1',
       pastelColor: {
         dark: 'bg-blue-500/3 hover:bg-blue-500/6',
-        light: 'bg-blue-100/30 hover:bg-blue-100/50'
+        light: 'bg-blue-100/25 hover:bg-blue-100/12'
       }
     },
     {
@@ -62,7 +62,7 @@ const SocialGrid = memo(function SocialGrid() {
       gridArea: 'md:col-span-2 md:row-start-2',
       pastelColor: {
         dark: 'bg-pink-500/3 hover:bg-pink-500/6',
-        light: 'bg-pink-100/30 hover:bg-pink-100/50'
+        light: 'bg-pink-100/25 hover:bg-pink-100/12'
       }
     },
     {
@@ -76,7 +76,7 @@ const SocialGrid = memo(function SocialGrid() {
       gridArea: 'md:col-span-1 md:row-start-3',
       pastelColor: {
         dark: 'bg-slate-500/3 hover:bg-slate-500/6',
-        light: 'bg-slate-100/30 hover:bg-slate-100/50'
+        light: 'bg-slate-100/25 hover:bg-slate-100/12'
       }
     },
     {
@@ -90,7 +90,7 @@ const SocialGrid = memo(function SocialGrid() {
       gridArea: 'md:col-span-3 md:row-start-3',
       pastelColor: {
         dark: 'bg-cyan-500/3 hover:bg-cyan-500/6',
-        light: 'bg-cyan-100/30 hover:bg-cyan-100/50'
+        light: 'bg-cyan-100/25 hover:bg-cyan-100/12'
       }
     },
   ];
@@ -111,17 +111,16 @@ const SocialGrid = memo(function SocialGrid() {
             transform hover:scale-105
             group relative overflow-hidden
             ${theme === 'dark' 
-              ? `backdrop-blur-xl ${link.pastelColor.dark} border border-white/10 hover:border-white/20` 
-              : `backdrop-blur-xl ${link.pastelColor.light} border border-white/30 hover:border-white/50`
+              ? `backdrop-blur-xl ${link.pastelColor.dark} border border-white/10 hover:border-white/20 shadow-lg hover:shadow-2xl` 
+              : `backdrop-blur-2xl ${link.pastelColor.light} border border-black/01 hover:border-black/01 shadow-none hover:shadow-none`
             }
-            shadow-lg hover:shadow-2xl
           `}
         >
           {/* Glass effect overlay */}
           <div className={`absolute inset-0 rounded-2xl ${
             theme === 'dark' 
               ? 'bg-gradient-to-br from-white/5 to-white/0' 
-              : 'bg-gradient-to-br from-white/40 to-white/10'
+              : 'bg-gradient-to-br from-white/8 to-white/0'
           }`} />
           
           <div className="flex items-start justify-between h-full flex-col relative z-10">
