@@ -273,7 +273,7 @@ export default function AboutPage() {
                       <p className={`text-sm font-medium ${
                         theme === 'dark' ? 'text-white/80' : 'text-gray-700'
                       }`}>
-                        Next.js, TypeScript
+                        JavaScript, VueJS, AWS EC2, Docker, PostgreSQL, FastAPI
                       </p>
                       <p className={`text-sm ${
                         theme === 'dark' ? 'text-white/60' : 'text-gray-500'

@@ -71,7 +71,7 @@ const SocialGrid = memo(function SocialGrid() {
         dark: '/icons/social/twitter.svg',
         light: '/icons/social/twitter-dark.svg'
       },
-      href: 'https://twitter.com/busahinku',
+      href: 'https://twitter.com/bupacone',
       description: 'Instant actions',
       gridArea: 'md:col-span-1 md:row-start-3',
       pastelColor: {
