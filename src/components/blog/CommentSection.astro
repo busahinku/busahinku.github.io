@@ -1,0 +1,481 @@
+---
+import type { Lang } from '../../i18n/translations';
+
+interface Props {
+  slug: string;
+  lang?: Lang;
+}
+
+const { slug, lang = 'en' } = Astro.props;
+---
+
+<section class="comment-section" data-slug={slug} data-lang={lang}>
+  <h2 class="comments-title">
+    <span class="comments-title-text" data-i18n="comments"></span>
+    <span class="comments-count">(0)</span>
+  </h2>
+
+  <!-- Auth Section -->
+  <div class="auth-section">
+    <div class="auth-logged-out">
+      <button class="google-signin-btn" type="button">
+        <svg class="google-icon" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        <span data-i18n="signInWithGoogle"></span>
+      </button>
+    </div>
+
+    <div class="auth-logged-in" style="display: none;">
+      <div class="user-info">
+        <img class="user-avatar" src="" alt="" />
+        <span class="user-name"></span>
+        <button class="signout-btn" type="button" data-i18n="signOut"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Comment Form -->
+  <form class="comment-form" style="display: none;">
+    <div class="comment-input-wrapper">
+      <img class="comment-form-avatar" src="" alt="" />
+      <textarea
+        class="comment-textarea"
+        placeholder=""
+        data-i18n-placeholder="writeComment"
+        rows="3"
+        required
+      ></textarea>
+    </div>
+    <div class="comment-form-actions">
+      <button type="submit" class="submit-comment-btn" data-i18n="postComment"></button>
+    </div>
+  </form>
+
+  <!-- Comments List -->
+  <div class="comments-list"></div>
+
+  <!-- Loading State -->
+  <div class="comments-loading">
+    <div class="loading-spinner"></div>
+  </div>
+
+  <!-- Empty State -->
+  <div class="comments-empty" style="display: none;">
+    <p data-i18n="noComments"></p>
+  </div>
+</section>
+
+<script>
+  import type { Comment, User } from '../../lib/firebase/types';
+
+  // Translation strings
+  const translations: Record<string, Record<string, string>> = {
+    en: {
+      comments: 'Comments',
+      signInWithGoogle: 'Sign in with Google',
+      signOut: 'Sign out',
+      writeComment: 'Write a comment...',
+      postComment: 'Post',
+      reply: 'Reply',
+      edit: 'Edit',
+      delete: 'Delete',
+      cancel: 'Cancel',
+      save: 'Save',
+      edited: 'edited',
+      noComments: 'Be the first to comment!',
+      confirmDelete: 'Are you sure you want to delete this comment?',
+      writeReply: 'Write a reply...',
+      justNow: 'just now',
+      minutesAgo: '{n} minute(s) ago',
+      hoursAgo: '{n} hour(s) ago',
+      daysAgo: '{n} day(s) ago',
+      monthsAgo: '{n} month(s) ago',
+      yearsAgo: '{n} year(s) ago',
+    },
+    tr: {
+      comments: 'Yorumlar',
+      signInWithGoogle: 'Google ile giriş yap',
+      signOut: 'Çıkış yap',
+      writeComment: 'Bir yorum yazın...',
+      postComment: 'Gönder',
+      reply: 'Yanıtla',
+      edit: 'Düzenle',
+      delete: 'Sil',
+      cancel: 'İptal',
+      save: 'Kaydet',
+      edited: 'düzenlendi',
+      noComments: 'İlk yorumu siz yazın!',
+      confirmDelete: 'Bu yorumu silmek istediğinizden emin misiniz?',
+      writeReply: 'Bir yanıt yazın...',
+      justNow: 'az önce',
+      minutesAgo: '{n} dakika önce',
+      hoursAgo: '{n} saat önce',
+      daysAgo: '{n} gün önce',
+      monthsAgo: '{n} ay önce',
+      yearsAgo: '{n} yıl önce',
+    },
+  };
+
+  function initCommentSection() {
+    const sections = document.querySelectorAll('.comment-section');
+
+    sections.forEach(async (section) => {
+      // Prevent multiple initializations
+      if (section.hasAttribute('data-initialized')) return;
+      section.setAttribute('data-initialized', 'true');
+
+      const slug = section.getAttribute('data-slug');
+      const lang = (section.getAttribute('data-lang') || 'en') as 'en' | 'tr';
+      if (!slug) return;
+
+      const t = (key: string, params?: Record<string, string | number>) => {
+        let str = translations[lang]?.[key] || translations.en[key] || key;
+        if (params) {
+          Object.entries(params).forEach(([k, v]) => {
+            str = str.replace(`{${k}}`, String(v));
+          });
+        }
+        return str;
+      };
+
+      // Apply translations to static elements
+      section.querySelectorAll('[data-i18n]').forEach((el) => {
+        const key = el.getAttribute('data-i18n');
+        if (key) el.textContent = t(key);
+      });
+      section.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (key) (el as HTMLInputElement).placeholder = t(key);
+      });
+
+      // Get elements
+      const authLoggedOut = section.querySelector('.auth-logged-out') as HTMLElement;
+      const authLoggedIn = section.querySelector('.auth-logged-in') as HTMLElement;
+      const googleSignInBtn = section.querySelector('.google-signin-btn') as HTMLButtonElement;
+      const signOutBtn = section.querySelector('.signout-btn') as HTMLButtonElement;
+      const userAvatar = section.querySelector('.user-avatar') as HTMLImageElement;
+      const userName = section.querySelector('.user-name') as HTMLElement;
+      const commentForm = section.querySelector('.comment-form') as HTMLFormElement;
+      const commentFormAvatar = section.querySelector('.comment-form-avatar') as HTMLImageElement;
+      const commentTextarea = section.querySelector('.comment-textarea') as HTMLTextAreaElement;
+      const commentsList = section.querySelector('.comments-list') as HTMLElement;
+      const commentsCount = section.querySelector('.comments-count') as HTMLElement;
+      const commentsLoading = section.querySelector('.comments-loading') as HTMLElement;
+      const commentsEmpty = section.querySelector('.comments-empty') as HTMLElement;
+
+      let currentUser: User | null = null;
+      let comments: Comment[] = [];
+
+      try {
+        const { signInWithGoogle, signOut, onAuthChange } = await import('../../lib/firebase/auth');
+        const { subscribeToComments, addComment, updateComment, deleteComment } = await import('../../lib/firebase/firestore');
+
+        // Auth state handler
+        const updateAuthUI = (user: User | null) => {
+          currentUser = user;
+          if (user) {
+            authLoggedOut.style.display = 'none';
+            authLoggedIn.style.display = 'flex';
+            commentForm.style.display = 'block';
+            userAvatar.src = user.photoURL || '/default-avatar.png';
+            userAvatar.alt = user.displayName;
+            userName.textContent = user.displayName;
+            commentFormAvatar.src = user.photoURL || '/default-avatar.png';
+          } else {
+            authLoggedOut.style.display = 'flex';
+            authLoggedIn.style.display = 'none';
+            commentForm.style.display = 'none';
+          }
+        };
+
+        // Subscribe to auth changes
+        onAuthChange(updateAuthUI);
+
+        // Sign in handler
+        googleSignInBtn.addEventListener('click', async () => {
+          googleSignInBtn.disabled = true;
+          await signInWithGoogle();
+          googleSignInBtn.disabled = false;
+        });
+
+        // Sign out handler
+        signOutBtn.addEventListener('click', async () => {
+          await signOut();
+        });
+
+        // Comment form handler
+        commentForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          if (!currentUser || !commentTextarea.value.trim()) return;
+
+          const submitBtn = commentForm.querySelector('.submit-comment-btn') as HTMLButtonElement;
+          submitBtn.disabled = true;
+
+          try {
+            await addComment(
+              slug,
+              currentUser.uid,
+              currentUser.displayName,
+              currentUser.photoURL,
+              commentTextarea.value.trim()
+            );
+            commentTextarea.value = '';
+          } catch (error) {
+            console.error('Error posting comment:', error);
+          }
+
+          submitBtn.disabled = false;
+        });
+
+        // Render comments
+        const renderComments = (commentList: Comment[]) => {
+          comments = commentList;
+          commentsLoading.style.display = 'none';
+
+          // Count total comments including replies
+          const countTotal = (list: Comment[]): number => {
+            return list.reduce((acc, c) => acc + 1 + countTotal(c.replies || []), 0);
+          };
+          const total = countTotal(commentList);
+          commentsCount.textContent = `(${total})`;
+
+          if (commentList.length === 0) {
+            commentsEmpty.style.display = 'block';
+            commentsList.innerHTML = '';
+            return;
+          }
+
+          commentsEmpty.style.display = 'none';
+          commentsList.innerHTML = commentList
+            .map((comment) => renderComment(comment, 0, t, currentUser, slug))
+            .join('');
+
+          // Attach event listeners
+          attachCommentListeners(section, slug, t, () => currentUser);
+        };
+
+        // Subscribe to comments with error handler
+        subscribeToComments(slug, renderComments, (error: any) => {
+          console.error('Comments subscription error:', error);
+          commentsLoading.style.display = 'none';
+          commentsEmpty.style.display = 'block';
+
+          // Show more helpful error message
+          const errorMsg = error?.message || error?.code || 'Unknown error';
+          console.error('Full error details:', errorMsg);
+
+          if (errorMsg.includes('permission') || errorMsg.includes('PERMISSION_DENIED')) {
+            commentsEmpty.innerHTML = '<p>Please check Firestore security rules allow read access to comments.</p>';
+          } else if (errorMsg.includes('index')) {
+            commentsEmpty.innerHTML = '<p>Comments are being set up. Please try again later.</p>';
+          } else {
+            commentsEmpty.innerHTML = `<p>Unable to load comments: ${errorMsg}</p>`;
+          }
+        });
+
+        // Attach listeners for dynamic content
+        const attachCommentListeners = (
+          container: Element,
+          slug: string,
+          t: (key: string, params?: Record<string, string | number>) => string,
+          getUser: () => User | null
+        ) => {
+          // Reply buttons
+          container.querySelectorAll('.comment-reply-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const commentId = btn.getAttribute('data-comment-id');
+              const replyForm = container.querySelector(`.reply-form[data-parent-id="${commentId}"]`) as HTMLElement;
+              if (replyForm) {
+                replyForm.style.display = replyForm.style.display === 'none' ? 'block' : 'none';
+              }
+            });
+          });
+
+          // Reply form submissions
+          container.querySelectorAll('.reply-form').forEach((form) => {
+            form.addEventListener('submit', async (e) => {
+              e.preventDefault();
+              const user = getUser();
+              if (!user) return;
+
+              const parentId = form.getAttribute('data-parent-id');
+              const textarea = form.querySelector('textarea') as HTMLTextAreaElement;
+              const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+
+              if (!textarea.value.trim()) return;
+              submitBtn.disabled = true;
+
+              try {
+                await addComment(slug, user.uid, user.displayName, user.photoURL, textarea.value.trim(), parentId);
+                textarea.value = '';
+                (form as HTMLElement).style.display = 'none';
+              } catch (error) {
+                console.error('Error posting reply:', error);
+              }
+
+              submitBtn.disabled = false;
+            });
+          });
+
+          // Edit buttons
+          container.querySelectorAll('.comment-edit-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const commentId = btn.getAttribute('data-comment-id');
+              const commentEl = container.querySelector(`.comment-item[data-comment-id="${commentId}"]`);
+              if (!commentEl) return;
+
+              const contentEl = commentEl.querySelector('.comment-content') as HTMLElement;
+              const editForm = commentEl.querySelector('.edit-form') as HTMLElement;
+
+              contentEl.style.display = 'none';
+              editForm.style.display = 'block';
+            });
+          });
+
+          // Edit form submissions
+          container.querySelectorAll('.edit-form').forEach((form) => {
+            const cancelBtn = form.querySelector('.edit-cancel-btn');
+            const commentId = form.getAttribute('data-comment-id');
+
+            cancelBtn?.addEventListener('click', () => {
+              const commentEl = container.querySelector(`.comment-item[data-comment-id="${commentId}"]`);
+              if (!commentEl) return;
+
+              const contentEl = commentEl.querySelector('.comment-content') as HTMLElement;
+              contentEl.style.display = 'block';
+              (form as HTMLElement).style.display = 'none';
+            });
+
+            form.addEventListener('submit', async (e) => {
+              e.preventDefault();
+              const textarea = form.querySelector('textarea') as HTMLTextAreaElement;
+              const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+
+              if (!textarea.value.trim() || !commentId) return;
+              submitBtn.disabled = true;
+
+              try {
+                await updateComment(commentId, textarea.value.trim());
+              } catch (error) {
+                console.error('Error updating comment:', error);
+              }
+
+              submitBtn.disabled = false;
+            });
+          });
+
+          // Delete buttons
+          container.querySelectorAll('.comment-delete-btn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              if (!confirm(t('confirmDelete'))) return;
+
+              const commentId = btn.getAttribute('data-comment-id');
+              const parentId = btn.getAttribute('data-parent-id');
+
+              try {
+                await deleteComment(commentId!, parentId);
+              } catch (error) {
+                console.error('Error deleting comment:', error);
+              }
+            });
+          });
+        };
+      } catch (error) {
+        console.error('Error initializing comment section:', error);
+        commentsLoading.style.display = 'none';
+        commentsEmpty.style.display = 'block';
+        commentsEmpty.innerHTML = '<p>Unable to load comments</p>';
+      }
+    });
+  }
+
+  function renderComment(
+    comment: Comment,
+    depth: number,
+    t: (key: string, params?: Record<string, string | number>) => string,
+    currentUser: User | null,
+    slug: string
+  ): string {
+    const isOwner = currentUser?.uid === comment.userId;
+    const visualDepth = Math.min(depth, 3); // Cap visual indent at 3 levels
+    const depthClass = `depth-${visualDepth}`;
+
+    return `
+      <div class="comment-item ${depthClass}" data-comment-id="${comment.id}">
+        <div class="comment-header">
+          <img class="comment-avatar" src="${comment.userPhoto || '/default-avatar.png'}" alt="${comment.userName}" />
+          <div class="comment-meta">
+            <span class="comment-author">${escapeHtml(comment.userName)}</span>
+            <span class="comment-time">${formatRelativeTime(comment.createdAt, t)}${comment.isEdited ? ` (${t('edited')})` : ''}</span>
+          </div>
+        </div>
+        <div class="comment-body">
+          <div class="comment-content">
+            <p>${escapeHtml(comment.content)}</p>
+          </div>
+          <form class="edit-form" style="display: none;" data-comment-id="${comment.id}">
+            <textarea rows="3">${escapeHtml(comment.content)}</textarea>
+            <div class="edit-actions">
+              <button type="button" class="edit-cancel-btn">${t('cancel')}</button>
+              <button type="submit">${t('save')}</button>
+            </div>
+          </form>
+          <div class="comment-actions">
+            ${currentUser ? `<button type="button" class="comment-reply-btn" data-comment-id="${comment.id}">${t('reply')}</button>` : ''}
+            ${isOwner ? `
+              <button type="button" class="comment-edit-btn" data-comment-id="${comment.id}">${t('edit')}</button>
+              <button type="button" class="comment-delete-btn" data-comment-id="${comment.id}" data-parent-id="${comment.parentId || ''}">${t('delete')}</button>
+            ` : ''}
+          </div>
+          ${currentUser ? `
+            <form class="reply-form" style="display: none;" data-parent-id="${comment.id}">
+              <textarea placeholder="${t('writeReply')}" rows="2" required></textarea>
+              <div class="reply-actions">
+                <button type="submit">${t('postComment')}</button>
+              </div>
+            </form>
+          ` : ''}
+        </div>
+        ${comment.replies && comment.replies.length > 0 ? `
+          <div class="comment-replies">
+            ${comment.replies.map((reply) => renderComment(reply, depth + 1, t, currentUser, slug)).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  function escapeHtml(text: string): string {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  function formatRelativeTime(date: Date, t: (key: string, params?: Record<string, string | number>) => string): string {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+    const diffMonth = Math.floor(diffDay / 30);
+    const diffYear = Math.floor(diffDay / 365);
+
+    if (diffSec < 60) return t('justNow');
+    if (diffMin < 60) return t('minutesAgo', { n: diffMin });
+    if (diffHour < 24) return t('hoursAgo', { n: diffHour });
+    if (diffDay < 30) return t('daysAgo', { n: diffDay });
+    if (diffMonth < 12) return t('monthsAgo', { n: diffMonth });
+    return t('yearsAgo', { n: diffYear });
+  }
+
+  // Initialize on page load
+  initCommentSection();
+
+  // Re-initialize on Astro navigation
+  document.addEventListener('astro:after-swap', initCommentSection);
+</script>

@@ -1,0 +1,264 @@
+---
+title: 'Enhanced Blog Features Test'
+description: 'A comprehensive test post showcasing all the new blog features including KaTeX math, interactive components, and media embeds.'
+pubDate: 'Jan 25 2025'
+heroImage: '../../assets/blog-placeholder-1.jpg'
+tags: ['test', 'features', 'demo']
+category: 'tutorial'
+author: 'Burak Sahin'
+---
+
+import ConceptCheck from '../../components/blog/ConceptCheck.astro';
+import VideoEmbed from '../../components/blog/VideoEmbed.astro';
+import PhotoGallery from '../../components/blog/PhotoGallery.astro';
+import Callout from '../../components/blog/Callout.astro';
+import Cite from '../../components/blog/Cite.astro';
+import Reference from '../../components/blog/Reference.astro';
+import { Image } from 'astro:assets';
+
+import img1 from '../../assets/blog-placeholder-1.jpg';
+import img2 from '../../assets/blog-placeholder-2.jpg';
+import img3 from '../../assets/blog-placeholder-3.jpg';
+import img4 from '../../assets/blog-placeholder-4.jpg';
+
+This post demonstrates all the enhanced blog features. Use the **text arrangement toggle** in the header to customize your reading experience with different fonts, text sizes, line heights, and content widths.
+
+## Callout Cards
+
+Use callout cards to highlight important information, warnings, tips, and more.
+
+<Callout type="info" title="Information">
+  This is an informational callout. Use it to provide additional context or details that readers might find helpful.
+</Callout>
+
+<Callout type="tip" title="Pro Tip">
+  Use keyboard shortcuts to navigate faster! Press `Ctrl + K` to open the command palette.
+</Callout>
+
+<Callout type="warning">
+  Be careful when modifying configuration files. Always backup your data before making changes.
+</Callout>
+
+<Callout type="danger" title="Critical">
+  Never share your API keys or passwords in public repositories. This can lead to security breaches.
+</Callout>
+
+<Callout type="success" title="Well Done!">
+  You've successfully completed the setup process. Your application is now ready to use.
+</Callout>
+
+<Callout type="note">
+  This feature is available in version 2.0 and above. Check your version before proceeding.
+</Callout>
+
+## Mathematical Equations with KaTeX
+
+One of the most powerful features is full LaTeX math support<Cite id="knuth" num={1} />. You can write inline math like $E = mc^2$ or the quadratic formula $x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$ directly in your text.
+
+For more complex equations, use display mode:
+
+$$
+\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}
+$$
+
+Here's the famous Euler's identity:
+
+$$
+e^{i\pi} + 1 = 0
+$$
+
+And a matrix example:
+
+$$
+\begin{bmatrix}
+a & b \\
+c & d
+\end{bmatrix}
+\begin{bmatrix}
+x \\
+y
+\end{bmatrix}
+=
+\begin{bmatrix}
+ax + by \\
+cx + dy
+\end{bmatrix}
+$$
+
+### Calculus Example
+
+The derivative of a function using the limit definition:
+
+$$
+f'(x) = \lim_{h \to 0} \frac{f(x + h) - f(x)}{h}
+$$
+
+## Interactive Concept Checks
+
+Test your understanding with interactive questions. Click on the answer area to reveal the solution!
+
+<ConceptCheck question="What is the time complexity of binary search?">
+  **O(log n)** - The search space is halved with each iteration, leading to logarithmic time complexity<Cite id="cormen" num={2} />. For an array of 1 million elements, binary search needs at most 20 comparisons.
+</ConceptCheck>
+
+<ConceptCheck question="What does the Big O notation O(n) mean?">
+  **Linear time complexity** - The algorithm's running time grows linearly with the input size. If you double the input, the time roughly doubles as well.
+</ConceptCheck>
+
+<ConceptCheck>
+  <span slot="question">In the equation $ax^2 + bx + c = 0$, what is the discriminant?</span>
+  The discriminant is $\Delta = b^2 - 4ac$. It determines the nature of the roots:
+  - If $\Delta > 0$: Two distinct real roots
+  - If $\Delta = 0$: One repeated real root
+  - If $\Delta < 0$: Two complex conjugate roots
+</ConceptCheck>
+
+## Video Embeds
+
+Easily embed YouTube and Vimeo videos with privacy-enhanced URLs:
+
+### YouTube Video
+
+<VideoEmbed url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" title="Sample YouTube Video" />
+
+### Vimeo Video
+
+<VideoEmbed url="https://vimeo.com/148751763" title="Sample Vimeo Video" />
+
+## Single Image
+
+You can also display a single image with a caption:
+
+<figure>
+  <Image src={img2} alt="A beautiful mountain landscape" width={720} />
+  <figcaption>A beautiful mountain landscape during sunset</figcaption>
+</figure>
+
+## Photo Gallery
+
+Display images in a beautiful grid with lightbox support. Click any image to view it in fullscreen!
+
+### Three Column Gallery
+
+<PhotoGallery
+  columns={3}
+  images={[
+    { src: img1, alt: "Placeholder image 1", caption: "Beautiful landscape view" },
+    { src: img2, alt: "Placeholder image 2", caption: "Mountain scenery" },
+    { src: img3, alt: "Placeholder image 3", caption: "Ocean sunset" },
+  ]}
+/>
+
+### Two Column Gallery
+
+<PhotoGallery
+  columns={2}
+  images={[
+    { src: img4, alt: "Placeholder image 4", caption: "Forest path" },
+    { src: img1, alt: "Placeholder image 1", caption: "Another view" },
+  ]}
+/>
+
+## Typography and Text Formatting
+
+The enhanced blog layout includes improved typography with proper heading hierarchy and spacing.
+
+### Code Blocks
+
+```javascript
+function binarySearch(arr, target) {
+  let left = 0;
+  let right = arr.length - 1;
+
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
+
+    if (arr[mid] === target) {
+      return mid;
+    } else if (arr[mid] < target) {
+      left = mid + 1;
+    } else {
+      right = mid - 1;
+    }
+  }
+
+  return -1;
+}
+```
+
+### Blockquotes
+
+> The only way to do great work is to love what you do. If you haven't found it yet, keep looking. Don't settle.
+>
+> — Steve Jobs
+
+### Lists
+
+Unordered list:
+- First item with some additional text to show wrapping
+- Second item
+- Third item with **bold** and *italic* text
+
+Ordered list:
+1. First step in the process
+2. Second step with more details
+3. Third step to complete the task
+
+## Table of Contents
+
+Notice the floating table of contents on the left side (on desktop). It highlights the current section as you scroll and allows quick navigation to any heading.
+
+On mobile devices, you'll find a collapsible TOC dropdown at the top of the article.
+
+## Reading Preferences
+
+Click the text icon (Aa) in the header to customize:
+
+- **Font**: Switch between Sans-serif and Serif fonts
+- **Line Height**: Choose Compact, Normal, or Relaxed spacing
+- **Width**: Select Narrow, Normal, or Wide content width
+
+Your preferences are saved and will persist across sessions!
+
+## Conclusion
+
+This enhanced blog layout provides a modern, feature-rich reading experience with:
+
+- Full KaTeX/LaTeX math support
+- Interactive concept check components
+- Video embeds for YouTube and Vimeo
+- Photo galleries with lightbox
+- Floating table of contents
+- Customizable text arrangement
+- Improved typography and spacing
+
+All features work seamlessly across light, dark, and paper themes.
+
+## Citations and References
+
+You can add citations to your text using the `Cite` component<Cite id="markdown" num={3} />. Each citation links to the corresponding reference at the bottom of the page.
+
+<Reference references={[
+  {
+    id: "knuth",
+    authors: "Knuth, Donald E.",
+    title: "The TeXbook",
+    source: "Addison-Wesley",
+    year: 1984
+  },
+  {
+    id: "cormen",
+    authors: "Cormen, T. H., Leiserson, C. E., Rivest, R. L., & Stein, C.",
+    title: "Introduction to Algorithms",
+    source: "MIT Press",
+    year: 2009,
+    url: "https://mitpress.mit.edu/books/introduction-algorithms"
+  },
+  {
+    id: "markdown",
+    authors: "Gruber, John",
+    title: "Markdown: Syntax",
+    year: 2004,
+    url: "https://daringfireball.net/projects/markdown/syntax"
+  }
+]} />

@@ -1,0 +1,50 @@
+---
+import { useTranslations, type Lang } from '../../i18n/translations';
+import { ArrowLeft } from '@lucide/astro';
+import ThemeToggle from '../ThemeToggle.astro';
+import TextArrangementToggle from './TextArrangementToggle.astro';
+
+interface Props {
+  lang?: Lang;
+}
+
+const { lang = 'en' } = Astro.props;
+const t = useTranslations(lang);
+
+const basePath = lang === 'en' ? '' : `/${lang}`;
+const blogPath = `${basePath}/blog`;
+---
+
+<header class="blog-header" id="blogHeader">
+  <div class="blog-header-container">
+    <a href={blogPath} class="back-link">
+      <ArrowLeft size={18} />
+      <span>{t('nav.blog')}</span>
+    </a>
+
+    <div class="blog-header-controls">
+      <TextArrangementToggle lang={lang} />
+      <ThemeToggle lang={lang} />
+    </div>
+  </div>
+</header>
+
+<script>
+  function initProgressBar() {
+    const progressBar = document.getElementById('progressBar');
+    if (!progressBar) return;
+
+    const updateProgress = () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const scrollPercent = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+      progressBar.style.width = `${Math.min(100, Math.max(0, scrollPercent))}%`;
+    };
+
+    window.addEventListener('scroll', updateProgress, { passive: true });
+    updateProgress();
+  }
+
+  initProgressBar();
+  document.addEventListener('astro:after-swap', initProgressBar);
+</script>

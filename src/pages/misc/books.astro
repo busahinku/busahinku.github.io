@@ -1,0 +1,164 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { useTranslations, type Lang } from '../../i18n/translations';
+import { Book, ArrowLeft } from '@lucide/astro';
+
+const lang: Lang = 'en';
+const t = useTranslations(lang);
+
+const books = [
+  { title: 'Clean Code', author: 'Robert C. Martin', category: 'Programming' },
+  { title: 'The Pragmatic Programmer', author: 'David Thomas & Andrew Hunt', category: 'Programming' },
+  { title: 'Designing Data-Intensive Applications', author: 'Martin Kleppmann', category: 'Systems' },
+  { title: 'Atomic Habits', author: 'James Clear', category: 'Self-Help' },
+  { title: 'Deep Work', author: 'Cal Newport', category: 'Productivity' },
+  { title: 'The Design of Everyday Things', author: 'Don Norman', category: 'Design' },
+  { title: 'Thinking, Fast and Slow', author: 'Daniel Kahneman', category: 'Psychology' },
+  { title: 'Structure and Interpretation of Computer Programs', author: 'Harold Abelson', category: 'Programming' },
+  { title: 'Refactoring', author: 'Martin Fowler', category: 'Programming' },
+  { title: 'Domain-Driven Design', author: 'Eric Evans', category: 'Architecture' },
+];
+---
+
+<Layout title="Books" description="Books that shaped my thinking" lang={lang}>
+  <div class="books-page">
+    <a href="/misc" class="back-link">
+      <ArrowLeft size={16} />
+      Back to Misc
+    </a>
+
+    <header class="page-header">
+      <div class="header-icon">
+        <Book size={24} />
+      </div>
+      <h1>Books</h1>
+      <p class="intro">Books that shaped my thinking and skills.</p>
+    </header>
+
+    <div class="list-items">
+      {books.map((book) => (
+        <div class="list-item">
+          <div class="list-item-info">
+            <Book size={14} />
+            <div class="book-info">
+              <span class="list-item-title">{book.title}</span>
+              <span class="book-author">{book.author}</span>
+            </div>
+          </div>
+          <span class="list-item-category">{book.category}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .books-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem 0 4rem;
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    margin-bottom: 2rem;
+    transition: color 0.2s;
+  }
+
+  .back-link:hover {
+    color: var(--accent);
+  }
+
+  .page-header {
+    margin-bottom: 2rem;
+  }
+
+  .header-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    color: var(--accent);
+  }
+
+  .page-header h1 {
+    margin: 0 0 0.5rem;
+  }
+
+  .intro {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin: 0;
+  }
+
+  .list-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+  }
+
+  .list-item-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .list-item-info :global(svg) {
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .book-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .list-item-title {
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  .book-author {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .list-item-category {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    padding: 0.25rem 0.5rem;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 640px) {
+    .list-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+  }
+</style>

@@ -1,0 +1,260 @@
+---
+import { useTranslations, type Lang } from '../../i18n/translations';
+import { Type } from '@lucide/astro';
+
+interface Props {
+  lang?: Lang;
+}
+
+const { lang = 'en' } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<div class="text-toggle" id="textToggle">
+  <button
+    class="text-toggle-trigger"
+    id="textToggleTrigger"
+    aria-expanded="false"
+    aria-haspopup="true"
+    aria-label={t('blog.textSettings')}
+    title={t('blog.textSettings')}
+  >
+    <Type size={16} />
+  </button>
+  <div class="text-toggle-panel" id="textTogglePanel">
+    <!-- Font Family -->
+    <div class="text-option-group">
+      <span class="text-option-label">{t('blog.font')}</span>
+      <div class="text-option-buttons">
+        <button
+          type="button"
+          class="text-option-btn active"
+          data-setting="font"
+          data-value="sans"
+        >
+          Sans
+        </button>
+        <button
+          type="button"
+          class="text-option-btn"
+          data-setting="font"
+          data-value="serif"
+        >
+          Serif
+        </button>
+      </div>
+    </div>
+
+    <!-- Text Size -->
+    <div class="text-option-group">
+      <span class="text-option-label">{t('blog.textSize')}</span>
+      <div class="text-option-buttons">
+        <button
+          type="button"
+          class="text-option-btn"
+          data-setting="size"
+          data-value="small"
+        >
+          {t('blog.small')}
+        </button>
+        <button
+          type="button"
+          class="text-option-btn active"
+          data-setting="size"
+          data-value="normal"
+        >
+          {t('blog.normal')}
+        </button>
+        <button
+          type="button"
+          class="text-option-btn"
+          data-setting="size"
+          data-value="large"
+        >
+          {t('blog.large')}
+        </button>
+      </div>
+    </div>
+
+    <!-- Line Height -->
+    <div class="text-option-group">
+      <span class="text-option-label">{t('blog.lineHeight')}</span>
+      <div class="text-option-buttons">
+        <button
+          type="button"
+          class="text-option-btn active"
+          data-setting="line-height"
+          data-value="compact"
+        >
+          {t('blog.compact')}
+        </button>
+        <button
+          type="button"
+          class="text-option-btn"
+          data-setting="line-height"
+          data-value="normal"
+        >
+          {t('blog.normal')}
+        </button>
+        <button
+          type="button"
+          class="text-option-btn"
+          data-setting="line-height"
+          data-value="relaxed"
+        >
+          {t('blog.relaxed')}
+        </button>
+      </div>
+    </div>
+
+    <!-- Content Width (hidden on mobile) -->
+    <div class="text-option-group text-option-width">
+      <span class="text-option-label">{t('blog.width')}</span>
+      <div class="text-option-buttons">
+        <button
+          type="button"
+          class="text-option-btn"
+          data-setting="width"
+          data-value="narrow"
+        >
+          {t('blog.narrow')}
+        </button>
+        <button
+          type="button"
+          class="text-option-btn active"
+          data-setting="width"
+          data-value="normal"
+        >
+          {t('blog.normalWidth')}
+        </button>
+        <button
+          type="button"
+          class="text-option-btn"
+          data-setting="width"
+          data-value="wide"
+        >
+          {t('blog.wide')}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function initTextToggle() {
+    const toggle = document.getElementById('textToggle');
+    const trigger = document.getElementById('textToggleTrigger');
+    const panel = document.getElementById('textTogglePanel');
+
+    if (!toggle || !trigger || !panel) return;
+
+    const closePanel = () => {
+      toggle.classList.remove('open');
+      trigger.setAttribute('aria-expanded', 'false');
+    };
+
+    const openPanel = () => {
+      toggle.classList.add('open');
+      trigger.setAttribute('aria-expanded', 'true');
+    };
+
+    // Load saved preferences
+    const loadPreferences = () => {
+      const font = localStorage.getItem('blog-font') || 'sans';
+      const size = localStorage.getItem('blog-size') || 'normal';
+      const lineHeight = localStorage.getItem('blog-line-height') || 'compact';
+      const width = localStorage.getItem('blog-width') || 'normal';
+
+      applyPreference('font', font);
+      applyPreference('size', size);
+      applyPreference('line-height', lineHeight);
+      applyPreference('width', width);
+    };
+
+    // Apply preference to DOM
+    const applyPreference = (setting: string, value: string) => {
+      const html = document.documentElement;
+
+      // Remove existing attribute if value is default
+      if (setting === 'font') {
+        if (value === 'sans') {
+          html.removeAttribute('data-blog-font');
+        } else {
+          html.setAttribute('data-blog-font', value);
+        }
+      } else if (setting === 'size') {
+        if (value === 'normal') {
+          html.removeAttribute('data-blog-size');
+        } else {
+          html.setAttribute('data-blog-size', value);
+        }
+      } else if (setting === 'line-height') {
+        if (value === 'compact') {
+          html.removeAttribute('data-blog-line-height');
+        } else {
+          html.setAttribute('data-blog-line-height', value);
+        }
+      } else if (setting === 'width') {
+        if (value === 'normal') {
+          html.removeAttribute('data-blog-width');
+        } else {
+          html.setAttribute('data-blog-width', value);
+        }
+      }
+
+      // Update button states
+      const buttons = panel?.querySelectorAll(`[data-setting="${setting}"]`);
+      buttons?.forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-value') === value);
+      });
+    };
+
+    // Toggle dropdown
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = toggle.classList.contains('open');
+
+      // Close other dropdowns
+      document.querySelectorAll('.text-toggle.open').forEach(t => t.classList.remove('open'));
+      document.querySelectorAll('.theme-toggle.open').forEach(t => t.classList.remove('open'));
+
+      if (!isOpen) {
+        openPanel();
+      } else {
+        closePanel();
+      }
+    });
+
+    // Handle option buttons
+    panel.querySelectorAll('.text-option-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const setting = btn.getAttribute('data-setting');
+        const value = btn.getAttribute('data-value');
+
+        if (setting && value) {
+          localStorage.setItem(`blog-${setting}`, value);
+          applyPreference(setting, value);
+        }
+      });
+    });
+
+    // Close on outside click
+    document.addEventListener('click', () => {
+      closePanel();
+    });
+
+    // Prevent panel click from closing
+    panel.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+
+    // Load preferences on init
+    loadPreferences();
+  }
+
+  // Run on initial load
+  initTextToggle();
+
+  // Re-run on navigation
+  document.addEventListener('astro:after-swap', initTextToggle);
+</script>

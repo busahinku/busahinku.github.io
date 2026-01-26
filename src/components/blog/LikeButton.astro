@@ -1,0 +1,90 @@
+---
+interface Props {
+  slug: string;
+}
+
+const { slug } = Astro.props;
+---
+
+<button class="like-button" data-slug={slug} aria-label="Like this post">
+  <svg class="like-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+  </svg>
+  <span class="like-count">--</span>
+</button>
+
+<script>
+  function initLikeButtons() {
+    const buttons = document.querySelectorAll('.like-button');
+
+    buttons.forEach(async (button) => {
+      // Prevent multiple initializations
+      if (button.hasAttribute('data-initialized')) return;
+      button.setAttribute('data-initialized', 'true');
+
+      const slug = button.getAttribute('data-slug');
+      if (!slug) return;
+
+      const countSpan = button.querySelector('.like-count');
+      const icon = button.querySelector('.like-icon');
+      if (!countSpan || !icon) return;
+
+      try {
+        const { subscribeToPostStats, hasUserLiked, toggleLike } = await import('../../lib/firebase/firestore');
+
+        // Check if already liked
+        try {
+          const isLiked = await hasUserLiked(slug);
+          if (isLiked) {
+            button.classList.add('liked');
+          }
+        } catch (err) {
+          console.error('Error checking like status:', err);
+        }
+
+        // Subscribe to real-time updates
+        subscribeToPostStats(slug, (stats) => {
+          countSpan.textContent = formatNumber(stats.likes);
+        }, (error) => {
+          console.error('Error subscribing to likes:', error);
+          countSpan.textContent = '0';
+        });
+
+        // Handle click
+        button.addEventListener('click', async () => {
+          button.classList.add('animating');
+
+          try {
+            const nowLiked = await toggleLike(slug);
+            button.classList.toggle('liked', nowLiked);
+          } catch (error) {
+            console.error('Error toggling like:', error);
+          }
+
+          setTimeout(() => {
+            button.classList.remove('animating');
+          }, 300);
+        });
+      } catch (error) {
+        console.error('Error initializing like button:', error);
+        countSpan.textContent = '--';
+      }
+    });
+  }
+
+  function formatNumber(num: number): string {
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1) + 'M';
+    }
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toString();
+  }
+
+  // Initialize on page load
+  initLikeButtons();
+
+  // Re-initialize on Astro navigation
+  document.addEventListener('astro:after-swap', initLikeButtons);
+</script>

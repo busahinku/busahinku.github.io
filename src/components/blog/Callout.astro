@@ -1,0 +1,190 @@
+---
+import { Info, AlertTriangle, AlertCircle, Lightbulb, CheckCircle, XCircle } from '@lucide/astro';
+
+interface Props {
+  type?: 'info' | 'warning' | 'danger' | 'tip' | 'success' | 'note';
+  title?: string;
+}
+
+const { type = 'info', title } = Astro.props;
+
+const config = {
+  info: {
+    icon: Info,
+    defaultTitle: 'Info',
+    className: 'callout-info',
+  },
+  note: {
+    icon: Info,
+    defaultTitle: 'Note',
+    className: 'callout-note',
+  },
+  warning: {
+    icon: AlertTriangle,
+    defaultTitle: 'Warning',
+    className: 'callout-warning',
+  },
+  danger: {
+    icon: AlertCircle,
+    defaultTitle: 'Danger',
+    className: 'callout-danger',
+  },
+  tip: {
+    icon: Lightbulb,
+    defaultTitle: 'Tip',
+    className: 'callout-tip',
+  },
+  success: {
+    icon: CheckCircle,
+    defaultTitle: 'Success',
+    className: 'callout-success',
+  },
+};
+
+const { icon: Icon, defaultTitle, className } = config[type];
+const displayTitle = title || defaultTitle;
+---
+
+<div class={`callout ${className}`}>
+  <div class="callout-header">
+    <Icon size={18} class="callout-icon" />
+    <span class="callout-title">{displayTitle}</span>
+  </div>
+  <div class="callout-content">
+    <slot />
+  </div>
+</div>
+
+<style>
+  .callout {
+    margin: 1.5rem 0;
+    padding: 1rem 1.25rem;
+    border-radius: 0.75rem;
+  }
+
+  .callout-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .callout-icon {
+    flex-shrink: 0;
+  }
+
+  .callout-title {
+    font-weight: 600;
+    font-size: 0.9375rem;
+  }
+
+  .callout-content {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+
+  .callout-content :global(p:last-child) {
+    margin-bottom: 0;
+  }
+
+  .callout-content :global(p:first-child) {
+    margin-top: 0;
+  }
+
+  /* Info - Blue */
+  .callout-info {
+    background-color: rgba(59, 130, 246, 0.1);
+  }
+  .callout-info .callout-icon,
+  .callout-info .callout-title {
+    color: #3b82f6;
+  }
+  :global([data-theme="dark"]) .callout-info {
+    background-color: rgba(59, 130, 246, 0.15);
+  }
+  :global([data-theme="paper"]) .callout-info {
+    background-color: rgba(59, 130, 246, 0.08);
+  }
+
+  /* Note - Gray */
+  .callout-note {
+    background-color: rgba(107, 114, 128, 0.1);
+  }
+  .callout-note .callout-icon,
+  .callout-note .callout-title {
+    color: #6b7280;
+  }
+  :global([data-theme="dark"]) .callout-note {
+    background-color: rgba(107, 114, 128, 0.15);
+  }
+  :global([data-theme="paper"]) .callout-note {
+    background-color: rgba(107, 114, 128, 0.08);
+  }
+
+  /* Warning - Amber */
+  .callout-warning {
+    background-color: rgba(245, 158, 11, 0.1);
+  }
+  .callout-warning .callout-icon,
+  .callout-warning .callout-title {
+    color: #d97706;
+  }
+  :global([data-theme="dark"]) .callout-warning {
+    background-color: rgba(245, 158, 11, 0.15);
+  }
+  :global([data-theme="paper"]) .callout-warning {
+    background-color: rgba(245, 158, 11, 0.08);
+  }
+
+  /* Danger - Red */
+  .callout-danger {
+    background-color: rgba(239, 68, 68, 0.1);
+  }
+  .callout-danger .callout-icon,
+  .callout-danger .callout-title {
+    color: #ef4444;
+  }
+  :global([data-theme="dark"]) .callout-danger {
+    background-color: rgba(239, 68, 68, 0.15);
+  }
+  :global([data-theme="paper"]) .callout-danger {
+    background-color: rgba(239, 68, 68, 0.08);
+  }
+
+  /* Tip - Purple */
+  .callout-tip {
+    background-color: rgba(139, 92, 246, 0.1);
+  }
+  .callout-tip .callout-icon,
+  .callout-tip .callout-title {
+    color: #8b5cf6;
+  }
+  :global([data-theme="dark"]) .callout-tip {
+    background-color: rgba(139, 92, 246, 0.15);
+  }
+  :global([data-theme="paper"]) .callout-tip {
+    background-color: rgba(139, 92, 246, 0.08);
+  }
+
+  /* Success - Green */
+  .callout-success {
+    background-color: rgba(34, 197, 94, 0.1);
+  }
+  .callout-success .callout-icon,
+  .callout-success .callout-title {
+    color: #16a34a;
+  }
+  :global([data-theme="dark"]) .callout-success {
+    background-color: rgba(34, 197, 94, 0.15);
+  }
+  :global([data-theme="paper"]) .callout-success {
+    background-color: rgba(34, 197, 94, 0.08);
+  }
+
+  /* Mobile responsive */
+  @media (max-width: 768px) {
+    .callout {
+      padding: 0.875rem 1rem;
+    }
+  }
+</style>

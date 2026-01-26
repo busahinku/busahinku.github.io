@@ -1,0 +1,30 @@
+---
+interface Props {
+  id: string;
+  num: number;
+}
+
+const { id, num } = Astro.props;
+---
+
+<sup class="citation" id={`cite-${id}`}>
+  <a href={`#ref-${id}`} class="citation-link" title="View reference">[{num}]</a>
+</sup>
+
+<style>
+  .citation {
+    font-size: 0.75em;
+    vertical-align: super;
+    line-height: 0;
+  }
+
+  .citation-link {
+    color: var(--accent);
+    text-decoration: none;
+    padding: 0 0.1em;
+  }
+
+  .citation-link:hover {
+    text-decoration: underline;
+  }
+</style>

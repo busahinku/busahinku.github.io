@@ -1,0 +1,339 @@
+---
+import {
+  Github,
+  Linkedin,
+  Instagram,
+  Twitter,
+  Mail,
+  Music,
+} from "@lucide/astro";
+import { SITE_CONFIG } from "../consts";
+
+interface Props {
+  items?: {
+    name: string;
+    href: string;
+    description: string;
+    accent: string;
+    gridClass: string;
+    icon: string;
+  }[];
+}
+
+const defaultSocialLinks = [
+  {
+    name: "GitHub",
+    href: SITE_CONFIG.social.github,
+    description: "Explore my projects & contributions",
+    accent: "#8b5cf6",
+    gridClass: "social-card--wide social-pos-github",
+    icon: "github",
+  },
+  {
+    name: "Spotify",
+    href: "https://open.spotify.com/user/bzmah384nndroig0y2dh22saw?si=c7dc8de070df45a7",
+    description: "Listening to music is my go-to habit while working.",
+    accent: "#22c55e",
+    gridClass: "social-card--tall social-pos-spotify",
+    icon: "music",
+  },
+  {
+    name: "LinkedIn",
+    href: SITE_CONFIG.social.linkedin,
+    description: "I like to connect with new people",
+    accent: "#3b82f6",
+    gridClass: "social-card--tall-3 social-pos-linkedin",
+    icon: "linkedin",
+  },
+  {
+    name: "Instagram",
+    href: "https://instagram.com/busahinku",
+    description: "My instagram account I do not use much",
+    accent: "#ec4899",
+    gridClass: "social-card--wide social-pos-instagram",
+    icon: "instagram",
+  },
+  {
+    name: "X",
+    href: SITE_CONFIG.social.twitter,
+    description: "Instant actions",
+    accent: "#64748b",
+    gridClass: "social-card--small social-pos-x",
+    icon: "twitter",
+  },
+  {
+    name: "Email me",
+    href: `mailto:${SITE_CONFIG.email}`,
+    description: `You can freely reach me! --> ${SITE_CONFIG.email}`,
+    accent: "#22d3ee",
+    gridClass: "social-card--wide-3 social-pos-email",
+    icon: "mail",
+  },
+];
+
+const { items = defaultSocialLinks } = Astro.props;
+---
+
+<div class="hero-social-grid">
+  {
+    items.map((link) => (
+      <a
+        class={`social-card ${link.gridClass}`}
+        href={link.href}
+        target="_blank"
+        rel="noreferrer"
+        style={`--card-accent: ${link.accent};`}
+      >
+        <div class="social-card__top">
+          <div class="social-card__title">
+            <span class="social-card__app-icon" aria-hidden="true">
+              {link.icon === "github" && <Github size={18} />}
+              {link.icon === "music" && <Music size={18} />}
+              {link.icon === "linkedin" && <Linkedin size={18} />}
+              {link.icon === "instagram" && <Instagram size={18} />}
+              {link.icon === "twitter" && <Twitter size={18} />}
+              {link.icon === "mail" && <Mail size={18} />}
+            </span>
+            <span class="social-card__badge">{link.name}</span>
+          </div>
+          <span class="social-card__arrow" aria-hidden="true">
+            ↗
+          </span>
+        </div>
+        <p class="social-card__desc">{link.description}</p>
+      </a>
+    ))
+  }
+</div>
+
+<style>
+  .hero-social-grid {
+    margin: 2.5rem auto 0;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-auto-rows: 120px;
+    gap: 0.75rem;
+    max-width: 980px;
+  }
+
+  .social-card {
+    position: relative;
+    padding: 1rem 1.1rem 1.2rem;
+    border-radius: 1rem;
+    border: 1px solid var(--border);
+    background: linear-gradient(
+      135deg,
+      var(--bg-secondary) 0%,
+      color-mix(in srgb, var(--card-accent) 5%, var(--bg-secondary)) 100%
+    );
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition:
+      transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+      box-shadow 0.4s ease,
+      border-color 0.4s ease,
+      background 0.4s ease;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 100%;
+    text-align: left;
+    text-decoration: none;
+  }
+
+  [data-theme="dark"] .social-card {
+    background: linear-gradient(
+      135deg,
+      var(--bg-secondary) 0%,
+      color-mix(in srgb, var(--card-accent) 8%, var(--bg-secondary)) 100%
+    );
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .social-card--wide {
+    grid-column: span 2;
+  }
+
+  .social-card--tall {
+    grid-column: span 2;
+    grid-row: span 2;
+  }
+
+  .social-card--tall-3 {
+    grid-column: span 2;
+    grid-row: span 3;
+  }
+
+  .social-card--small {
+    grid-column: span 1;
+  }
+
+  .social-card--wide-3 {
+    grid-column: span 3;
+  }
+
+  .social-pos-github {
+    grid-column: 1 / span 2;
+    grid-row: 1 / span 1;
+  }
+
+  .social-pos-spotify {
+    grid-column: 3 / span 2;
+    grid-row: 1 / span 2;
+  }
+
+  .social-pos-linkedin {
+    grid-column: 5 / span 2;
+    grid-row: 1 / span 3;
+  }
+
+  .social-pos-instagram {
+    grid-column: 1 / span 2;
+    grid-row: 2 / span 1;
+  }
+
+  .social-pos-x {
+    grid-column: 1 / span 1;
+    grid-row: 3 / span 1;
+  }
+
+  .social-pos-email {
+    grid-column: 2 / span 3;
+    grid-row: 3 / span 1;
+  }
+
+  .social-card:hover {
+    transform: scale(1.03);
+    border-color: color-mix(in srgb, var(--card-accent) 10%, transparent);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    background: linear-gradient(
+      135deg,
+      var(--bg-secondary) 0%,
+      color-mix(in srgb, var(--card-accent) 10%, var(--bg-secondary)) 100%
+    );
+  }
+
+  [data-theme="dark"] .social-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(
+      135deg,
+      var(--bg-secondary) 0%,
+      color-mix(in srgb, var(--card-accent) 15%, var(--bg-secondary)) 100%
+    );
+  }
+
+  .social-card__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .social-card__title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .social-card__badge {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .social-card__app-icon {
+    font-size: 0.875rem;
+    color: color-mix(in srgb, var(--card-accent) 80%, var(--text-muted));
+  }
+
+  .social-card__arrow {
+    font-size: 0.875rem;
+    color: color-mix(in srgb, var(--card-accent) 70%, var(--text-muted));
+    display: none;
+  }
+
+  .social-card__desc {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    margin: 0;
+  }
+
+  @media (max-width: 900px) {
+    .hero-social-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-auto-rows: 110px;
+      gap: 0.5rem;
+    }
+
+    .social-card--wide,
+    .social-card--tall,
+    .social-card--tall-3,
+    .social-card--small {
+      grid-column: auto;
+      grid-row: auto;
+    }
+
+    .social-card--wide-3 {
+      grid-column: auto;
+      grid-row: auto;
+    }
+
+    .social-pos-github,
+    .social-pos-spotify,
+    .social-pos-linkedin,
+    .social-pos-instagram,
+    .social-pos-x,
+    .social-pos-email {
+      grid-column: auto;
+      grid-row: auto;
+    }
+
+    .social-pos-github {
+      grid-column: 1 / span 2;
+      grid-row: 1;
+    }
+
+    .social-pos-spotify {
+      grid-column: 3 / span 1;
+      grid-row: 1 / span 2;
+    }
+
+    .social-pos-instagram {
+      grid-column: 1 / span 2;
+      grid-row: 2;
+    }
+
+    .social-pos-x {
+      grid-column: 1 / span 1;
+      grid-row: 3;
+    }
+
+    .social-pos-email {
+      grid-column: 2 / span 2;
+      grid-row: 3;
+    }
+
+    .social-pos-linkedin {
+      grid-column: 1 / span 3;
+      grid-row: 4;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .hero-social-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-auto-rows: auto;
+      gap: 0.5rem;
+    }
+
+    .social-card--wide,
+    .social-card--tall,
+    .social-card--tall-3,
+    .social-card--small,
+    .social-card--wide-3 {
+      grid-column: span 2;
+      grid-row: span 1;
+    }
+  }
+</style>
