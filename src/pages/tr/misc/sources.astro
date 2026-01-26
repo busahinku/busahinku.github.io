@@ -1,0 +1,157 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { useTranslations, type Lang } from '../../../i18n/translations';
+import { Newspaper, Link, ArrowLeft } from '@lucide/astro';
+
+const lang: Lang = 'tr';
+const t = useTranslations(lang);
+
+const sources = [
+  { title: 'Hacker News', url: 'https://news.ycombinator.com/', category: 'Haberler' },
+  { title: 'Dev.to', url: 'https://dev.to/', category: 'Topluluk' },
+  { title: 'CSS-Tricks', url: 'https://css-tricks.com/', category: 'CSS' },
+  { title: 'Smashing Magazine', url: 'https://www.smashingmagazine.com/', category: 'Web Dev' },
+  { title: 'A List Apart', url: 'https://alistapart.com/', category: 'Web Dev' },
+  { title: 'The Verge', url: 'https://www.theverge.com/', category: 'Teknoloji' },
+  { title: 'Ars Technica', url: 'https://arstechnica.com/', category: 'Teknoloji' },
+  { title: 'TechCrunch', url: 'https://techcrunch.com/', category: 'Girisimler' },
+  { title: 'Product Hunt', url: 'https://www.producthunt.com/', category: 'Urunler' },
+  { title: 'Lobsters', url: 'https://lobste.rs/', category: 'Haberler' },
+  { title: 'Morning Brew', url: 'https://www.morningbrew.com/', category: 'Bulten' },
+  { title: 'TLDR Newsletter', url: 'https://tldr.tech/', category: 'Bulten' },
+];
+---
+
+<Layout title="Kaynaklar" description="Gunluk teknoloji haberleri aldigim yerler" lang={lang}>
+  <div class="sources-page">
+    <a href="/tr/misc" class="back-link">
+      <ArrowLeft size={16} />
+      Misc'e don
+    </a>
+
+    <header class="page-header">
+      <div class="header-icon">
+        <Newspaper size={24} />
+      </div>
+      <h1>Kaynaklar</h1>
+      <p class="intro">Gunluk teknoloji haberleri ve ilham aldigim yerler.</p>
+    </header>
+
+    <div class="list-items">
+      {sources.map((source) => (
+        <a href={source.url} target="_blank" rel="noopener noreferrer" class="list-item">
+          <div class="list-item-info">
+            <Link size={14} />
+            <span class="list-item-title">{source.title}</span>
+          </div>
+          <span class="list-item-category">{source.category}</span>
+        </a>
+      ))}
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .sources-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem 0 4rem;
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    margin-bottom: 2rem;
+    transition: color 0.2s;
+  }
+
+  .back-link:hover {
+    color: var(--accent);
+  }
+
+  .page-header {
+    margin-bottom: 2rem;
+  }
+
+  .header-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    color: var(--accent);
+  }
+
+  .page-header h1 {
+    margin: 0 0 0.5rem;
+  }
+
+  .intro {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin: 0;
+  }
+
+  .list-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.2s;
+  }
+
+  .list-item:hover {
+    border-color: var(--accent);
+    background: var(--bg-tertiary);
+  }
+
+  .list-item-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .list-item-info :global(svg) {
+    color: var(--text-muted);
+  }
+
+  .list-item-title {
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  .list-item-category {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    padding: 0.25rem 0.5rem;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+  }
+
+  @media (max-width: 640px) {
+    .list-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+  }
+</style>

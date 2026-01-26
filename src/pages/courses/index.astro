@@ -1,0 +1,679 @@
+---
+import { Image } from "astro:assets";
+import { getCollection } from "astro:content";
+import Layout from "../../layouts/Layout.astro";
+import FormattedDate from "../../components/FormattedDate.astro";
+import { useTranslations, type Lang } from "../../i18n/translations";
+import { COURSE_CATEGORIES, type CourseCategory } from "../../content.config";
+import { calculateReadingTime } from "../../utils/readingTime";
+
+const lang: Lang = "en";
+const t = useTranslations(lang);
+
+const allCourses = await getCollection("courses", ({ data }) => !data.draft);
+const courses = allCourses.sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+
+const allTags = [
+  ...new Set(courses.flatMap((course) => course.data.tags)),
+].sort();
+const allYears = [
+  ...new Set(courses.map((course) => course.data.pubDate.getFullYear())),
+].sort((a, b) => b - a);
+
+const categoryColors: Record<CourseCategory, string> = {
+  programming: "#3b82f6",
+  web: "#10b981",
+  data: "#8b5cf6",
+  design: "#f59e0b",
+  devops: "#ef4444",
+  other: "#6b7280",
+};
+
+const POSTS_PER_PAGE = 9;
+---
+
+<Layout
+  title={t("courses.title")}
+  description={t("courses.description")}
+  lang={lang}
+  wide={true}
+>
+  <div class="courses-page">
+    <header class="page-header">
+      <h1>{t("courses.title")}</h1>
+    </header>
+
+    <div class="filter-bar">
+      <input
+        type="text"
+        id="search-input"
+        class="search-input"
+        placeholder={t("courses.search")}
+      />
+      <select id="category-filter"
+        ><option value="">{t("courses.allCategories")}</option>{
+          COURSE_CATEGORIES.map((cat) => (
+            <option value={cat}>{t(`courses.category.${cat}` as any)}</option>
+          ))
+        }</select
+      >
+      <select id="year-filter"
+        ><option value="">{t("courses.allYears")}</option>{
+          allYears.map((year) => <option value={year}>{year}</option>)
+        }</select
+      >
+      <select id="sort-filter"
+        ><option value="newest">{t("blog.sortNewest")}</option><option
+          value="oldest">{t("blog.sortOldest")}</option
+        ><option value="az">{t("blog.sortAZ")}</option></select
+      >
+      {
+        allTags.length > 0 && (
+          <button type="button" id="tags-toggle">
+            {t("blog.tags")}
+          </button>
+        )
+      }
+      <span id="results-count"></span>
+      <button id="clear-filters" style="display:none"
+        >{t("blog.clearFilters")}</button
+      >
+    </div>
+
+    {
+      allTags.length > 0 && (
+        <div class="tags-panel" id="tags-panel">
+          {allTags.map((tag) => (
+            <button class="tag-chip" data-tag={tag}>
+              {tag}
+            </button>
+          ))}
+        </div>
+      )
+    }
+
+    <section class="posts-grid" id="posts-grid">
+      {
+        courses.map((course) => {
+          const readingTime = calculateReadingTime(course.body || "");
+          return (
+            <article
+              class="post-card"
+              data-title={course.data.title.toLowerCase()}
+              data-description={course.data.description.toLowerCase()}
+              data-category={course.data.category}
+              data-year={course.data.pubDate.getFullYear()}
+              data-tags={course.data.tags.join(",")}
+              data-date={course.data.pubDate.valueOf()}
+            >
+              <a href={`/courses/${course.id}/`}>
+                {course.data.heroImage && (
+                  <div class="card-image">
+                    <Image
+                      width={400}
+                      height={220}
+                      src={course.data.heroImage}
+                      alt=""
+                    />
+                  </div>
+                )}
+                <div class="card-body">
+                  <div class="card-top">
+                    <span
+                      class="card-category"
+                      style={`--cat-color: ${categoryColors[course.data.category]}`}
+                    >
+                      {t(`courses.category.${course.data.category}` as any)}
+                    </span>
+                    <span class="card-date">
+                      <FormattedDate date={course.data.pubDate} />
+                    </span>
+                  </div>
+                  <h2 class="card-title">{course.data.title}</h2>
+                  <p class="card-desc">{course.data.description}</p>
+                  <div class="card-footer">
+                    <span class="card-reading">
+                      {readingTime} {t("blog.minRead")}
+                    </span>
+                    {course.data.tags.length > 0 && (
+                      <div class="card-tags">
+                        {course.data.tags.slice(0, 2).map((tag) => (
+                          <span class="card-tag">#{tag}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </a>
+            </article>
+          );
+        })
+      }
+    </section>
+
+    <div id="no-results" class="no-results" style="display: none;">
+      <p>{t("courses.noResults")}</p>
+    </div>
+
+    <nav class="pagination" id="pagination">
+      <button class="page-btn prev" id="prev-page" disabled>Prev</button>
+      <span class="page-info" id="page-info"></span>
+      <button class="page-btn next" id="next-page">Next</button>
+    </nav>
+  </div>
+</Layout>
+
+<script define:vars={{ POSTS_PER_PAGE, showingText: "Showing {count} courses" }}
+>
+  let searchQuery = "";
+  let selectedCategory = "";
+  let selectedYear = "";
+  let selectedTags = new Set();
+  let sortOrder = "newest";
+  let currentPage = 1;
+  let totalPages = 1;
+
+  const searchInput = document.getElementById("search-input");
+  const categoryFilter = document.getElementById("category-filter");
+  const yearFilter = document.getElementById("year-filter");
+  const sortFilter = document.getElementById("sort-filter");
+  const tagChips = document.querySelectorAll(".tag-chip");
+  const clearBtn = document.getElementById("clear-filters");
+  const resultsCount = document.getElementById("results-count");
+  const postsGrid = document.getElementById("posts-grid");
+  const noResults = document.getElementById("no-results");
+  const tagsToggle = document.getElementById("tags-toggle");
+  const tagsPanel = document.getElementById("tags-panel");
+  const pagination = document.getElementById("pagination");
+  const pageInfo = document.getElementById("page-info");
+  const prevBtn = document.getElementById("prev-page");
+  const nextBtn = document.getElementById("next-page");
+
+  tagsToggle?.addEventListener("click", () => {
+    tagsPanel?.classList.toggle("open");
+    tagsToggle.classList.toggle("active");
+  });
+
+  function debounce(fn, ms) {
+    let t;
+    return (...a) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...a), ms);
+    };
+  }
+
+  function updateURL() {
+    const p = new URLSearchParams();
+    if (searchQuery) p.set("q", searchQuery);
+    if (selectedCategory) p.set("cat", selectedCategory);
+    if (selectedYear) p.set("year", selectedYear);
+    if (selectedTags.size) p.set("tags", [...selectedTags].join(","));
+    if (sortOrder !== "newest") p.set("sort", sortOrder);
+    if (currentPage > 1) p.set("p", currentPage);
+    history.replaceState({}, "", p.toString() ? `?${p}` : location.pathname);
+  }
+
+  function readURL() {
+    const p = new URLSearchParams(location.search);
+    if (p.has("q")) {
+      searchQuery = p.get("q");
+      searchInput.value = searchQuery;
+    }
+    if (p.has("cat")) {
+      selectedCategory = p.get("cat");
+      categoryFilter.value = selectedCategory;
+    }
+    if (p.has("year")) {
+      selectedYear = p.get("year");
+      yearFilter.value = selectedYear;
+    }
+    if (p.has("tags")) {
+      p.get("tags")
+        .split(",")
+        .forEach((t) => selectedTags.add(t));
+      tagChips.forEach((c) => {
+        if (selectedTags.has(c.dataset.tag)) c.classList.add("active");
+      });
+      if (selectedTags.size) {
+        tagsPanel?.classList.add("open");
+        tagsToggle?.classList.add("active");
+      }
+    }
+    if (p.has("sort")) {
+      sortOrder = p.get("sort");
+      sortFilter.value = sortOrder;
+    }
+    if (p.has("p")) currentPage = parseInt(p.get("p")) || 1;
+  }
+
+  function render() {
+    const posts = Array.from(postsGrid.querySelectorAll(".post-card"));
+    const hasFilters =
+      searchQuery || selectedCategory || selectedYear || selectedTags.size;
+
+    const q = searchQuery.toLowerCase();
+    const filtered = posts.filter((p) => {
+      if (
+        q &&
+        !p.dataset.title.includes(q) &&
+        !p.dataset.description.includes(q)
+      )
+        return false;
+      if (selectedCategory && p.dataset.category !== selectedCategory)
+        return false;
+      if (selectedYear && p.dataset.year !== selectedYear) return false;
+      if (selectedTags.size) {
+        const tags = p.dataset.tags.split(",");
+        if (![...selectedTags].some((t) => tags.includes(t))) return false;
+      }
+      return true;
+    });
+
+    filtered.sort((a, b) => {
+      if (sortOrder === "oldest") return a.dataset.date - b.dataset.date;
+      if (sortOrder === "az")
+        return a.dataset.title.localeCompare(b.dataset.title);
+      return b.dataset.date - a.dataset.date;
+    });
+
+    totalPages = Math.ceil(filtered.length / POSTS_PER_PAGE) || 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+    const start = (currentPage - 1) * POSTS_PER_PAGE;
+
+    posts.forEach((p) => (p.style.display = "none"));
+    filtered.slice(start, start + POSTS_PER_PAGE).forEach((p) => {
+      p.style.display = "";
+      postsGrid.appendChild(p);
+    });
+
+    resultsCount.textContent = showingText.replace("{count}", filtered.length);
+    noResults.style.display = filtered.length ? "none" : "block";
+    postsGrid.style.display = filtered.length ? "" : "none";
+    clearBtn.style.display = hasFilters || sortOrder !== "newest" ? "" : "none";
+
+    if (totalPages <= 1) {
+      pagination.style.display = "none";
+    } else {
+      pagination.style.display = "";
+      pageInfo.textContent = `${currentPage} / ${totalPages}`;
+      prevBtn.disabled = currentPage === 1;
+      nextBtn.disabled = currentPage === totalPages;
+    }
+
+    updateURL();
+  }
+
+  const debouncedRender = debounce(() => {
+    currentPage = 1;
+    render();
+  }, 200);
+
+  searchInput?.addEventListener("input", (e) => {
+    searchQuery = e.target.value;
+    debouncedRender();
+  });
+  categoryFilter?.addEventListener("change", (e) => {
+    selectedCategory = e.target.value;
+    currentPage = 1;
+    render();
+  });
+  yearFilter?.addEventListener("change", (e) => {
+    selectedYear = e.target.value;
+    currentPage = 1;
+    render();
+  });
+  sortFilter?.addEventListener("change", (e) => {
+    sortOrder = e.target.value;
+    currentPage = 1;
+    render();
+  });
+
+  tagChips.forEach((c) =>
+    c.addEventListener("click", () => {
+      const t = c.dataset.tag;
+      selectedTags.has(t)
+        ? (selectedTags.delete(t), c.classList.remove("active"))
+        : (selectedTags.add(t), c.classList.add("active"));
+      currentPage = 1;
+      render();
+    }),
+  );
+
+  clearBtn?.addEventListener("click", () => {
+    searchQuery = "";
+    selectedCategory = "";
+    selectedYear = "";
+    selectedTags.clear();
+    sortOrder = "newest";
+    currentPage = 1;
+    searchInput.value = "";
+    categoryFilter.value = "";
+    yearFilter.value = "";
+    sortFilter.value = "newest";
+    tagChips.forEach((c) => c.classList.remove("active"));
+    tagsPanel?.classList.remove("open");
+    tagsToggle?.classList.remove("active");
+    render();
+  });
+
+  prevBtn?.addEventListener("click", () => {
+    if (currentPage > 1) {
+      currentPage--;
+      render();
+    }
+  });
+  nextBtn?.addEventListener("click", () => {
+    if (currentPage < totalPages) {
+      currentPage++;
+      render();
+    }
+  });
+
+  readURL();
+  render();
+</script>
+
+<style>
+  .courses-page {
+    padding: 1rem 0 3rem;
+  }
+
+  .page-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .page-header h1 {
+    margin: 0;
+    font-family: "Melodrama", serif;
+    font-size: 2rem;
+  }
+
+  /* Filter Bar */
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 0;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-bar input,
+  .filter-bar select,
+  .filter-bar button {
+    height: 32px;
+    padding: 0 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    box-sizing: border-box;
+  }
+
+  .filter-bar input:focus,
+  .filter-bar select:focus,
+  .filter-bar button:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .filter-bar input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .filter-bar .search-input {
+    width: 160px;
+  }
+
+  .filter-bar select {
+    cursor: pointer;
+  }
+
+  .filter-bar button {
+    cursor: pointer;
+    color: var(--text-secondary);
+  }
+
+  .filter-bar button:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .filter-bar button.active {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .filter-bar #results-count {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-left: auto;
+    border: none;
+    padding: 0;
+    background: none;
+  }
+
+  .filter-bar #clear-filters {
+    border: none;
+    background: none;
+    color: var(--accent);
+    padding: 0.4rem 0;
+  }
+
+  /* Tags Panel */
+  .tags-panel {
+    display: none;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .tags-panel.open {
+    display: flex;
+  }
+
+  .tag-chip {
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    cursor: pointer;
+  }
+
+  .tag-chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .tag-chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+
+  /* Posts Grid */
+  .posts-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+
+  .post-card {
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    background: var(--bg-secondary);
+    transition: all 0.2s;
+  }
+
+  .post-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px var(--shadow);
+  }
+
+  .post-card a {
+    display: block;
+    text-decoration: none;
+  }
+
+  .card-image {
+    height: 160px;
+    overflow: hidden;
+  }
+
+  .card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+  }
+
+  .post-card:hover .card-image img {
+    transform: scale(1.05);
+  }
+
+  .card-body {
+    padding: 1rem;
+  }
+
+  .card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+
+  .card-category {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--cat-color);
+  }
+
+  .card-date {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--text-primary);
+    margin: 0 0 0.5rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 0 0 0.75rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .card-reading {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .card-tags {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .card-tag {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+  }
+
+  /* No Results */
+  .no-results {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-muted);
+  }
+
+  /* Pagination */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .page-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .page-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .page-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .page-info {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    min-width: 60px;
+    text-align: center;
+  }
+
+  /* Responsive */
+  @media (max-width: 1024px) {
+    .posts-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .page-header h1 {
+      font-size: 2rem;
+    }
+
+    .filter-bar .search-input {
+      width: 100%;
+      flex: 1 1 100%;
+    }
+
+    .posts-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

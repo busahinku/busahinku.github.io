@@ -1,0 +1,126 @@
+---
+import { useTranslations, type Lang } from '../../i18n/translations';
+
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface Props {
+  headings: Heading[];
+  lang?: Lang;
+}
+
+const { headings, lang = 'en' } = Astro.props;
+const t = useTranslations(lang);
+
+// Filter to only h2 and h3
+const tocHeadings = headings.filter(h => h.depth === 2 || h.depth === 3);
+---
+
+{tocHeadings.length > 0 && (
+  <aside class="toc-container">
+    <div class="toc-title">{t('blog.contents')}</div>
+    <ul class="toc-list">
+      {tocHeadings.map((heading) => (
+        <li class="toc-item">
+          <a
+            href={`#${heading.slug}`}
+            class:list={['toc-link', { 'toc-h3': heading.depth === 3 }]}
+            data-toc-link
+            data-target={heading.slug}
+          >
+            {heading.text}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </aside>
+)}
+
+<script>
+  function initTOC() {
+    const tocLinks = document.querySelectorAll('[data-toc-link]');
+
+    if (tocLinks.length === 0) return;
+
+    // Get all heading elements that we're tracking
+    const headingIds = Array.from(tocLinks).map(link => link.getAttribute('data-target'));
+    const headings = headingIds
+      .map(id => document.getElementById(id as string))
+      .filter(Boolean) as HTMLElement[];
+
+    if (headings.length === 0) return;
+
+    // Intersection Observer for active section
+    const observerOptions = {
+      root: null,
+      rootMargin: '-80px 0px -70% 0px',
+      threshold: 0
+    };
+
+    let currentActive: string | null = null;
+
+    const setActiveLink = (id: string) => {
+      if (currentActive === id) return;
+      currentActive = id;
+
+      tocLinks.forEach(link => {
+        const target = link.getAttribute('data-target');
+        link.classList.toggle('active', target === id);
+      });
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          setActiveLink(entry.target.id);
+        }
+      });
+    }, observerOptions);
+
+    headings.forEach(heading => observer.observe(heading));
+
+    // Smooth scroll for TOC links
+    tocLinks.forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = link.getAttribute('data-target');
+        if (target) {
+          const element = document.getElementById(target);
+          if (element) {
+            const offset = 80;
+            const top = element.getBoundingClientRect().top + window.scrollY - offset;
+            window.scrollTo({ top, behavior: 'smooth' });
+          }
+        }
+      });
+    });
+
+    // Set initial active based on scroll position
+    const setInitialActive = () => {
+      const scrollY = window.scrollY + 100;
+      let active = headings[0]?.id;
+
+      for (const heading of headings) {
+        if (heading.offsetTop <= scrollY) {
+          active = heading.id;
+        }
+      }
+
+      if (active) {
+        setActiveLink(active);
+      }
+    };
+
+    setInitialActive();
+
+    return () => {
+      headings.forEach(heading => observer.unobserve(heading));
+    };
+  }
+
+  initTOC();
+  document.addEventListener('astro:after-swap', initTOC);
+</script>

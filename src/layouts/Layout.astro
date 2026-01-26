@@ -1,0 +1,89 @@
+---
+import BaseHead from "../components/BaseHead.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import type { Lang } from "../i18n/translations";
+
+interface Props {
+  title: string;
+  description: string;
+  lang?: Lang;
+  wide?: boolean;
+}
+
+const { title, description, lang = "en", wide = false } = Astro.props;
+const isHomePage = Astro.url.pathname === "/" || Astro.url.pathname === "/tr/";
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <BaseHead title={title} description={description} />
+  </head>
+  <body class={isHomePage ? "home" : ""}>
+    <Header lang={lang} />
+    <main
+      class={isHomePage
+        ? "container homepage"
+        : wide
+          ? "container wide"
+          : "container"}
+    >
+      <slot />
+    </main>
+    <Footer lang={lang} />
+  </body>
+</html>
+
+<style>
+  main.container {
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 6rem 1rem 2rem;
+    min-height: calc(100vh - 200px);
+  }
+
+  main.container.wide {
+    max-width: 1200px;
+    padding: 6rem 2rem 2rem;
+  }
+
+  main.container.homepage {
+    max-width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+
+  body.home {
+    position: relative;
+    background-color: var(--bg-primary);
+    background-image:
+      radial-gradient(
+        1200px circle at 15% -10%,
+        var(--hero-spotlight),
+        transparent 55%
+      ),
+      radial-gradient(
+        900px circle at 85% 10%,
+        var(--hero-bg-2),
+        transparent 55%
+      ),
+      linear-gradient(
+        var(--hero-gradient-direction),
+        var(--hero-bg-1),
+        var(--hero-bg-3)
+      ),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.25'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-attachment: fixed;
+    background-blend-mode: normal, normal, normal, soft-light;
+  }
+
+  @media (max-width: 900px) {
+    body.home {
+      background-attachment: scroll;
+    }
+  }
+</style>

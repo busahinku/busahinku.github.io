@@ -1,0 +1,494 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { useTranslations, type Lang } from "../../i18n/translations";
+import {
+  Music,
+  Headphones,
+  BookOpen,
+  Link,
+  Monitor,
+  ExternalLink,
+  Book,
+  Newspaper,
+  ChevronRight,
+} from "@lucide/astro";
+
+const lang: Lang = "tr";
+const t = useTranslations(lang);
+
+// Bookmarks data (show only 5 on misc page)
+const bookmarks = [
+  {
+    title: "Refactoring UI",
+    url: "https://www.refactoringui.com/",
+    category: "Tasarim",
+  },
+  {
+    title: "Realtime Colors",
+    url: "https://www.realtimecolors.com/",
+    category: "Tasarim",
+  },
+  {
+    title: "Josh W Comeau",
+    url: "https://www.joshwcomeau.com/",
+    category: "Blog",
+  },
+  { title: "Syntax.fm", url: "https://syntax.fm/", category: "Podcast" },
+  {
+    title: "Frontend Masters",
+    url: "https://frontendmasters.com/",
+    category: "Ogrenme",
+  },
+].slice(0, 5);
+
+// Books data
+const books = [
+  { title: "Clean Code", author: "Robert C. Martin", category: "Programlama" },
+  {
+    title: "The Pragmatic Programmer",
+    author: "David Thomas",
+    category: "Programlama",
+  },
+  {
+    title: "Designing Data-Intensive Applications",
+    author: "Martin Kleppmann",
+    category: "Sistemler",
+  },
+  {
+    title: "Atomic Habits",
+    author: "James Clear",
+    category: "Kisisel Gelisim",
+  },
+  { title: "Deep Work", author: "Cal Newport", category: "Verimlilik" },
+].slice(0, 5);
+
+// Sources data
+const sources = [
+  {
+    title: "Hacker News",
+    url: "https://news.ycombinator.com/",
+    category: "Haberler",
+  },
+  { title: "Dev.to", url: "https://dev.to/", category: "Topluluk" },
+  { title: "CSS-Tricks", url: "https://css-tricks.com/", category: "CSS" },
+  {
+    title: "Smashing Magazine",
+    url: "https://www.smashingmagazine.com/",
+    category: "Web Dev",
+  },
+  {
+    title: "A List Apart",
+    url: "https://alistapart.com/",
+    category: "Web Dev",
+  },
+].slice(0, 5);
+
+// Setup items
+const setup = [
+  { name: 'MacBook Pro 14"', category: "Bilgisayar" },
+  { name: "VS Code", category: "Editor" },
+  { name: "Arc Browser", category: "Tarayici" },
+  { name: "Warp Terminal", category: "Terminal" },
+  { name: "Figma", category: "Tasarim" },
+  { name: "Notion", category: "Notlar" },
+];
+
+// Favorite playlists (Spotify embed IDs)
+const playlists = [
+  { id: "768iqNmf4DJINbq8nIhe2e", name: "My Playlist" },
+  { id: "7nTk4NzsYRlcB4yAuSPCuy", name: "My Playlist 2" },
+];
+---
+
+<Layout title={t("misc.title")} description={t("misc.description")} lang={lang}>
+  <div class="misc-page">
+    <header class="page-header">
+      <h1>{t("misc.title")}</h1>
+      <p class="intro">Rastgele seyler, deneyler ve ilginc buldugum konular.</p>
+    </header>
+
+    <!-- Spotify Now Playing Section -->
+    <section class="section">
+      <div class="section-header">
+        <Music size={20} />
+        <h2>Simdi Caliniyor</h2>
+      </div>
+
+      <div class="now-playing-embed">
+        <iframe
+          src="https://open.spotify.com/embed/track/0cZgkcbssrcJeetG4GXoLc?utm_source=generator&theme=0"
+          width="100%"
+          height="152"
+          frameBorder="0"
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          loading="lazy"
+          title="Now Playing"></iframe>
+      </div>
+
+      <div class="playlists-grid">
+        {
+          playlists.map((playlist) => (
+            <div class="playlist-embed">
+              <iframe
+                data-testid="embed-iframe"
+                style="border-radius:12px"
+                src="https://open.spotify.com/embed/playlist/768iqNmf4DJINbq8nIhe2e?utm_source=generator&theme=0"
+                width="100%"
+                height="152"
+                frameBorder="0"
+                allowfullscreen=""
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                loading="lazy"
+              />
+            </div>
+          ))
+        }
+      </div>
+
+      <a
+        href="https://open.spotify.com/user/bzmah384nndroig0y2dh22saw?si=8741cac7e8254ec4"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="spotify-link"
+      >
+        <Headphones size={16} />
+        Spotify'da takip et
+        <ExternalLink size={14} />
+      </a>
+    </section>
+
+    <!-- Bookmarks Section -->
+    <section class="section">
+      <div class="section-header">
+        <BookOpen size={20} />
+        <h2>Yer Imleri</h2>
+      </div>
+      <p class="section-desc">
+        Zaman icinde biriktirdigim faydali baglantilar ve kaynaklar.
+      </p>
+
+      <div class="list-items">
+        {
+          bookmarks.map((bookmark) => (
+            <a
+              href={bookmark.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="list-item"
+            >
+              <div class="list-item-info">
+                <Link size={14} />
+                <span class="list-item-title">{bookmark.title}</span>
+              </div>
+              <span class="list-item-category">{bookmark.category}</span>
+            </a>
+          ))
+        }
+      </div>
+      <a href="/tr/misc/bookmarks" class="see-more">
+        Tum yer imlerini gor <ChevronRight size={16} />
+      </a>
+    </section>
+
+    <!-- Books Section -->
+    <section class="section">
+      <div class="section-header">
+        <Book size={20} />
+        <h2>Kitaplar</h2>
+      </div>
+      <p class="section-desc">
+        Dusuncelerimi ve becerilerimi sekillendiren kitaplar.
+      </p>
+
+      <div class="list-items">
+        {
+          books.map((book) => (
+            <div class="list-item">
+              <div class="list-item-info">
+                <Book size={14} />
+                <div class="book-info">
+                  <span class="list-item-title">{book.title}</span>
+                  <span class="book-author">{book.author}</span>
+                </div>
+              </div>
+              <span class="list-item-category">{book.category}</span>
+            </div>
+          ))
+        }
+      </div>
+      <a href="/tr/misc/books" class="see-more">
+        Tum kitaplari gor <ChevronRight size={16} />
+      </a>
+    </section>
+
+    <!-- Sources Section -->
+    <section class="section">
+      <div class="section-header">
+        <Newspaper size={20} />
+        <h2>Kaynaklar</h2>
+      </div>
+      <p class="section-desc">
+        Gunluk teknoloji haberleri ve ilham aldigim yerler.
+      </p>
+
+      <div class="list-items">
+        {
+          sources.map((source) => (
+            <a
+              href={source.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="list-item"
+            >
+              <div class="list-item-info">
+                <Link size={14} />
+                <span class="list-item-title">{source.title}</span>
+              </div>
+              <span class="list-item-category">{source.category}</span>
+            </a>
+          ))
+        }
+      </div>
+      <a href="/tr/misc/sources" class="see-more">
+        Tum kaynaklari gor <ChevronRight size={16} />
+      </a>
+    </section>
+
+    <!-- Setup Section -->
+    <section class="section">
+      <div class="section-header">
+        <Monitor size={20} />
+        <h2>Kurulumum</h2>
+      </div>
+      <p class="section-desc">Gunluk kullandigim araclar ve yazilimlar.</p>
+
+      <div class="setup-grid">
+        {
+          setup.map((item) => (
+            <div class="setup-item">
+              <span class="setup-name">{item.name}</span>
+              <span class="setup-category">{item.category}</span>
+            </div>
+          ))
+        }
+      </div>
+    </section>
+  </div>
+</Layout>
+
+<style>
+  .misc-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem 0 4rem;
+  }
+
+  .page-header {
+    margin-bottom: 3rem;
+  }
+
+  .page-header h1 {
+    margin: 0 0 0.5rem;
+    font-family: "Melodrama", serif;
+    font-size: 2rem;
+  }
+
+  .intro {
+    font-size: 1.125rem;
+    color: var(--text-secondary);
+    margin: 0;
+  }
+
+  /* Section Styles */
+  .section {
+    margin-bottom: 3rem;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .section-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .section-header :global(svg) {
+    color: var(--accent);
+  }
+
+  .section-desc {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 0 0 1.25rem;
+  }
+
+  /* Now Playing Embed */
+  .now-playing-embed {
+    margin-bottom: 1.5rem;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .now-playing-embed iframe {
+    display: block;
+    border-radius: 12px;
+  }
+
+  /* Playlists Grid */
+  .playlists-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .playlist-embed {
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .playlist-embed iframe {
+    display: block;
+    border-radius: 12px;
+  }
+
+  .spotify-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .spotify-link:hover {
+    color: #1db954;
+  }
+
+  /* List Items (Bookmarks, Books, Sources) */
+  .list-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.2s;
+  }
+
+  a.list-item:hover {
+    border-color: var(--accent);
+    background: var(--bg-tertiary);
+  }
+
+  .list-item-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .list-item-info :global(svg) {
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .list-item-title {
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  .list-item-category {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    padding: 0.25rem 0.5rem;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  .book-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .book-author {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .see-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .see-more:hover {
+    color: var(--accent);
+  }
+
+  /* Setup Grid */
+  .setup-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .setup-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .setup-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .setup-category {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .playlists-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .setup-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .list-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+  }
+</style>

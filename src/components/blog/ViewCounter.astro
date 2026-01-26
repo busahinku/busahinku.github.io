@@ -1,0 +1,78 @@
+---
+interface Props {
+  slug: string;
+}
+
+const { slug } = Astro.props;
+---
+
+<div class="view-counter" data-slug={slug}>
+  <svg class="view-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+    <circle cx="12" cy="12" r="3"></circle>
+  </svg>
+  <span class="view-count">--</span>
+</div>
+
+<script>
+  function initViewCounter() {
+    const counters = document.querySelectorAll('.view-counter');
+
+    counters.forEach(async (counter) => {
+      // Prevent multiple initializations
+      if (counter.hasAttribute('data-initialized')) return;
+      counter.setAttribute('data-initialized', 'true');
+
+      const slug = counter.getAttribute('data-slug');
+      if (!slug) return;
+
+      const countSpan = counter.querySelector('.view-count');
+      if (!countSpan) return;
+
+      try {
+        // Dynamic imports for Firebase (only on client)
+        const { subscribeToPostStats, incrementViews } = await import('../../lib/firebase/firestore');
+
+        // Check if we've already incremented views this session
+        const sessionKey = `viewed_${slug}`;
+        if (!sessionStorage.getItem(sessionKey)) {
+          try {
+            await incrementViews(slug);
+            sessionStorage.setItem(sessionKey, 'true');
+            console.log('View incremented for:', slug);
+          } catch (err) {
+            console.error('Error incrementing views:', err);
+            // Don't set sessionStorage so it retries next time
+          }
+        }
+
+        // Subscribe to real-time updates
+        subscribeToPostStats(slug, (stats) => {
+          countSpan.textContent = formatNumber(stats.views);
+        }, (error) => {
+          console.error('Error subscribing to views:', error);
+          countSpan.textContent = '0';
+        });
+      } catch (error) {
+        console.error('Error initializing view counter:', error);
+        countSpan.textContent = '--';
+      }
+    });
+  }
+
+  function formatNumber(num: number): string {
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1) + 'M';
+    }
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toString();
+  }
+
+  // Initialize on page load
+  initViewCounter();
+
+  // Re-initialize on Astro navigation
+  document.addEventListener('astro:after-swap', initViewCounter);
+</script>

@@ -1,0 +1,157 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { useTranslations, type Lang } from '../../../i18n/translations';
+import { BookOpen, Link, ArrowLeft } from '@lucide/astro';
+
+const lang: Lang = 'tr';
+const t = useTranslations(lang);
+
+const bookmarks = [
+  { title: 'Refactoring UI', url: 'https://www.refactoringui.com/', category: 'Tasarim' },
+  { title: 'Realtime Colors', url: 'https://www.realtimecolors.com/', category: 'Tasarim' },
+  { title: 'Josh W Comeau', url: 'https://www.joshwcomeau.com/', category: 'Blog' },
+  { title: 'Syntax.fm', url: 'https://syntax.fm/', category: 'Podcast' },
+  { title: 'Frontend Masters', url: 'https://frontendmasters.com/', category: 'Ogrenme' },
+  { title: 'Roadmap.sh', url: 'https://roadmap.sh/', category: 'Ogrenme' },
+  { title: 'MDN Web Docs', url: 'https://developer.mozilla.org/', category: 'Dokuman' },
+  { title: 'Can I Use', url: 'https://caniuse.com/', category: 'Araclar' },
+  { title: 'Dribbble', url: 'https://dribbble.com/', category: 'Tasarim' },
+  { title: 'Awwwards', url: 'https://www.awwwards.com/', category: 'Tasarim' },
+  { title: 'CodePen', url: 'https://codepen.io/', category: 'Araclar' },
+  { title: 'GitHub', url: 'https://github.com/', category: 'Araclar' },
+];
+---
+
+<Layout title="Yer Imleri" description="Faydali baglantilar ve kaynaklar" lang={lang}>
+  <div class="bookmarks-page">
+    <a href="/tr/misc" class="back-link">
+      <ArrowLeft size={16} />
+      Misc'e don
+    </a>
+
+    <header class="page-header">
+      <div class="header-icon">
+        <BookOpen size={24} />
+      </div>
+      <h1>Yer Imleri</h1>
+      <p class="intro">Zaman icinde biriktirdigim faydali baglantilar ve kaynaklar.</p>
+    </header>
+
+    <div class="list-items">
+      {bookmarks.map((bookmark) => (
+        <a href={bookmark.url} target="_blank" rel="noopener noreferrer" class="list-item">
+          <div class="list-item-info">
+            <Link size={14} />
+            <span class="list-item-title">{bookmark.title}</span>
+          </div>
+          <span class="list-item-category">{bookmark.category}</span>
+        </a>
+      ))}
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .bookmarks-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem 0 4rem;
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    margin-bottom: 2rem;
+    transition: color 0.2s;
+  }
+
+  .back-link:hover {
+    color: var(--accent);
+  }
+
+  .page-header {
+    margin-bottom: 2rem;
+  }
+
+  .header-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    color: var(--accent);
+  }
+
+  .page-header h1 {
+    margin: 0 0 0.5rem;
+  }
+
+  .intro {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin: 0;
+  }
+
+  .list-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.2s;
+  }
+
+  .list-item:hover {
+    border-color: var(--accent);
+    background: var(--bg-tertiary);
+  }
+
+  .list-item-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .list-item-info :global(svg) {
+    color: var(--text-muted);
+  }
+
+  .list-item-title {
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  .list-item-category {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    padding: 0.25rem 0.5rem;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+  }
+
+  @media (max-width: 640px) {
+    .list-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+  }
+</style>

@@ -1,0 +1,23 @@
+---
+import { type CollectionEntry, getCollection, render } from 'astro:content';
+import BlogPostEnhanced from '../../../layouts/BlogPostEnhanced.astro';
+import type { Lang } from '../../../i18n/translations';
+
+export async function getStaticPaths() {
+  const projects = await getCollection('projects');
+  return projects.map((project) => ({
+    params: { slug: project.id },
+    props: project,
+  }));
+}
+
+type Props = CollectionEntry<'projects'>;
+
+const lang: Lang = 'tr';
+const project = Astro.props;
+const { Content, headings } = await render(project);
+---
+
+<BlogPostEnhanced post={project.data} headings={headings} lang={lang} slug={project.id} github={project.data.github} demo={project.data.demo}>
+  <Content />
+</BlogPostEnhanced>

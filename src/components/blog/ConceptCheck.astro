@@ -1,0 +1,55 @@
+---
+interface Props {
+  question?: string;
+}
+
+const { question } = Astro.props;
+---
+
+<div class="concept-check" data-concept-check>
+  <div class="concept-question">
+    <span class="concept-icon">?</span>
+    <div class="concept-question-text" data-question-text>
+      {question && <p set:html={question} />}
+    </div>
+  </div>
+  <div class="concept-answer" data-blurred="true" data-concept-answer>
+    <div class="concept-answer-content">
+      <slot />
+    </div>
+  </div>
+</div>
+
+<script>
+  function initConceptChecks() {
+    const conceptChecks = document.querySelectorAll('[data-concept-check]');
+
+    conceptChecks.forEach(check => {
+      const questionText = check.querySelector('[data-question-text]');
+      const answerContent = check.querySelector('.concept-answer-content');
+      const answer = check.querySelector('[data-concept-answer]');
+
+      // Look for question element inside answer content (MDX slot workaround)
+      const questionElement = answerContent?.querySelector('[slot="question"], [data-question]');
+      if (questionElement && questionText) {
+        // Move question element to question area
+        questionText.appendChild(questionElement);
+        questionElement.removeAttribute('slot');
+      }
+
+      // Set up click handler for blur toggle
+      if (answer) {
+        const newAnswer = answer.cloneNode(true) as HTMLElement;
+        answer.parentNode?.replaceChild(newAnswer, answer);
+
+        newAnswer.addEventListener('click', () => {
+          const isBlurred = newAnswer.getAttribute('data-blurred') === 'true';
+          newAnswer.setAttribute('data-blurred', String(!isBlurred));
+        });
+      }
+    });
+  }
+
+  initConceptChecks();
+  document.addEventListener('astro:after-swap', initConceptChecks);
+</script>

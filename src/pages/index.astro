@@ -1,0 +1,338 @@
+---
+import { Image } from "astro:assets";
+import { getCollection } from "astro:content";
+import Layout from "../layouts/Layout.astro";
+import { type Lang } from "../i18n/translations";
+import { SITE_TITLE, SITE_DESCRIPTION, SITE_CONFIG } from "../consts";
+import SocialGrid from "../components/SocialGrid.astro";
+import FormattedDate from "../components/FormattedDate.astro";
+
+const lang: Lang = "en";
+
+const latestPosts = (await getCollection("blog"))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .slice(0, 3);
+---
+
+<Layout title={SITE_TITLE} description={SITE_DESCRIPTION} lang={lang}>
+  <section class="hero">
+    <div class="hero-inner">
+      <!-- Intro Section -->
+      <section class="intro-section">
+        <h1 class="intro-name">Burak Sahin Kucuk</h1>
+        <a href="mailto:buraksahinkucuk@gmail.com" class="intro-email"
+          >buraksahinkucuk@gmail.com</a
+        >
+      </section>
+
+      <SocialGrid />
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .hero {
+    position: relative;
+    overflow: visible;
+    padding: 0 1.5rem 6rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: var(--bg-primary);
+  }
+
+  .hero-inner {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 1200px;
+    text-align: center;
+  }
+
+  /* Intro Section Styles */
+  .intro-section {
+    min-height: calc(var(--vh, 1vh) * 90);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding-top: 4rem;
+    box-sizing: border-box;
+  }
+
+  .intro-name {
+    font-family: "Bower", serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text);
+  }
+
+  .intro-email {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 1.1rem;
+    color: var(--text);
+    text-decoration: underline;
+    display: block;
+    margin-bottom: 0rem;
+  }
+
+  .intro-email:hover {
+    opacity: 0.8;
+  }
+
+  .intro-title {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 1.1rem;
+    color: var(--text);
+    margin: 0;
+  }
+
+  @media (max-width: 640px) {
+    .hero {
+      padding: 0 1.25rem 4rem;
+    }
+
+    .intro-section {
+      min-height: calc(var(--vh, 1vh) * 86);
+      padding-top: 60px;
+      justify-content: center;
+    }
+  }
+
+  /* Latest Blogs Section */
+  .latest-blogs {
+    margin-top: 5rem;
+    max-width: 980px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+  }
+
+  .section-header h2 {
+    font-family: "Melodrama", serif;
+    font-size: 2rem;
+    font-weight: 500;
+    margin: 0;
+  }
+
+  .view-all {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  .view-all:hover {
+    color: var(--accent);
+  }
+
+  .blog-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .blog-card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    overflow: hidden;
+    transition: all 0.2s ease;
+  }
+
+  .blog-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px var(--shadow);
+  }
+
+  .blog-card a {
+    display: block;
+    text-decoration: none;
+  }
+
+  .blog-image {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .blog-image img {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+
+  .blog-card:hover .blog-image img {
+    transform: scale(1.02);
+  }
+
+  .blog-content {
+    padding: 1.25rem;
+  }
+
+  .blog-date {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .blog-title {
+    margin: 0.5rem 0;
+    font-size: 1.125rem;
+    color: var(--text-primary);
+    line-height: 1.3;
+    font-weight: 500;
+  }
+
+  .blog-desc {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  @media (max-width: 900px) {
+    .blog-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .blog-card:last-child {
+      display: none;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .latest-blogs {
+      margin-top: 3rem;
+    }
+
+    .blog-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .blog-card:last-child {
+      display: block;
+    }
+
+    .section-header h2 {
+      font-size: 1.5rem;
+    }
+  }
+
+  /* Hero Intro Section */
+  .hero-intro {
+    margin-bottom: 6rem;
+    text-align: center;
+  }
+
+  .hero-intro__content {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .hero-intro__name {
+    font-family: "Melodrama", serif;
+    font-size: clamp(3.5rem, 8vw, 6rem);
+    font-weight: 500;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+
+  .hero-intro__photo-wrapper {
+    flex-shrink: 0;
+  }
+
+  .hero-intro__photo {
+    width: clamp(100px, 15vw, 160px);
+    height: clamp(100px, 15vw, 160px);
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 8px 24px var(--hero-shadow);
+  }
+
+  .hero-intro__desc {
+    max-width: 540px;
+    margin: 0 auto;
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+
+  /* Mobile layout for hero intro */
+  @media (max-width: 640px) {
+    .bg-text {
+      font-size: 100vh;
+    }
+
+    .hero-intro__content {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .hero-intro__photo-wrapper {
+      order: -1;
+      margin-bottom: 1rem;
+    }
+
+    .hero-intro__name {
+      font-size: 4rem;
+    }
+
+    .hero-intro__photo {
+      width: 140px;
+      height: 140px;
+    }
+
+    .hero-intro__desc {
+      font-size: 1rem;
+      padding: 0 1rem;
+    }
+  }
+
+  /* Tablet adjustments */
+  @media (min-width: 641px) and (max-width: 900px) {
+    .bg-text {
+      font-size: 90vh;
+    }
+
+    .hero-intro__content {
+      gap: 2.5rem;
+    }
+
+    .hero-intro__name {
+      font-size: 4rem;
+    }
+  }
+</style>
+
+<script>
+  (() => {
+    const root = document.documentElement;
+    if (!root.style.getPropertyValue("--vh")) {
+      const vh = window.innerHeight * 0.01;
+      root.style.setProperty("--vh", `${vh}px`);
+    }
+  })();
+</script>

@@ -1,0 +1,721 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { useTranslations, type Lang } from '../../i18n/translations';
+import { Download, ExternalLink, MapPin } from '@lucide/astro';
+
+const lang: Lang = 'tr';
+const t = useTranslations(lang);
+---
+
+<Layout title={t('about.title')} description={t('about.description')} lang={lang}>
+  <div class="about-page">
+    <!-- Header Section -->
+    <header class="profile-header">
+      <div class="profile-photo">
+        <img src="/photo.jpg" alt="Burak Sahin Kucuk" />
+        <span class="status-dot"></span>
+      </div>
+      <div class="profile-info">
+        <h1>Burak Sahin Kucuk</h1>
+        <p class="subtitle">Orta Dogu Teknik Universitesi Ogrencisi</p>
+        <div class="meta-links">
+          <span class="location"><MapPin size={14} /> Ankara, Turkiye</span>
+          <a href="/resume.pdf" class="resume-link" download>
+            <Download size={14} /> CV Indir
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <!-- About Section -->
+    <section class="section">
+      <h2>Hakkimda</h2>
+      <p>Merhaba! Ben Burak Sahin, Orta Dogu Teknik Universitesi'nde Istatistik ve Bilgisayar Muhendisligi bolumlerinde okuyan bir ogrenciyim. Kendimi bir seyler yaratmayi ve bunlari insanlarla paylasmayi seven biri olarak goruyorum.</p>
+    </section>
+
+    <!-- Education Section -->
+    <section class="section">
+      <h2>Egitim</h2>
+
+      <div class="education-item">
+        <div class="edu-header">
+          <div class="edu-title">
+            <h3>Istatistik Lisans</h3>
+            <p class="institution">Orta Dogu Teknik Universitesi</p>
+          </div>
+          <span class="gpa">3.95/4.0</span>
+        </div>
+        <div class="course-tags">
+          <span class="tag">Veri Isleme ve Gorsellestirme</span>
+          <span class="tag">Istatistiksel Programlama</span>
+          <span class="tag">Olasilik I - II</span>
+          <span class="tag">NYP</span>
+        </div>
+      </div>
+
+      <div class="education-item">
+        <div class="edu-header">
+          <div class="edu-title">
+            <h3>Bilgisayar Muhendisligi Lisans</h3>
+            <p class="institution">Orta Dogu Teknik Universitesi</p>
+          </div>
+          <span class="gpa">3.22/4.0</span>
+        </div>
+        <div class="course-tags">
+          <span class="tag">Ayrik Matematik</span>
+          <span class="tag">C Programlama</span>
+          <span class="tag">Veri Yapilari</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Experience Section -->
+    <section class="section">
+      <h2>Deneyim</h2>
+
+      <div class="experience-item">
+        <div class="exp-logo">
+          <img src="/logos/uab.svg" alt="UAB" onerror="this.style.display='none'" />
+        </div>
+        <div class="exp-content">
+          <div class="exp-header">
+            <div>
+              <h3>Staj</h3>
+              <p class="company">T.C. Ulastirma ve Altyapi Bakanligi</p>
+            </div>
+            <div class="exp-meta">
+              <span class="location">Ankara, Turkiye</span>
+              <span class="date">Temmuz 2025 - Agustos 2025</span>
+            </div>
+          </div>
+          <ul class="exp-details">
+            <li>Veri Analizi ve Gorsellestirme Gorevleri</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Projects Section -->
+    <section class="section">
+      <h2>Projeler</h2>
+
+      <div class="project-item">
+        <div class="proj-logo">
+          <img src="/logos/metuans.svg" alt="METUANS" onerror="this.style.display='none'" />
+        </div>
+        <div class="proj-content">
+          <div class="proj-header">
+            <div>
+              <a href="https://metuans.com" target="_blank" rel="noopener noreferrer" class="proj-title">
+                metuans.com <ExternalLink size={14} />
+              </a>
+              <p class="proj-subtitle">ODTU Ogrencileri icin Ders Planlama ve Rehberlik Platformu.</p>
+            </div>
+            <div class="proj-meta">
+              <span class="tech">JavaScript, VueJS, AWS EC2, Docker, PostgreSQL, FastAPI</span>
+              <span class="year">2024</span>
+            </div>
+          </div>
+          <ul class="proj-desc">
+            <li>ODTU ogrencileri icin kapsamli ders planlama araci</li>
+            <li>Interaktif ders programi olusturucu ve ders arama ozellikleri</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="project-item">
+        <div class="proj-logo">
+          <img src="/logos/portfolio.svg" alt="Portfolio" onerror="this.style.display='none'" />
+        </div>
+        <div class="proj-content">
+          <div class="proj-header">
+            <div>
+              <a href="/tr" class="proj-title">
+                Kisisel Portfolyo ve Blog <ExternalLink size={14} />
+              </a>
+              <p class="proj-subtitle">Modern Web Portfolyosu</p>
+            </div>
+            <div class="proj-meta">
+              <span class="tech">Next.js, Tailwind CSS</span>
+              <span class="year">2024</span>
+            </div>
+          </div>
+          <ul class="proj-desc">
+            <li>Koyu/acik mod degistirici ile guzel duyarli tasarim</li>
+            <li>Markdown destekli interaktif blog sistemi</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Certifications Section -->
+    <section class="section">
+      <h2>Sertifikalar</h2>
+
+      <div class="cert-item">
+        <div class="cert-logo">
+          <img src="/logos/deeplearning.svg" alt="Deep Learning" onerror="this.style.display='none'" />
+        </div>
+        <div class="cert-content">
+          <div class="cert-header">
+            <div>
+              <a href="#" class="cert-title">Machine Learning Uzmanligi <ExternalLink size={14} /></a>
+              <p class="cert-org">Stanford Universitesi, Deeplearning.ai</p>
+            </div>
+            <span class="cert-date">Eylul 2024</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="cert-item">
+        <div class="cert-logo">
+          <img src="/logos/ibm.svg" alt="IBM" onerror="this.style.display='none'" />
+        </div>
+        <div class="cert-content">
+          <div class="cert-header">
+            <div>
+              <a href="#" class="cert-title">Veri Bilimi Uzmanligi <ExternalLink size={14} /></a>
+              <p class="cert-org">IBM (Coursera)</p>
+            </div>
+            <span class="cert-date">Subat 2024</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Skills & Interests Section -->
+    <section class="section">
+      <h2>Yetenekler ve Ilgi Alanlari</h2>
+
+      <div class="skills-grid">
+        <div class="skill-group">
+          <h4>Guncel Odak</h4>
+          <div class="skill-tags">
+            <span class="skill-tag">Python</span>
+            <span class="skill-tag">R</span>
+            <span class="skill-tag">C/C++</span>
+            <span class="skill-tag">Veri Bilimi</span>
+            <span class="skill-tag">Makine Ogrenimi</span>
+            <span class="skill-tag">Urun Yonetimi</span>
+          </div>
+        </div>
+
+        <div class="skill-group">
+          <h4>Sirada Ogrenilecekler</h4>
+          <div class="skill-tags">
+            <span class="skill-tag">Kuantum Hesaplama</span>
+            <span class="skill-tag">Ileri Istatistik</span>
+            <span class="skill-tag">HFT Algoritmalari</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="personal-section">
+        <h4>Kisisel</h4>
+        <ul>
+          <li>Cocuklugumdan beri tasarim yapmayi seviyorum. Simdi bos zamanlarimda eglence icin yapiyorum.</li>
+          <li>Bu web sitesi benim dusuncelerimin, notlarimin ve fikirlerimin grafigi.</li>
+          <li>Kendimi rahat ve arkadas canisi biri olarak goruyorum, bu yuzden iletisime gecmekten cekinmeyin!</li>
+        </ul>
+      </div>
+
+      <div class="tools-section">
+        <h4>Gunluk Kullandigim Araclar</h4>
+        <div class="tools-list">
+          <span class="tool">Toggl Track</span>
+          <span class="tool">Obsidian</span>
+          <span class="tool">ShareX</span>
+          <span class="tool">Notion Calendar</span>
+        </div>
+      </div>
+    </section>
+  </div>
+</Layout>
+
+<style>
+  .about-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem 0 4rem;
+  }
+
+  /* Profile Header */
+  .profile-header {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+    margin-bottom: 3rem;
+  }
+
+  .profile-photo {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .profile-photo img {
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+    object-fit: cover;
+  }
+
+  .status-dot {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 14px;
+    height: 14px;
+    background: #22c55e;
+    border: 3px solid var(--bg-primary);
+    border-radius: 50%;
+  }
+
+  .profile-info h1 {
+    margin: 0 0 0.25rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+
+  .profile-info .subtitle {
+    margin: 0 0 0.25rem;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+  }
+
+  .meta-links {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+  }
+
+  .meta-links .location {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .resume-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .resume-link:hover {
+    color: var(--accent);
+  }
+
+  /* Sections */
+  .section {
+    margin-bottom: 2.5rem;
+  }
+
+  .section h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0 0 1rem;
+    color: var(--text-primary);
+  }
+
+  .section > p {
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin: 0;
+  }
+
+  /* Education */
+  .education-item {
+    padding: 1rem 0 1rem 1rem;
+    border-left: 2px solid var(--border);
+    margin-bottom: 1.5rem;
+  }
+
+  .education-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .edu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+  }
+
+  .edu-title h3 {
+    margin: 0 0 0.25rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .edu-title .institution {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+  }
+
+  .gpa {
+    color: #22c55e;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  .course-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .tag {
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+
+  /* Experience */
+  .experience-item {
+    display: flex;
+    gap: 1rem;
+    padding: 0.5rem 0;
+  }
+
+  .exp-logo {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .exp-logo img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+  }
+
+  .exp-content {
+    flex: 1;
+  }
+
+  .exp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+  }
+
+  .exp-header h3 {
+    margin: 0 0 0.25rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .exp-header .company {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+  }
+
+  .exp-meta {
+    text-align: right;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .exp-meta .location {
+    display: block;
+  }
+
+  .exp-meta .date {
+    display: block;
+  }
+
+  .exp-details {
+    margin: 0.5rem 0 0;
+    padding-left: 1.25rem;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    list-style: disc;
+  }
+
+  .exp-details li {
+    margin-bottom: 0.25rem;
+  }
+
+  /* Projects */
+  .project-item {
+    display: flex;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    margin-bottom: 0.5rem;
+  }
+
+  .project-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .proj-logo {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .proj-logo img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+  }
+
+  .proj-content {
+    flex: 1;
+  }
+
+  .proj-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+  }
+
+  .proj-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-decoration: none;
+  }
+
+  .proj-title:hover {
+    color: var(--accent);
+  }
+
+  .proj-subtitle {
+    margin: 0.25rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+  }
+
+  .proj-meta {
+    text-align: right;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    max-width: 200px;
+  }
+
+  .proj-meta .tech {
+    display: block;
+    line-height: 1.4;
+  }
+
+  .proj-meta .year {
+    display: block;
+    margin-top: 0.25rem;
+  }
+
+  .proj-desc {
+    margin: 0.5rem 0 0;
+    padding-left: 1.25rem;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    list-style: disc;
+  }
+
+  .proj-desc li {
+    margin-bottom: 0.25rem;
+  }
+
+  /* Certifications */
+  .cert-item {
+    display: flex;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    margin-bottom: 0.5rem;
+  }
+
+  .cert-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .cert-logo {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .cert-logo img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+  }
+
+  .cert-content {
+    flex: 1;
+  }
+
+  .cert-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .cert-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-decoration: none;
+  }
+
+  .cert-title:hover {
+    color: var(--accent);
+  }
+
+  .cert-org {
+    margin: 0.25rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+  }
+
+  .cert-date {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+
+  /* Skills */
+  .skills-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .skill-group h4 {
+    margin: 0 0 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+
+  .skill-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .skill-tag {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+  }
+
+  .personal-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .personal-section h4 {
+    margin: 0 0 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+
+  .personal-section ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.7;
+    list-style: disc;
+  }
+
+  .personal-section li {
+    margin-bottom: 0.5rem;
+  }
+
+  .tools-section h4 {
+    margin: 0 0 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+
+  .tools-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .tool {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .profile-header {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .profile-info .location {
+      justify-content: center;
+    }
+
+    .edu-header,
+    .exp-header,
+    .proj-header,
+    .cert-header {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .gpa {
+      align-self: flex-start;
+    }
+
+    .exp-meta,
+    .proj-meta {
+      text-align: left;
+      max-width: none;
+    }
+
+    .skills-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
