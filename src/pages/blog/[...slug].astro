@@ -1,24 +1,28 @@
 ---
-import { type CollectionEntry, getCollection, render } from 'astro:content';
-import BlogPostEnhanced from '../../layouts/BlogPostEnhanced.astro';
-import type { Lang } from '../../i18n/translations';
+import { type CollectionEntry, getCollection, render } from "astro:content";
+import BlogPostEnhanced from "../../layouts/BlogPostEnhanced.astro";
+import type { Lang } from "../../i18n/translations";
 
 // MDX Components
-import ConceptCheck from '../../components/blog/ConceptCheck.astro';
-import VideoEmbed from '../../components/blog/VideoEmbed.astro';
-import PhotoGallery from '../../components/blog/PhotoGallery.astro';
+import ConceptCheck from "../../components/blog/ConceptCheck.astro";
+import VideoEmbed from "../../components/blog/VideoEmbed.astro";
+import PhotoGallery from "../../components/blog/PhotoGallery.astro";
+import Callout from "../../components/blog/Callout.astro";
+import Cite from "../../components/blog/Cite.astro";
+import Reference from "../../components/blog/Reference.astro";
+import { Image } from "astro:assets";
 
 export async function getStaticPaths() {
-  const posts = await getCollection('blog');
+  const posts = await getCollection("blog");
   return posts.map((post) => ({
     params: { slug: post.id },
     props: post,
   }));
 }
 
-type Props = CollectionEntry<'blog'>;
+type Props = CollectionEntry<"blog">;
 
-const lang: Lang = 'en';
+const lang: Lang = "en";
 const post = Astro.props;
 const { Content, headings } = await render(post);
 
@@ -27,9 +31,18 @@ const components = {
   ConceptCheck,
   VideoEmbed,
   PhotoGallery,
+  Callout,
+  Cite,
+  Reference,
+  Image,
 };
 ---
 
-<BlogPostEnhanced post={post.data} headings={headings} lang={lang} slug={post.id}>
+<BlogPostEnhanced
+  post={post.data}
+  headings={headings}
+  lang={lang}
+  slug={post.id}
+>
   <Content components={components} />
 </BlogPostEnhanced>
