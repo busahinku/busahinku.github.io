@@ -1,13 +1,17 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import { useTranslations, type Lang } from '../i18n/translations';
-import { Download, ExternalLink, MapPin } from '@lucide/astro';
+import Layout from "../layouts/Layout.astro";
+import { useTranslations, type Lang } from "../i18n/translations";
+import { Download, ExternalLink, MapPin } from "@lucide/astro";
 
-const lang: Lang = 'en';
+const lang: Lang = "en";
 const t = useTranslations(lang);
 ---
 
-<Layout title={t('about.title')} description={t('about.description')} lang={lang}>
+<Layout
+  title={t("about.title")}
+  description={t("about.description")}
+  lang={lang}
+>
   <div class="about-page">
     <!-- Header Section -->
     <header class="profile-header">
@@ -17,7 +21,9 @@ const t = useTranslations(lang);
       </div>
       <div class="profile-info">
         <h1>Burak Sahin Kucuk</h1>
-        <p class="subtitle">Student at Middle East Technical University</p>
+        <p class="subtitle">
+          Junior Statistics and Computer Engineering Student [at] METU
+        </p>
         <div class="meta-links">
           <span class="location"><MapPin size={14} /> Ankara, Turkiye</span>
           <a href="/resume.pdf" class="resume-link" download>
@@ -30,7 +36,11 @@ const t = useTranslations(lang);
     <!-- About Section -->
     <section class="section">
       <h2>About</h2>
-      <p>Hey! I'm Burak Sahin, a junior pursuing degrees in Statistics and Computer Science at Middle East Technical University. I like to consider myself as someone who likes to create things and present them to people.</p>
+      <p>
+        Hey! This is Burak Sahin, a junior pursuing degrees in Statistics and
+        Computer Science at METU. I like to consider myself as someone who likes
+        to create things and present them to people.
+      </p>
     </section>
 
     <!-- Education Section -->
@@ -43,28 +53,30 @@ const t = useTranslations(lang);
             <h3>BSc in Statistics</h3>
             <p class="institution">Middle East Technical University</p>
           </div>
-          <span class="gpa">3.95/4.0</span>
+          <span class="gpa">3.87/4.0</span>
         </div>
         <div class="course-tags">
           <span class="tag">Data Processing & Vis.</span>
           <span class="tag">Statistical Programming</span>
           <span class="tag">Probability I - II</span>
-          <span class="tag">OOP</span>
+          <span class="tag">OOP with Java</span>
+          <span class="tag">Modern Database Systems</span>
         </div>
       </div>
 
       <div class="education-item">
         <div class="edu-header">
           <div class="edu-title">
-            <h3>BSc in Computer Engineering</h3>
+            <h3>BSc in Computer Engineering (DM)</h3>
             <p class="institution">Middle East Technical University</p>
           </div>
-          <span class="gpa">3.22/4.0</span>
+          <span class="gpa">3.01/4.0</span>
         </div>
         <div class="course-tags">
           <span class="tag">Discrete Math.</span>
           <span class="tag">C Programming</span>
-          <span class="tag">Data Structures</span>
+          <span class="tag">Data Structures with C++</span>
+          <span class="tag">Data Communications and Networking</span>
         </div>
       </div>
     </section>
@@ -75,16 +87,50 @@ const t = useTranslations(lang);
 
       <div class="experience-item">
         <div class="exp-logo">
-          <img src="/logos/uab.svg" alt="UAB" onerror="this.style.display='none'" />
+          <img
+            src="/logos/tubitak.svg"
+            alt="TUBITAK"
+            onerror="this.style.display='none'"
+          />
         </div>
         <div class="exp-content">
           <div class="exp-header">
             <div>
               <h3>Internship</h3>
-              <p class="company">Ministry of Transport and Infrastructure of Turkey</p>
+              <p class="company">
+                The Scientific and Technological Research Council of Türkiye
+                (TUBITAK)
+              </p>
             </div>
             <div class="exp-meta">
-              <span class="location">Ankara, Turkey</span>
+              <span class="location">Ankara, Türkiye</span>
+              <span class="date">February 2026 - ongoing</span>
+            </div>
+          </div>
+          <ul class="exp-details">
+            <li>Networking stuff</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="experience-item">
+        <div class="exp-logo">
+          <img
+            src="/logos/uab.svg"
+            alt="UAB"
+            onerror="this.style.display='none'"
+          />
+        </div>
+        <div class="exp-content">
+          <div class="exp-header">
+            <div>
+              <h3>Internship</h3>
+              <p class="company">
+                Ministry of Transport and Infrastructure of Türkiye
+              </p>
+            </div>
+            <div class="exp-meta">
+              <span class="location">Ankara, Türkiye</span>
               <span class="date">July 2025 - Aug 2025</span>
             </div>
           </div>
@@ -101,31 +147,50 @@ const t = useTranslations(lang);
 
       <div class="project-item">
         <div class="proj-logo">
-          <img src="/logos/metuans.svg" alt="METUANS" onerror="this.style.display='none'" />
+          <img
+            src="/logos/metuans.svg"
+            alt="METUANS"
+            onerror="this.style.display='none'"
+          />
         </div>
         <div class="proj-content">
           <div class="proj-header">
             <div>
-              <a href="https://metuans.com" target="_blank" rel="noopener noreferrer" class="proj-title">
+              <a
+                href="https://metuans.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="proj-title"
+              >
                 metuans.com <ExternalLink size={14} />
               </a>
-              <p class="proj-subtitle">Course Planning and Guidance Platform for METU Students.</p>
+              <p class="proj-subtitle">
+                Course Planning and Guidance Platform for METU Students.
+              </p>
             </div>
             <div class="proj-meta">
-              <span class="tech">JavaScript, VueJS, AWS EC2, Docker, PostgreSQL, FastAPI</span>
+              <span class="tech"
+                >JavaScript, VueJS, AWS EC2, Docker, PostgreSQL, FastAPI</span
+              >
               <span class="year">2024</span>
             </div>
           </div>
           <ul class="proj-desc">
             <li>Comprehensive course planning tool for METU students</li>
-            <li>Interactive schedule builder and course search functionality</li>
+            <li>
+              Interactive schedule builder and course search functionality
+            </li>
           </ul>
         </div>
       </div>
 
       <div class="project-item">
         <div class="proj-logo">
-          <img src="/logos/portfolio.svg" alt="Portfolio" onerror="this.style.display='none'" />
+          <img
+            src="/logos/portfolio.svg"
+            alt="Portfolio"
+            onerror="this.style.display='none'"
+          />
         </div>
         <div class="proj-content">
           <div class="proj-header">
@@ -136,13 +201,15 @@ const t = useTranslations(lang);
               <p class="proj-subtitle">Modern Web Portfolio</p>
             </div>
             <div class="proj-meta">
-              <span class="tech">Next.js, Tailwind CSS</span>
+              <span class="tech"
+                >Astro.build, JavaScript, GitHub Pages, Cloudflare, Tailwind CSS</span
+              >
               <span class="year">2024</span>
             </div>
           </div>
           <ul class="proj-desc">
             <li>Beautiful responsive design with dark/light mode toggle</li>
-            <li>Interactive blog system with markdown support</li>
+            <li>Interactive blog system with markdown and katex support</li>
           </ul>
         </div>
       </div>
@@ -154,12 +221,20 @@ const t = useTranslations(lang);
 
       <div class="cert-item">
         <div class="cert-logo">
-          <img src="/logos/deeplearning.svg" alt="Deep Learning" onerror="this.style.display='none'" />
+          <img
+            src="/logos/deeplearning.svg"
+            alt="Deep Learning"
+            onerror="this.style.display='none'"
+          />
         </div>
         <div class="cert-content">
           <div class="cert-header">
             <div>
-              <a href="#" class="cert-title">Machine Learning Specialization <ExternalLink size={14} /></a>
+              <a
+                href="https://www.coursera.org/account/accomplishments/verify/U5D0PQLJ1YJ6?utm_source=link&utm_medium=certificate&utm_content=cert_image&utm_campaign=sharing_cta&utm_product=course"
+                class="cert-title"
+                >Machine Learning Specialization <ExternalLink size={14} /></a
+              >
               <p class="cert-org">Stanford University, Deeplearning.ai</p>
             </div>
             <span class="cert-date">Sep 2024</span>
@@ -169,12 +244,20 @@ const t = useTranslations(lang);
 
       <div class="cert-item">
         <div class="cert-logo">
-          <img src="/logos/ibm.svg" alt="IBM" onerror="this.style.display='none'" />
+          <img
+            src="/logos/ibm.svg"
+            alt="IBM"
+            onerror="this.style.display='none'"
+          />
         </div>
         <div class="cert-content">
           <div class="cert-header">
             <div>
-              <a href="#" class="cert-title">Data Science Specialization <ExternalLink size={14} /></a>
+              <a
+                href="https://www.coursera.org/account/accomplishments/specialization/UMGS8S9SKBSM"
+                class="cert-title"
+                >Data Science Specialization <ExternalLink size={14} /></a
+              >
               <p class="cert-org">IBM (Coursera)</p>
             </div>
             <span class="cert-date">Feb 2024</span>
@@ -213,9 +296,15 @@ const t = useTranslations(lang);
       <div class="personal-section">
         <h4>Personal</h4>
         <ul>
-          <li>I have loved designing since childhood. Now, I do it for fun during my breaks.</li>
+          <li>
+            I have loved designing since childhood. Now, I do it for fun during
+            my breaks.
+          </li>
           <li>This website is my graph of thoughts, notes, and ideas.</li>
-          <li>I see myself as a relaxed and friendly person, so feel free to reach out!</li>
+          <li>
+            I see myself as a relaxed and friendly person, so feel free to reach
+            out!
+          </li>
         </ul>
       </div>
 
@@ -272,8 +361,9 @@ const t = useTranslations(lang);
 
   .profile-info h1 {
     margin: 0 0 0.25rem;
-    font-size: 1.5rem;
-    font-weight: 600;
+    font-family: "Melodrama", serif;
+    font-size: 2rem;
+    font-weight: 500;
   }
 
   .profile-info .subtitle {
@@ -386,8 +476,8 @@ const t = useTranslations(lang);
   }
 
   .exp-logo {
-    width: 40px;
-    height: 40px;
+    width: 56px;
+    height: 56px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -398,9 +488,13 @@ const t = useTranslations(lang);
   }
 
   .exp-logo img {
-    width: 24px;
-    height: 24px;
+    width: 48px;
+    height: 48px;
     object-fit: contain;
+  }
+
+  :global([data-theme="dark"]) .exp-logo {
+    background: #ffffff;
   }
 
   .exp-content {
@@ -465,8 +559,8 @@ const t = useTranslations(lang);
   }
 
   .proj-logo {
-    width: 40px;
-    height: 40px;
+    width: 56px;
+    height: 56px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -477,9 +571,13 @@ const t = useTranslations(lang);
   }
 
   .proj-logo img {
-    width: 24px;
-    height: 24px;
+    width: 32px;
+    height: 32px;
     object-fit: contain;
+  }
+
+  :global([data-theme="dark"]) .proj-logo {
+    background: #ffffff;
   }
 
   .proj-content {
@@ -556,8 +654,8 @@ const t = useTranslations(lang);
   }
 
   .cert-logo {
-    width: 40px;
-    height: 40px;
+    width: 56px;
+    height: 56px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -568,9 +666,13 @@ const t = useTranslations(lang);
   }
 
   .cert-logo img {
-    width: 24px;
-    height: 24px;
+    width: 48px;
+    height: 48px;
     object-fit: contain;
+  }
+
+  :global([data-theme="dark"]) .cert-logo {
+    background: #ffffff;
   }
 
   .cert-content {

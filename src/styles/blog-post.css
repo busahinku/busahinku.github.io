@@ -8,23 +8,14 @@ html, body {
   max-width: 100vw;
 }
 
-/* ===========================
-   Custom Fonts
-   =========================== */
-@font-face {
-  font-family: 'Bower';
-  src: url('/fonts/Bower-Bold.woff') format('woff');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
+
 
 /* ===========================
    CSS Variables for Text Arrangement
    =========================== */
 :root {
   --blog-font-family: 'Inter', system-ui, sans-serif;
-  --blog-heading-font: 'Bower', Georgia, serif;
+  --blog-heading-font: 'Melodrama', serif;
   --blog-font-size: 1.0625rem;
   --blog-font-size-desktop: 1.125rem;
   --blog-h2-size: 1.5rem;

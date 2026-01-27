@@ -24,6 +24,7 @@ export const translations = {
     'theme.paper': 'Paper',
 
     // Home
+    'home.title': 'busahin harbi',
     'home.welcome': 'Welcome',
     'home.description': 'Welcome to my personal website',
     'home.latestPosts': 'Latest Posts',
@@ -55,6 +56,7 @@ export const translations = {
     'blog.category.personal': 'Personal',
     'blog.category.design': 'Design',
     'blog.category.programming': 'Programming',
+    'blog.category.philosophy': 'Philosophy',
     'blog.category.other': 'Other',
 
     // Blog Post Enhanced
@@ -120,6 +122,12 @@ export const translations = {
     'projects.category.desktop': 'Desktop',
     'projects.category.api': 'API',
     'projects.category.library': 'Library',
+    'projects.category.statistics': 'Statistics',
+    'projects.category.survey': 'Survey',
+    'projects.category.academia': 'Academia',
+    'projects.category.network': 'Network',
+    'projects.category.ML/DL': 'ML/DL',
+    'projects.category.AI': 'AI',
     'projects.category.other': 'Other',
 
     // Courses
@@ -129,11 +137,11 @@ export const translations = {
     'courses.allCategories': 'All Categories',
     'courses.allYears': 'All Years',
     'courses.noResults': 'No courses found',
+    'courses.category.statistics': 'Statistics',
+    'courses.category.mathematics': 'Mathematics',
+    'courses.category.electrics-electronics': 'Electrics & Electronics',
+    'courses.category.computer-engineering': 'Computer Engineering',
     'courses.category.programming': 'Programming',
-    'courses.category.web': 'Web Development',
-    'courses.category.data': 'Data Science',
-    'courses.category.design': 'Design',
-    'courses.category.devops': 'DevOps',
     'courses.category.other': 'Other',
 
     // Misc
@@ -171,6 +179,7 @@ export const translations = {
     'theme.paper': 'Kağıt',
 
     // Home
+    'home.title': 'busahin harbi',
     'home.welcome': 'Hoş Geldiniz',
     'home.description': 'Kişisel web siteme hoş geldiniz',
     'home.latestPosts': 'Son Yazılar',
@@ -202,6 +211,7 @@ export const translations = {
     'blog.category.personal': 'Kişisel',
     'blog.category.design': 'Tasarım',
     'blog.category.programming': 'Programlama',
+    'blog.category.philosophy': 'Felsefe',
     'blog.category.other': 'Diğer',
 
     // Blog Post Enhanced
@@ -267,6 +277,12 @@ export const translations = {
     'projects.category.desktop': 'Masaüstü',
     'projects.category.api': 'API',
     'projects.category.library': 'Kütüphane',
+    'projects.category.statistics': 'İstatistik',
+    'projects.category.survey': 'Anket',
+    'projects.category.academia': 'Akademi',
+    'projects.category.network': 'Ağ',
+    'projects.category.ML/DL': 'ML/DL',
+    'projects.category.AI': 'Yapay Zeka',
     'projects.category.other': 'Diğer',
 
     // Courses
@@ -276,11 +292,11 @@ export const translations = {
     'courses.allCategories': 'Tüm Kategoriler',
     'courses.allYears': 'Tüm Yıllar',
     'courses.noResults': 'Kurs bulunamadı',
+    'courses.category.statistics': 'İstatistik',
+    'courses.category.mathematics': 'Matematik',
+    'courses.category.electrics-electronics': 'Elektrik & Elektronik',
+    'courses.category.computer-engineering': 'Bilgisayar Mühendisliği',
     'courses.category.programming': 'Programlama',
-    'courses.category.web': 'Web Geliştirme',
-    'courses.category.data': 'Veri Bilimi',
-    'courses.category.design': 'Tasarım',
-    'courses.category.devops': 'DevOps',
     'courses.category.other': 'Diğer',
 
     // Misc

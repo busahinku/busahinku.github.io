@@ -1,13 +1,13 @@
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
 
-export const CATEGORIES = ['technology', 'tutorial', 'personal', 'design', 'programming', 'other'] as const;
+export const CATEGORIES = ['technology', 'tutorial', 'personal', 'design', 'programming', 'philosophy', 'other'] as const;
 export type Category = typeof CATEGORIES[number];
 
-export const PROJECT_CATEGORIES = ['web', 'mobile', 'desktop', 'api', 'library', 'other'] as const;
+export const PROJECT_CATEGORIES = ['web', 'mobile', 'desktop', 'api', 'library', 'other', 'statistics', 'survey', 'academia', 'network', 'ML/DL', 'AI'] as const;
 export type ProjectCategory = typeof PROJECT_CATEGORIES[number];
 
-export const COURSE_CATEGORIES = ['programming', 'web', 'data', 'design', 'devops', 'other'] as const;
+export const COURSE_CATEGORIES = ['statistics', 'mathematics', 'electrics-electronics', 'computer-engineering', 'programming', 'other'] as const;
 export type CourseCategory = typeof COURSE_CATEGORIES[number];
 
 const blog = defineCollection({
@@ -21,7 +21,7 @@ const blog = defineCollection({
 			heroImage: image().optional(),
 			tags: z.array(z.string()).default([]),
 			category: z.enum(CATEGORIES).default('other'),
-			author: z.string().default('Burak Sahin'),
+			author: z.string().default('Burak Sahin Kucuk'),
 			featured: z.boolean().default(false),
 			draft: z.boolean().default(false),
 		}),
@@ -38,7 +38,7 @@ const projects = defineCollection({
 			heroImage: image().optional(),
 			tags: z.array(z.string()).default([]),
 			category: z.enum(PROJECT_CATEGORIES).default('other'),
-			author: z.string().default('Burak Sahin'),
+			author: z.string().default('Burak Sahin Kucuk'),
 			featured: z.boolean().default(false),
 			draft: z.boolean().default(false),
 			// Project-specific fields
@@ -59,7 +59,7 @@ const courses = defineCollection({
 			heroImage: image().optional(),
 			tags: z.array(z.string()).default([]),
 			category: z.enum(COURSE_CATEGORIES).default('other'),
-			author: z.string().default('Burak Sahin'),
+			author: z.string().default('Burak Sahin Kucuk'),
 			featured: z.boolean().default(false),
 			draft: z.boolean().default(false),
 		}),
