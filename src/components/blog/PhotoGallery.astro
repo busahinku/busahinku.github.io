@@ -1,7 +1,7 @@
 ---
-import { Image } from 'astro:assets';
-import { X, ChevronLeft, ChevronRight, ZoomIn } from '@lucide/astro';
-import type { ImageMetadata } from 'astro';
+import { Image } from "astro:assets";
+import { X, ChevronLeft, ChevronRight, ZoomIn } from "@lucide/astro";
+import type { ImageMetadata } from "astro";
 
 interface GalleryImage {
   src: ImageMetadata;
@@ -12,45 +12,54 @@ interface GalleryImage {
 interface Props {
   images: GalleryImage[];
   columns?: 2 | 3 | 4;
-  layout?: 'grid' | 'masonry';
+  layout?: "grid" | "masonry";
 }
 
-const { images, columns = 3, layout = 'grid' } = Astro.props;
+const { images, columns = 3, layout = "grid" } = Astro.props;
 const galleryId = `gallery-${Math.random().toString(36).slice(2, 9)}`;
 ---
 
 <div class="photo-gallery" data-gallery={galleryId} data-layout={layout}>
   <div class="gallery-grid" data-columns={columns}>
-    {images.map((image, index) => (
-      <button
-        class="gallery-item"
-        data-gallery-item
-        data-index={index}
-        data-caption={image.caption || ''}
-        aria-label={`View ${image.alt}`}
-      >
-        <div class="gallery-item-inner">
-          <Image
-            src={image.src}
-            alt={image.alt}
-            width={600}
-            height={layout === 'masonry' ? undefined : 600}
-            loading="lazy"
-            class="gallery-image"
-          />
-          <div class="gallery-overlay">
-            <ZoomIn size={24} class="gallery-zoom-icon" />
-            {image.caption && (
-              <span class="gallery-caption-preview">{image.caption}</span>
-            )}
+    {
+      images.map((image, index) => (
+        <button
+          class="gallery-item"
+          data-gallery-item
+          data-index={index}
+          data-caption={image.caption || ""}
+          data-full-src={image.src.src}
+          aria-label={`View ${image.alt}`}
+        >
+          <div class="gallery-item-inner">
+            <Image
+              src={image.src}
+              alt={image.alt}
+              width={800}
+              quality="max"
+              height={layout === "masonry" ? undefined : 600}
+              loading="lazy"
+              class="gallery-image"
+            />
+            <div class="gallery-overlay">
+              <ZoomIn size={24} class="gallery-zoom-icon" />
+              {image.caption && (
+                <span class="gallery-caption-preview">{image.caption}</span>
+              )}
+            </div>
           </div>
-        </div>
-      </button>
-    ))}
+        </button>
+      ))
+    }
   </div>
 
   <!-- Lightbox -->
-  <div class="lightbox" id={`lightbox-${galleryId}`} data-lightbox aria-hidden="true">
+  <div
+    class="lightbox"
+    id={`lightbox-${galleryId}`}
+    data-lightbox
+    aria-hidden="true"
+  >
     <div class="lightbox-backdrop" data-lightbox-backdrop></div>
 
     <button class="lightbox-close" data-lightbox-close aria-label="Close">
@@ -59,7 +68,11 @@ const galleryId = `gallery-${Math.random().toString(36).slice(2, 9)}`;
 
     <div class="lightbox-container">
       <!-- Desktop nav -->
-      <button class="lightbox-nav lightbox-prev desktop-nav" data-lightbox-prev aria-label="Previous">
+      <button
+        class="lightbox-nav lightbox-prev desktop-nav"
+        data-lightbox-prev
+        aria-label="Previous"
+      >
         <ChevronLeft size={32} />
       </button>
 
@@ -73,17 +86,29 @@ const galleryId = `gallery-${Math.random().toString(36).slice(2, 9)}`;
         </div>
         <!-- Mobile nav -->
         <div class="lightbox-mobile-nav">
-          <button class="lightbox-nav mobile-nav" data-lightbox-prev aria-label="Previous">
+          <button
+            class="lightbox-nav mobile-nav"
+            data-lightbox-prev
+            aria-label="Previous"
+          >
             <ChevronLeft size={28} />
           </button>
-          <button class="lightbox-nav mobile-nav" data-lightbox-next aria-label="Next">
+          <button
+            class="lightbox-nav mobile-nav"
+            data-lightbox-next
+            aria-label="Next"
+          >
             <ChevronRight size={28} />
           </button>
         </div>
       </div>
 
       <!-- Desktop nav -->
-      <button class="lightbox-nav lightbox-next desktop-nav" data-lightbox-next aria-label="Next">
+      <button
+        class="lightbox-nav lightbox-next desktop-nav"
+        data-lightbox-next
+        aria-label="Next"
+      >
         <ChevronRight size={32} />
       </button>
     </div>
@@ -92,155 +117,174 @@ const galleryId = `gallery-${Math.random().toString(36).slice(2, 9)}`;
 
 <script>
   function initAllGalleries() {
-    document.querySelectorAll('.photo-gallery[data-gallery]').forEach(gallery => {
-      // Skip if already initialized
-      if (gallery.dataset.initialized) return;
-      gallery.dataset.initialized = 'true';
+    document
+      .querySelectorAll<HTMLElement>(".photo-gallery[data-gallery]")
+      .forEach((gallery) => {
+        // Skip if already initialized
+        if (gallery.dataset.initialized) return;
+        gallery.dataset.initialized = "true";
 
-      const galleryId = gallery.dataset.gallery;
-      const lightbox = gallery.querySelector('[data-lightbox]');
-      const lightboxImage = gallery.querySelector('[data-lightbox-image]');
-      const lightboxCaption = gallery.querySelector('[data-lightbox-caption]');
-      const lightboxCounter = gallery.querySelector('[data-lightbox-counter]');
-      const closeBtn = gallery.querySelector('[data-lightbox-close]');
-      const items = gallery.querySelectorAll('[data-gallery-item]');
+        const galleryId = gallery.dataset.gallery;
+        const lightbox = gallery.querySelector(
+          "[data-lightbox]",
+        ) as HTMLElement;
+        const lightboxImage = gallery.querySelector(
+          "[data-lightbox-image]",
+        ) as HTMLImageElement;
+        const lightboxCaption = gallery.querySelector(
+          "[data-lightbox-caption]",
+        );
+        const lightboxCounter = gallery.querySelector(
+          "[data-lightbox-counter]",
+        );
+        const closeBtn = gallery.querySelector("[data-lightbox-close]");
+        const items = gallery.querySelectorAll("[data-gallery-item]");
 
-      if (!lightbox || !lightboxImage || !items.length) return;
+        if (!lightbox || !lightboxImage || !items.length) return;
 
-      let currentIndex = 0;
-      const totalImages = items.length;
+        let currentIndex = 0;
+        const totalImages = items.length;
 
-      // Get image src from the actual img elements in the gallery
-      const getImageSrc = (index) => {
-        const item = items[index];
-        const img = item?.querySelector('img');
-        return img?.src || '';
-      };
+        // Get image src from the actual img elements in the gallery
+        const getImageSrc = (index: number) => {
+          const item = items[index] as HTMLElement;
+          const fullSrc = item.dataset.fullSrc;
+          if (fullSrc) return fullSrc;
 
-      const getImageAlt = (index) => {
-        const item = items[index];
-        const img = item?.querySelector('img');
-        return img?.alt || '';
-      };
+          const img = item?.querySelector("img");
+          return img?.src || "";
+        };
 
-      const getImageCaption = (index) => {
-        const item = items[index];
-        return item?.dataset.caption || '';
-      };
+        const getImageAlt = (index: number) => {
+          const item = items[index];
+          const img = item?.querySelector("img");
+          return img?.alt || "";
+        };
 
-      const showImage = (index) => {
-        currentIndex = index;
-        lightboxImage.src = getImageSrc(index);
-        lightboxImage.alt = getImageAlt(index);
+        const getImageCaption = (index: number) => {
+          const item = items[index] as HTMLElement;
+          return item?.dataset.caption || "";
+        };
 
-        const caption = getImageCaption(index);
-        if (lightboxCaption) {
-          lightboxCaption.textContent = caption;
-        }
+        const showImage = (index: number) => {
+          currentIndex = index;
+          lightboxImage.src = getImageSrc(index);
+          lightboxImage.alt = getImageAlt(index);
 
-        if (lightboxCounter) {
-          lightboxCounter.textContent = `${index + 1} / ${totalImages}`;
-        }
-      };
+          const caption = getImageCaption(index);
+          if (lightboxCaption) {
+            lightboxCaption.textContent = caption;
+          }
 
-      const openLightbox = (index) => {
-        showImage(index);
-        lightbox.classList.add('open');
-        lightbox.setAttribute('aria-hidden', 'false');
-        document.body.style.overflow = 'hidden';
-      };
+          if (lightboxCounter) {
+            lightboxCounter.textContent = `${index + 1} / ${totalImages}`;
+          }
+        };
 
-      const closeLightbox = () => {
-        lightbox.classList.remove('open');
-        lightbox.setAttribute('aria-hidden', 'true');
-        document.body.style.overflow = '';
-      };
+        const openLightbox = (index: number) => {
+          showImage(index);
+          lightbox.classList.add("open");
+          lightbox.setAttribute("aria-hidden", "false");
+          document.body.style.overflow = "hidden";
+        };
 
-      const showPrev = () => {
-        const newIndex = currentIndex === 0 ? totalImages - 1 : currentIndex - 1;
-        showImage(newIndex);
-      };
+        const closeLightbox = () => {
+          lightbox.classList.remove("open");
+          lightbox.setAttribute("aria-hidden", "true");
+          document.body.style.overflow = "";
+        };
 
-      const showNext = () => {
-        const newIndex = currentIndex === totalImages - 1 ? 0 : currentIndex + 1;
-        showImage(newIndex);
-      };
+        const showPrev = () => {
+          const newIndex =
+            currentIndex === 0 ? totalImages - 1 : currentIndex - 1;
+          showImage(newIndex);
+        };
 
-      // Event listeners for gallery items
-      items.forEach((item, index) => {
-        item.addEventListener('click', (e) => {
-          e.preventDefault();
-          openLightbox(index);
+        const showNext = () => {
+          const newIndex =
+            currentIndex === totalImages - 1 ? 0 : currentIndex + 1;
+          showImage(newIndex);
+        };
+
+        // Event listeners for gallery items
+        items.forEach((item, index) => {
+          item.addEventListener("click", (e) => {
+            e.preventDefault();
+            openLightbox(index);
+          });
         });
-      });
 
-      // Close button
-      closeBtn?.addEventListener('click', closeLightbox);
+        // Close button
+        closeBtn?.addEventListener("click", closeLightbox);
 
-      // Navigation buttons (both desktop and mobile)
-      gallery.querySelectorAll('[data-lightbox-prev]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          showPrev();
-        });
-      });
-
-      gallery.querySelectorAll('[data-lightbox-next]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          showNext();
-        });
-      });
-
-      // Close on backdrop click
-      lightbox.addEventListener('click', (e) => {
-        const target = e.target;
-        if (target === lightbox ||
-            target.classList.contains('lightbox-backdrop') ||
-            target.classList.contains('lightbox-container') ||
-            target.classList.contains('lightbox-main') ||
-            target.classList.contains('lightbox-image-wrapper')) {
-          closeLightbox();
-        }
-      });
-
-      // Prevent image click from closing
-      lightboxImage.addEventListener('click', (e) => {
-        e.stopPropagation();
-      });
-
-      // Keyboard navigation
-      document.addEventListener('keydown', (e) => {
-        if (!lightbox.classList.contains('open')) return;
-
-        switch (e.key) {
-          case 'Escape':
-            closeLightbox();
-            break;
-          case 'ArrowLeft':
+        // Navigation buttons (both desktop and mobile)
+        gallery.querySelectorAll("[data-lightbox-prev]").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
             showPrev();
-            break;
-          case 'ArrowRight':
+          });
+        });
+
+        gallery.querySelectorAll("[data-lightbox-next]").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
             showNext();
-            break;
-        }
+          });
+        });
+
+        // Close on backdrop click
+        lightbox.addEventListener("click", (e) => {
+          const target = e.target as HTMLElement;
+          if (
+            target === lightbox ||
+            target.classList.contains("lightbox-backdrop") ||
+            target.classList.contains("lightbox-container") ||
+            target.classList.contains("lightbox-main") ||
+            target.classList.contains("lightbox-image-wrapper")
+          ) {
+            closeLightbox();
+          }
+        });
+
+        // Prevent image click from closing
+        lightboxImage.addEventListener("click", (e) => {
+          e.stopPropagation();
+        });
+
+        // Keyboard navigation
+        document.addEventListener("keydown", (e) => {
+          if (!lightbox.classList.contains("open")) return;
+
+          switch (e.key) {
+            case "Escape":
+              closeLightbox();
+              break;
+            case "ArrowLeft":
+              showPrev();
+              break;
+            case "ArrowRight":
+              showNext();
+              break;
+          }
+        });
       });
-    });
   }
 
   // Run on load
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAllGalleries);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initAllGalleries);
   } else {
     initAllGalleries();
   }
 
   // Re-run on Astro navigation
-  document.addEventListener('astro:after-swap', () => {
+  document.addEventListener("astro:after-swap", () => {
     // Reset initialized state for new content
-    document.querySelectorAll('.photo-gallery[data-gallery]').forEach(g => {
-      delete g.dataset.initialized;
-    });
+    document
+      .querySelectorAll<HTMLElement>(".photo-gallery[data-gallery]")
+      .forEach((g) => {
+        delete g.dataset.initialized;
+      });
     initAllGalleries();
   });
 </script>
@@ -248,7 +292,7 @@ const galleryId = `gallery-${Math.random().toString(36).slice(2, 9)}`;
 <style>
   /* Gallery Grid - Minimal */
   .photo-gallery {
-    margin: 1.5rem 0;
+    margin: 0 0 1.5rem 0;
   }
 
   .gallery-grid {
@@ -338,7 +382,9 @@ const galleryId = `gallery-${Math.random().toString(36).slice(2, 9)}`;
     justify-content: center;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
+    transition:
+      opacity 0.2s ease,
+      visibility 0.2s ease;
   }
 
   .lightbox.open {
