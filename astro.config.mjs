@@ -11,13 +11,7 @@ import tailwindcss from '@tailwindcss/vite';
 // https://astro.build/config
 export default defineConfig({
   site: 'https://busahinku.github.io',
-  integrations: [
-    mdx({
-      remarkPlugins: [remarkMath],
-      rehypePlugins: [rehypeKatex],
-    }),
-    sitemap(),
-  ],
+  integrations: [mdx(), sitemap()],
   output: 'static',
   markdown: {
     remarkPlugins: [remarkMath],
