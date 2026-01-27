@@ -1,23 +1,33 @@
 ---
-import { type CollectionEntry, getCollection, render } from 'astro:content';
-import BlogPostEnhanced from '../../layouts/BlogPostEnhanced.astro';
-import type { Lang } from '../../i18n/translations';
+import { type CollectionEntry, getCollection, render } from "astro:content";
+import BlogPostEnhanced from "../../layouts/BlogPostEnhanced.astro";
+import type { Lang } from "../../i18n/translations";
+
+import { useTranslations } from "../../i18n/translations";
 
 export async function getStaticPaths() {
-  const courses = await getCollection('courses');
+  const courses = await getCollection("courses");
   return courses.map((course) => ({
     params: { slug: course.id },
     props: course,
   }));
 }
 
-type Props = CollectionEntry<'courses'>;
+type Props = CollectionEntry<"courses">;
 
-const lang: Lang = 'en';
+const lang: Lang = "en";
+const t = useTranslations(lang);
 const course = Astro.props;
 const { Content, headings } = await render(course);
 ---
 
-<BlogPostEnhanced post={course.data} headings={headings} lang={lang} slug={course.id}>
+<BlogPostEnhanced
+  post={course.data}
+  headings={headings}
+  lang={lang}
+  slug={course.id}
+  backUrl="/courses"
+  backLabel={t("nav.courses")}
+>
   <Content />
 </BlogPostEnhanced>

@@ -1,25 +1,29 @@
 ---
-import { useTranslations, type Lang } from '../../i18n/translations';
-import { ArrowLeft } from '@lucide/astro';
-import ThemeToggle from '../ThemeToggle.astro';
-import TextArrangementToggle from './TextArrangementToggle.astro';
+import { useTranslations, type Lang } from "../../i18n/translations";
+import { ArrowLeft } from "@lucide/astro";
+import ThemeToggle from "../ThemeToggle.astro";
+import TextArrangementToggle from "./TextArrangementToggle.astro";
 
 interface Props {
   lang?: Lang;
+  backUrl?: string;
+  backLabel?: string;
 }
 
-const { lang = 'en' } = Astro.props;
+const { lang = "en", backUrl, backLabel } = Astro.props;
 const t = useTranslations(lang);
 
-const basePath = lang === 'en' ? '' : `/${lang}`;
-const blogPath = `${basePath}/blog`;
+const basePath = lang === "en" ? "" : `/${lang}`;
+const defaultBlogPath = `${basePath}/blog`;
+const finalBackUrl = backUrl || defaultBlogPath;
+const finalBackLabel = backLabel || t("nav.blog");
 ---
 
 <header class="blog-header" id="blogHeader">
   <div class="blog-header-container">
-    <a href={blogPath} class="back-link">
+    <a href={finalBackUrl} class="back-link">
       <ArrowLeft size={18} />
-      <span>{t('nav.blog')}</span>
+      <span>{finalBackLabel}</span>
     </a>
 
     <div class="blog-header-controls">
@@ -31,20 +35,21 @@ const blogPath = `${basePath}/blog`;
 
 <script>
   function initProgressBar() {
-    const progressBar = document.getElementById('progressBar');
+    const progressBar = document.getElementById("progressBar");
     if (!progressBar) return;
 
     const updateProgress = () => {
       const scrollTop = window.scrollY;
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const docHeight =
+        document.documentElement.scrollHeight - window.innerHeight;
       const scrollPercent = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
       progressBar.style.width = `${Math.min(100, Math.max(0, scrollPercent))}%`;
     };
 
-    window.addEventListener('scroll', updateProgress, { passive: true });
+    window.addEventListener("scroll", updateProgress, { passive: true });
     updateProgress();
   }
 
   initProgressBar();
-  document.addEventListener('astro:after-swap', initProgressBar);
+  document.addEventListener("astro:after-swap", initProgressBar);
 </script>
