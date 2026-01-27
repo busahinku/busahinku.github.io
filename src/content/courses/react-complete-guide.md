@@ -1,11 +1,11 @@
 ---
-title: 'React - The Complete Guide'
-description: 'Master React from basics to advanced concepts including hooks, context, Redux, and building real-world applications.'
-pubDate: 'Dec 15 2023'
-heroImage: '../../assets/blog-placeholder-5.jpg'
-tags: ['react', 'hooks', 'redux', 'frontend']
-category: 'web'
-author: 'Burak Sahin'
+title: "React - The Complete Guide"
+description: "Master React from basics to advanced concepts including hooks, context, Redux, and building real-world applications."
+pubDate: "Dec 15 2023"
+heroImage: "../../assets/blog-placeholder-5.jpg"
+tags: ["react", "hooks", "redux", "frontend"]
+category: "programming"
+author: "Burak Sahin"
 featured: true
 ---
 
@@ -16,23 +16,27 @@ Learn React from the ground up and build modern, scalable web applications.
 ## Topics Covered
 
 ### Fundamentals
+
 - JSX and components
 - Props and state
 - Event handling
 - Conditional rendering
 
 ### Hooks Deep Dive
+
 - useState and useEffect
 - useContext and useReducer
 - Custom hooks
 - useMemo and useCallback
 
 ### State Management
+
 - Context API
 - Redux Toolkit
 - When to use what
 
 ### Advanced Patterns
+
 - Higher-order components
 - Render props
 - Compound components
