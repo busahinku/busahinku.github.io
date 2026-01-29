@@ -118,19 +118,15 @@ Go to **SSL/TLS** in Cloudflare:
 
 ---
 
-## Step 7: Cloudflare Caching Settings
-
-### Speed > Optimization
-
-1. **Auto Minify**: Enable HTML, CSS, JavaScript
-2. **Brotli**: **ON**
-3. **Early Hints**: **ON**
-4. **Rocket Loader**: **OFF** (can break some JS)
+## Step 7: Cloudflare Performance & Caching Settings
 
 ### Caching > Configuration
 
 1. **Caching Level**: Standard
 2. **Browser Cache TTL**: **1 year** (Cloudflare respects your headers, but caches at edge)
+3. **Auto Minify** (if available): Enable HTML, CSS, JavaScript
+   - Note: This may be under "Speed" or removed in newer Cloudflare UI
+4. **Brotli**: Should be enabled by default
 
 ### Caching > Cache Rules (Free plan: 10 rules)
 

@@ -258,12 +258,19 @@ html[data-blog-width="wide"] {
   max-width: 1400px;
   margin: 0 auto;
   padding-top: 70px;
+  align-items: flex-start;
 }
 
 .toc-container {
+  position: static !important;
+  top: auto !important;
   width: 220px;
   flex-shrink: 0;
   padding-top: 1rem;
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
+  align-self: flex-start;
 }
 
 .blog-spacer {
