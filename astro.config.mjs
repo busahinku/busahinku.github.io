@@ -10,7 +10,7 @@ import tailwindcss from '@tailwindcss/vite';
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://busahinku.github.io',
+  site: 'https://busahin.com',
   integrations: [mdx(), sitemap()],
   output: 'static',
   markdown: {
