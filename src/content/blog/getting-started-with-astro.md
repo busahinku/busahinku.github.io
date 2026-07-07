@@ -1,4 +1,5 @@
 ---
+draft: true
 title: 'Getting Started with Astro'
 description: 'Learn how to build fast, content-focused websites with Astro framework'
 pubDate: 'Jan 15 2025'

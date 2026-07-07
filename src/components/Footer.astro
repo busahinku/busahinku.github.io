@@ -1,70 +1,58 @@
 ---
-import { useTranslations, type Lang } from '../i18n/translations';
-import { Github, Linkedin, Twitter, Mail, Heart, ArrowUp } from '@lucide/astro';
+import { type Lang } from '../i18n/translations';
+import { ArrowUp } from '@lucide/astro';
+import { SITE_CONFIG } from '../consts';
 
 interface Props {
   lang?: Lang;
   authorName?: string;
 }
 
-const { lang = 'en', authorName = 'Burak Sahin Kucuk' } = Astro.props;
-const t = useTranslations(lang);
+const { lang = 'en', authorName = SITE_CONFIG.author } = Astro.props;
 const currentYear = new Date().getFullYear();
+
+const navLinks = [
+  { label: lang === 'tr' ? 'Yazılar' : 'Writing', href: '/blog' },
+  { label: lang === 'tr' ? 'Projeler' : 'Projects', href: '/projects' },
+  { label: lang === 'tr' ? 'Hakkımda' : 'About', href: '/about' },
+  { label: 'RSS', href: '/rss.xml' },
+];
+
+const socialLinks = [
+  { label: 'GitHub', href: SITE_CONFIG.social.github },
+  { label: 'LinkedIn', href: SITE_CONFIG.social.linkedin },
+  { label: 'X', href: SITE_CONFIG.social.twitter },
+  { label: lang === 'tr' ? 'E-posta' : 'Email', href: `mailto:${SITE_CONFIG.email}` },
+];
 ---
 
 <footer>
-  <div class="footer-gradient"></div>
   <div class="footer-content">
-    <div class="footer-top">
-      <div class="footer-brand">
-        <img src="/logo.svg" alt="Logo" class="brand-logo" width="40" height="40" />
-        <p class="brand-tagline">Building digital experiences</p>
-      </div>
-      
-      <div class="footer-links">
-        <div class="link-group">
-          <h4>Navigate</h4>
-          <a href="/">Home</a>
-          <a href="/blog">Blog</a>
-          <a href="/projects">Projects</a>
-          <a href="/about">About</a>
-        </div>
-        <div class="link-group">
-          <h4>Connect</h4>
-          <a href="https://github.com/busahinku" target="_blank" rel="noopener noreferrer">GitHub</a>
-          <a href="https://linkedin.com/in/busahinku" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-          <a href="https://twitter.com/busahinku" target="_blank" rel="noopener noreferrer">Twitter</a>
-          <a href="mailto:buraksahinkucuk@gmail.com">Email</a>
-        </div>
-      </div>
-    </div>
-    
-    <div class="footer-divider"></div>
-    
-    <div class="footer-bottom">
-      <p class="copyright">
-        &copy; {currentYear} {authorName}
+    <div class="footer-row">
+      <p class="footer-note">
+        &copy; {currentYear} {authorName} ·
+        {lang === 'tr'
+          ? 'Ankara’dan, bolca kahveyle.'
+          : 'Written and built in Ankara, with too much coffee.'}
       </p>
-      <p class="made-with">
-        Made with <Heart size={14} class="heart-icon" /> using Astro
-      </p>
-      <div class="social-icons">
-        <a href="https://github.com/busahinku" target="_blank" rel="noopener noreferrer" aria-label="GitHub" class="social-icon">
-          <Github size={18} />
-        </a>
-        <a href="https://linkedin.com/in/busahinku" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" class="social-icon">
-          <Linkedin size={18} />
-        </a>
-        <a href="https://twitter.com/busahinku" target="_blank" rel="noopener noreferrer" aria-label="Twitter" class="social-icon">
-          <Twitter size={18} />
-        </a>
-        <a href="mailto:buraksahinkucuk@gmail.com" aria-label="Email" class="social-icon">
-          <Mail size={18} />
-        </a>
-      </div>
+      <nav class="footer-nav" aria-label="Footer">
+        {navLinks.map((link) => <a href={link.href}>{link.label}</a>)}
+        <span class="footer-sep" aria-hidden="true">/</span>
+        {
+          socialLinks.map((link) => (
+            <a
+              href={link.href}
+              target={link.href.startsWith('mailto') ? undefined : '_blank'}
+              rel="noreferrer"
+            >
+              {link.label}
+            </a>
+          ))
+        }
+      </nav>
     </div>
   </div>
-  
+
   <button class="back-to-top" id="backToTop" aria-label="Back to top">
     <ArrowUp size={20} />
   </button>
@@ -74,153 +62,52 @@ const currentYear = new Date().getFullYear();
   footer {
     position: relative;
     z-index: 10;
-    padding: 0;
-    background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
-    overflow: hidden;
-  }
-
-  .footer-gradient {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    border-top: 1px solid var(--border);
+    background: var(--bg-primary);
   }
 
   .footer-content {
     max-width: 1100px;
     margin: 0 auto;
-    padding: 4rem 2rem 2rem;
+    padding: 1.75rem 1.5rem;
   }
 
-  .footer-top {
+  .footer-row {
     display: flex;
+    align-items: baseline;
     justify-content: space-between;
-    align-items: flex-start;
-    gap: 3rem;
-    margin-bottom: 3rem;
+    flex-wrap: wrap;
+    gap: 0.75rem 2rem;
   }
 
-  .footer-brand {
-    flex-shrink: 0;
-  }
-
-  .brand-logo {
-    height: 40px;
-    width: auto;
-    display: block;
-    margin-bottom: 0.5rem;
-    filter: brightness(0) saturate(100%);
-    transition: opacity 0.3s ease;
-  }
-
-  :global([data-theme='dark']) .brand-logo {
-    filter: brightness(0) saturate(100%) invert(1);
-  }
-
-  :global([data-theme='paper']) .brand-logo {
-    filter: brightness(0) saturate(100%) sepia(0.3);
-  }
-
-  .brand-logo:hover {
-    opacity: 0.7;
-  }
-
-  .brand-tagline {
-    font-size: 0.875rem;
-    color: var(--text-muted);
+  .footer-note {
     margin: 0;
-  }
-
-  .footer-links {
-    display: flex;
-    gap: 4rem;
-  }
-
-  .link-group h4 {
-    font-family: 'Bower', Georgia, serif;
-    font-size: 0.9rem;
-    font-weight: 700;
+    font-size: 0.8125rem;
     color: var(--text-muted);
-    letter-spacing: 0.02em;
-    margin: 0 0 1rem 0;
   }
 
-  .link-group a {
-    display: block;
-    font-size: 0.9rem;
+  .footer-nav {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.125rem;
+  }
+
+  .footer-nav a {
+    font-size: 0.8125rem;
     color: var(--text-secondary);
     text-decoration: none;
-    padding: 0.35rem 0;
-    transition: color 0.3s ease;
+    transition: color 0.2s ease;
   }
 
-  .link-group a:hover {
-    color: var(--text-primary);
+  .footer-nav a:hover {
+    color: var(--accent);
   }
 
-  .footer-divider {
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--border), transparent);
-    margin-bottom: 2rem;
-  }
-
-  .footer-bottom {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-  }
-
-  .copyright {
-    margin: 0;
-    font-size: 0.8rem;
+  .footer-sep {
     color: var(--text-muted);
-  }
-
-  .made-with {
-    margin: 0;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-  }
-
-  .made-with :global(.heart-icon) {
-    color: #ef4444;
-    animation: heartbeat 1.5s ease-in-out infinite;
-  }
-
-  @keyframes heartbeat {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.2); }
-  }
-
-  .social-icons {
-    display: flex;
-    gap: 0.5rem;
-  }
-
-  .social-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    color: var(--text-muted);
-    border-radius: 50%;
-    border: 1px solid transparent;
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  }
-
-  .social-icon:hover {
-    color: var(--text-primary);
-    border-color: var(--border);
-    background: var(--bg-tertiary);
-    transform: translateY(-3px);
+    font-size: 0.8125rem;
+    user-select: none;
   }
 
   .back-to-top {
@@ -255,39 +142,16 @@ const currentYear = new Date().getFullYear();
     background: var(--bg-tertiary);
     color: var(--text-primary);
     border-color: var(--accent);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
   }
 
   [data-theme='dark'] .back-to-top {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   }
 
-  [data-theme='dark'] .back-to-top:hover {
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-  }
-
-  /* Responsive */
-  @media (max-width: 768px) {
-    .footer-content {
-      padding: 3rem 1.5rem 1.5rem;
-    }
-
-    .footer-top {
+  @media (max-width: 640px) {
+    .footer-row {
       flex-direction: column;
-      gap: 2rem;
-    }
-
-    .footer-links {
-      width: 100%;
-      justify-content: space-between;
-      gap: 2rem;
-    }
-
-    .footer-bottom {
-      flex-direction: column;
-      text-align: center;
-      gap: 1rem;
+      align-items: flex-start;
     }
 
     .back-to-top {
@@ -297,27 +161,13 @@ const currentYear = new Date().getFullYear();
       height: 40px;
     }
   }
-
-  @media (max-width: 480px) {
-    .footer-links {
-      display: flex;
-      flex-direction: row;
-      gap: 2rem;
-      justify-content: space-between;
-    }
-
-    .link-group {
-      text-align: left;
-    }
-  }
 </style>
 
 <script>
   // Back to top button functionality
   const backToTopBtn = document.getElementById('backToTop');
-  
+
   if (backToTopBtn) {
-    // Show/hide button based on scroll position
     const toggleButtonVisibility = () => {
       if (window.scrollY > 400) {
         backToTopBtn.classList.add('visible');
@@ -327,12 +177,11 @@ const currentYear = new Date().getFullYear();
     };
 
     window.addEventListener('scroll', toggleButtonVisibility, { passive: true });
-    
-    // Smooth scroll to top on click
+
     backToTopBtn.addEventListener('click', () => {
       window.scrollTo({
         top: 0,
-        behavior: 'smooth'
+        behavior: 'smooth',
       });
     });
   }

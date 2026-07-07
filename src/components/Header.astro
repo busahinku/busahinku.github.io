@@ -146,14 +146,6 @@ const pathname = Astro.url.pathname.replace(/\/$/, "") || "/";
   .logo-section {
     position: absolute;
     left: 0;
-    opacity: 0;
-    transform: translateX(-1rem);
-    transition: all 0.3s ease;
-  }
-
-  .header:hover .logo-section {
-    opacity: 1;
-    transform: translateX(0);
   }
 
   .logo {
@@ -235,14 +227,6 @@ const pathname = Astro.url.pathname.replace(/\/$/, "") || "/";
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    opacity: 0;
-    transform: translateX(1rem);
-    transition: all 0.3s ease;
-  }
-
-  .header:hover .controls-section {
-    opacity: 1;
-    transform: translateX(0);
   }
 
   /* Mobile Menu Button */
