@@ -11,15 +11,16 @@ const socialItems = [
   {
     name: "GitHub",
     href: SITE_CONFIG.social.github,
-    description: "Projelerimi ve katkılarımı inceleyin",
+    description: "Yaptıklarımın çoğu, çeşitli bitmişlik seviyelerinde burada.",
     accent: "#8b5cf6",
     gridClass: "social-card--wide social-pos-github",
     icon: "github",
   },
   {
     name: "Spotify",
-    href: "https://open.spotify.com/user/bzmah384nndroig0y2dh22saw?si=c7dc8de070df45a7",
-    description: "Calisirken muzik dinlemek benim icin vazgecilmez.",
+    href: SITE_CONFIG.social.spotify,
+    description:
+      "Çalışırken müzik benim varsayılan halim. Çalma listelerimi yargılayabilirsiniz.",
     accent: "#22c55e",
     gridClass: "social-card--tall social-pos-spotify",
     icon: "music",
@@ -27,15 +28,15 @@ const socialItems = [
   {
     name: "LinkedIn",
     href: SITE_CONFIG.social.linkedin,
-    description: "Yeni insanlarla tanismayi severim",
+    description: "Merhaba deyin. Yeni insanlarla tanışmayı gerçekten severim.",
     accent: "#3b82f6",
     gridClass: "social-card--tall-3 social-pos-linkedin",
     icon: "linkedin",
   },
   {
     name: "Instagram",
-    href: "https://instagram.com/busahinku",
-    description: "Pek fazla kullanmadigim Instagram hesabim",
+    href: SITE_CONFIG.social.instagram,
+    description: "Çoğunlukla takipteyim. Nadiren bir fotoğraf düşer.",
     accent: "#ec4899",
     gridClass: "social-card--wide social-pos-instagram",
     icon: "instagram",
@@ -43,15 +44,15 @@ const socialItems = [
   {
     name: "X",
     href: SITE_CONFIG.social.twitter,
-    description: "Anlik paylasimlar",
+    description: "Ara sıra kısa düşünceler.",
     accent: "#64748b",
     gridClass: "social-card--small social-pos-x",
     icon: "twitter",
   },
   {
-    name: "Email me",
+    name: "E-posta",
     href: `mailto:${SITE_CONFIG.email}`,
-    description: `Bana istediginiz zaman ulasabilirsiniz! --> ${SITE_CONFIG.email}`,
+    description: `Bana ulaşmanın en hızlı yolu: ${SITE_CONFIG.email}`,
     accent: "#22d3ee",
     gridClass: "social-card--wide-3 social-pos-email",
     icon: "mail",
@@ -67,7 +68,7 @@ const socialItems = [
   <div class="contact-page">
     <header class="page-header">
       <h1>{t("contact.title")}</h1>
-      <p class="intro">Bir sorunuz mu var? Ulaşmaktan cekinmeyin.</p>
+      <p class="intro">Bir sorunuz mu var? Ulaşmaktan çekinmeyin.</p>
     </header>
 
     <div class="grid-container">

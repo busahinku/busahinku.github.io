@@ -3,9 +3,11 @@
 /* ===========================
    Global Responsive Overflow Fix
    =========================== */
+/* overflow-x: clip prevents horizontal scroll WITHOUT creating a scroll
+   container, which would break position: sticky on the TOC */
 html,
 body {
-  overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100vw;
 }
 
@@ -209,11 +211,9 @@ html[data-blog-width="wide"] {
 
 .text-option-label {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   margin-bottom: 0.5rem;
 }
 
@@ -254,7 +254,7 @@ html[data-blog-width="wide"] {
 .blog-layout {
   display: flex;
   justify-content: center;
-  gap: 1rem;
+  gap: 2.5rem;
   max-width: 1400px;
   margin: 0 auto;
   padding-top: 70px;
@@ -262,15 +262,16 @@ html[data-blog-width="wide"] {
 }
 
 .toc-container {
-  position: static !important;
-  top: auto !important;
+  position: sticky;
+  top: 84px;
   width: 220px;
   flex-shrink: 0;
-  padding-top: 1rem;
-  max-height: none !important;
-  height: auto !important;
-  overflow: visible !important;
   align-self: flex-start;
+  max-height: calc(100vh - 110px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1rem 0.25rem 1rem 0;
+  scrollbar-width: thin;
 }
 
 .blog-spacer {
@@ -315,12 +316,11 @@ html[data-blog-width="wide"] {
 }
 
 .toc-title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 1rem;
+  font-family: "Melodrama", serif;
+  font-size: 1.0625rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 0.875rem;
   padding-left: 0.75rem;
 }
 
@@ -328,6 +328,7 @@ html[data-blog-width="wide"] {
   list-style: none;
   padding: 0;
   margin: 0;
+  border-left: 1px solid var(--border);
 }
 
 .toc-item {
@@ -341,6 +342,7 @@ html[data-blog-width="wide"] {
   color: var(--text-muted);
   text-decoration: none;
   border-left: 2px solid transparent;
+  margin-left: -1px;
   transition: all 0.2s ease;
   line-height: 1.4;
 }
@@ -407,14 +409,14 @@ html[data-blog-width="wide"] {
 }
 
 .article-header {
-  text-align: center;
+  text-align: left;
   margin-bottom: 2rem;
 }
 
 .article-meta {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-bottom: 1rem;
@@ -424,10 +426,11 @@ html[data-blog-width="wide"] {
 
 .article-title {
   margin: 0 0 1rem 0;
-  font-family: var(--blog-heading-font);
+  font-family: "Melodrama", var(--blog-heading-font), serif;
   font-size: 1.75rem;
-  font-weight: 700;
-  line-height: 1.2;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -461,7 +464,7 @@ html[data-blog-width="wide"] {
 .project-links {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.75rem;
   margin-top: 1.25rem;
 }

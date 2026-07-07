@@ -6,7 +6,7 @@ import type { Lang } from "../../i18n/translations";
 import { useTranslations } from "../../i18n/translations";
 
 export async function getStaticPaths() {
-  const courses = await getCollection("courses");
+  const courses = await getCollection("courses", ({ data }) => !data.draft);
   return courses.map((course) => ({
     params: { slug: course.id },
     props: course,

@@ -12,7 +12,7 @@ interface GalleryImage {
 interface Props {
   images: GalleryImage[];
   columns?: 2 | 3 | 4;
-  layout?: "grid" | "masonry";
+  layout?: "strip" | "grid" | "masonry";
 }
 
 const { images, columns = 3, layout = "grid" } = Astro.props;
@@ -35,9 +35,9 @@ const galleryId = `gallery-${Math.random().toString(36).slice(2, 9)}`;
             <Image
               src={image.src}
               alt={image.alt}
-              width={800}
+              width={900}
               quality="max"
-              height={layout === "masonry" ? undefined : 600}
+              height={layout === "grid" ? 600 : undefined}
               loading="lazy"
               class="gallery-image"
             />
@@ -290,14 +290,14 @@ const galleryId = `gallery-${Math.random().toString(36).slice(2, 9)}`;
 </script>
 
 <style>
-  /* Gallery Grid - Minimal */
+  /* Gallery Grid */
   .photo-gallery {
-    margin: 0 0 1.5rem 0;
+    margin: 1.75rem 0;
   }
 
   .gallery-grid {
     display: grid;
-    gap: 0.5rem;
+    gap: 0.75rem;
   }
 
   .gallery-grid[data-columns="2"] {
@@ -312,6 +312,12 @@ const galleryId = `gallery-${Math.random().toString(36).slice(2, 9)}`;
     grid-template-columns: repeat(4, 1fr);
   }
 
+  @media (max-width: 1024px) {
+    .gallery-grid[data-columns="4"] {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
   @media (max-width: 768px) {
     .gallery-grid[data-columns="3"],
     .gallery-grid[data-columns="4"] {
@@ -319,26 +325,86 @@ const galleryId = `gallery-${Math.random().toString(36).slice(2, 9)}`;
     }
 
     .gallery-grid {
-      gap: 0.25rem;
+      gap: 0.5rem;
     }
   }
 
   @media (max-width: 480px) {
-    .gallery-grid {
+    .photo-gallery[data-layout="grid"] .gallery-grid,
+    .photo-gallery[data-layout="masonry"] .gallery-grid {
       grid-template-columns: repeat(2, 1fr) !important;
     }
   }
 
-  /* Gallery Item - Simple */
+  /* Strip layout: single scrollable row, images at natural aspect ratio */
+  .photo-gallery[data-layout="strip"] .gallery-grid {
+    display: flex;
+    grid-template-columns: none;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    gap: 0.75rem;
+    padding-bottom: 0.875rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .photo-gallery[data-layout="strip"] .gallery-grid::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .photo-gallery[data-layout="strip"] .gallery-grid::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .photo-gallery[data-layout="strip"] .gallery-grid::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+  }
+
+  .photo-gallery[data-layout="strip"] .gallery-item {
+    flex: 0 0 auto;
+    aspect-ratio: auto;
+    height: 320px;
+    scroll-snap-align: start;
+  }
+
+  .photo-gallery[data-layout="strip"] .gallery-image {
+    width: auto;
+    max-width: none;
+    height: 100%;
+  }
+
+  @media (max-width: 768px) {
+    .photo-gallery[data-layout="strip"] .gallery-item {
+      height: 230px;
+    }
+
+    .photo-gallery[data-layout="strip"] .gallery-grid {
+      gap: 0.5rem;
+    }
+  }
+
+  /* Gallery Item */
   .gallery-item {
     position: relative;
-    background: none;
-    border: none;
+    /* flex ignores stray whitespace text nodes inside the button, which
+       otherwise push the image down and leave a gap at the top */
+    display: flex;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
     padding: 0;
-    cursor: pointer;
+    cursor: zoom-in;
     overflow: hidden;
-    border-radius: 0.25rem;
-    aspect-ratio: 1;
+    border-radius: 0.5rem;
+    aspect-ratio: 3 / 2;
+    transition: border-color 0.2s ease;
+    line-height: 0;
+  }
+
+  .gallery-item:hover,
+  .gallery-item:focus-visible {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
   }
 
   .photo-gallery[data-layout="masonry"] .gallery-item {
@@ -354,22 +420,66 @@ const galleryId = `gallery-${Math.random().toString(36).slice(2, 9)}`;
   .gallery-image {
     width: 100%;
     height: 100%;
+    /* override the global .article-content img margin, which otherwise
+       pushes the image down inside the clipped frame */
+    margin: 0;
+    border-radius: 0;
     object-fit: cover;
-    transition: opacity 0.2s ease;
+    transition: transform 0.35s ease;
   }
 
-  .gallery-item:hover .gallery-image {
-    opacity: 0.9;
+  .gallery-item:hover .gallery-image,
+  .gallery-item:focus-visible .gallery-image {
+    transform: scale(1.03);
   }
 
-  /* Hide overlay elements */
+  /* Overlay: caption strip + zoom icon, revealed on hover/focus */
   .gallery-overlay {
-    display: none;
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.625rem 0.75rem;
+    background: linear-gradient(
+      to top,
+      rgba(0, 0, 0, 0.55),
+      rgba(0, 0, 0, 0.15) 40%,
+      transparent 65%
+    );
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
   }
 
-  .gallery-zoom-icon,
+  .gallery-item:hover .gallery-overlay,
+  .gallery-item:focus-visible .gallery-overlay {
+    opacity: 1;
+  }
+
+  .gallery-overlay :global(.gallery-zoom-icon) {
+    color: rgba(255, 255, 255, 0.9);
+    flex-shrink: 0;
+    order: 2;
+  }
+
   .gallery-caption-preview {
-    display: none;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.92);
+    line-height: 1.4;
+    text-align: left;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .gallery-image,
+    .gallery-item:hover .gallery-image {
+      transform: none;
+    }
   }
 
   /* Lightbox - Clean */
@@ -390,6 +500,15 @@ const galleryId = `gallery-${Math.random().toString(36).slice(2, 9)}`;
   .lightbox.open {
     opacity: 1;
     visibility: visible;
+  }
+
+  .lightbox-main {
+    transform: scale(0.98);
+    transition: transform 0.25s ease;
+  }
+
+  .lightbox.open .lightbox-main {
+    transform: scale(1);
   }
 
   .lightbox-backdrop {

@@ -24,7 +24,7 @@ export const translations = {
     'theme.paper': 'Paper',
 
     // Home
-    'home.title': 'busahin harbi',
+    'home.title': 'Burak Sahin Kucuk',
     'home.welcome': 'Welcome',
     'home.description': 'Welcome to my personal website',
     'home.latestPosts': 'Latest Posts',
@@ -179,7 +179,7 @@ export const translations = {
     'theme.paper': 'Kağıt',
 
     // Home
-    'home.title': 'busahin harbi',
+    'home.title': 'Burak Şahin Küçük',
     'home.welcome': 'Hoş Geldiniz',
     'home.description': 'Kişisel web siteme hoş geldiniz',
     'home.latestPosts': 'Son Yazılar',
