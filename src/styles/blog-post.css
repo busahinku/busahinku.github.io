@@ -372,13 +372,44 @@ html[data-blog-width="wide"] {
 /* ===========================
    Article Content
    =========================== */
+/* The reading column is wider than the text measure so images and the
+   gallery can be clearly wider than the paragraphs (Gates Notes effect).
+   Text is re-constrained to --blog-content-width below. */
 .article-container {
-  flex: 0 1 var(--blog-content-width);
+  --blog-media-width: calc(var(--blog-content-width) + 10rem);
+  flex: 0 1 var(--blog-media-width);
   width: 100%;
-  max-width: var(--blog-content-width);
+  max-width: var(--blog-media-width);
   padding: 0 0 2rem;
   transition: max-width 0.3s ease;
-  overflow-x: hidden;
+}
+
+/* Constrain text to a comfortable measure, centered in the wider column */
+.article-header,
+.article-content > p,
+.article-content > h2,
+.article-content > h3,
+.article-content > h4,
+.article-content > h5,
+.article-content > ul,
+.article-content > ol,
+.article-content > blockquote,
+.article-content > hr,
+.article-content > .concept-check,
+.article-content > .katex-display {
+  max-width: var(--blog-content-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Media spans the full (wider) column */
+.article-content > .photo-gallery,
+.article-content > .video-embed,
+.article-content > figure,
+.article-content > pre,
+.article-content > .code-block-wrapper,
+.article-content > p:has(> img:only-child) {
+  max-width: 100%;
 }
 
 @media (max-width: 1280px) {
@@ -623,28 +654,19 @@ html[data-blog-font="sans"] .article-content {
   }
 }
 
-/* Images breathe a step wider than the text column (Gates Notes effect).
-   --media-bleed is the overflow per side; capped so it never exceeds the
-   viewport on smaller screens. */
-.article-content {
-  --media-bleed: clamp(0rem, (100vw - var(--blog-content-width)) / 2 - 1rem, 3.5rem);
-}
-
-.article-content img,
-.article-content figure,
-.article-content .photo-gallery,
-.article-content .video-embed {
-  margin-left: calc(-1 * var(--media-bleed));
-  margin-right: calc(-1 * var(--media-bleed));
-  width: calc(100% + 2 * var(--media-bleed));
+/* A lone image on its own line fills the full (wide) column, so it reads
+   clearly wider than the constrained text around it. */
+.article-content > p:has(> img:only-child) {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
 }
 
 .article-content img {
   display: block;
-  max-width: none;
+  width: 100%;
+  max-width: 100%;
   height: auto;
-  margin-top: 2rem;
-  margin-bottom: 2rem;
+  margin: 2rem auto;
   border-radius: 0.5rem;
 }
 
