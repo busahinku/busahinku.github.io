@@ -82,9 +82,26 @@ const { slug } = Astro.props;
     return num.toString();
   }
 
-  // Initialize on page load
-  initLikeButtons();
+  // Load Firebase only when the button scrolls near the viewport
+  function initWhenVisible() {
+    const buttons = document.querySelectorAll('.like-button:not([data-initialized])');
+    if (!buttons.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          observer.disconnect();
+          initLikeButtons();
+        }
+      },
+      { rootMargin: '400px' },
+    );
+
+    buttons.forEach((button) => observer.observe(button));
+  }
+
+  initWhenVisible();
 
   // Re-initialize on Astro navigation
-  document.addEventListener('astro:after-swap', initLikeButtons);
+  document.addEventListener('astro:after-swap', initWhenVisible);
 </script>

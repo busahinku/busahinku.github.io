@@ -165,9 +165,11 @@ const socialLinks = [
 
 <script>
   // Back to top button functionality
-  const backToTopBtn = document.getElementById('backToTop');
+  function initBackToTop() {
+    const backToTopBtn = document.getElementById('backToTop');
+    if (!backToTopBtn || backToTopBtn.dataset.initialized) return;
+    backToTopBtn.dataset.initialized = 'true';
 
-  if (backToTopBtn) {
     const toggleButtonVisibility = () => {
       if (window.scrollY > 400) {
         backToTopBtn.classList.add('visible');
@@ -185,4 +187,7 @@ const socialLinks = [
       });
     });
   }
+
+  initBackToTop();
+  document.addEventListener('astro:after-swap', initBackToTop);
 </script>
