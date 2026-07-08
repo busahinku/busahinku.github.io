@@ -384,30 +384,19 @@ html[data-blog-width="wide"] {
   transition: max-width 0.3s ease;
 }
 
-/* Constrain text to a comfortable measure, centered in the wider column */
+/* Everything sits at a comfortable reading measure, centered in the wider
+   column: text, callouts, code, blockquotes, concept checks, math. */
 .article-header,
-.article-content > p,
-.article-content > h2,
-.article-content > h3,
-.article-content > h4,
-.article-content > h5,
-.article-content > ul,
-.article-content > ol,
-.article-content > blockquote,
-.article-content > hr,
-.article-content > .concept-check,
-.article-content > .katex-display {
+.article-content > * {
   max-width: var(--blog-content-width);
   margin-left: auto;
   margin-right: auto;
 }
 
-/* Media spans the full (wider) column */
+/* Only true media breaks out to the full (wider) column */
 .article-content > .photo-gallery,
 .article-content > .video-embed,
 .article-content > figure,
-.article-content > pre,
-.article-content > .code-block-wrapper,
 .article-content > p:has(> img:only-child) {
   max-width: 100%;
 }
