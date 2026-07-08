@@ -670,6 +670,27 @@ html[data-blog-font="sans"] .article-content {
   border-radius: 0.5rem;
 }
 
+/* Heading anchor links (revealed on hover) */
+.heading-anchor {
+  margin-left: 0.5rem;
+  font-family: "Inter", system-ui, sans-serif;
+  font-weight: 400;
+  color: var(--text-muted);
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.article-content h2:hover .heading-anchor,
+.article-content h3:hover .heading-anchor,
+.heading-anchor:focus-visible {
+  opacity: 1;
+}
+
+.heading-anchor:hover {
+  color: var(--accent);
+}
+
 /* Figure with caption */
 .article-content figure {
   margin-top: 2rem;

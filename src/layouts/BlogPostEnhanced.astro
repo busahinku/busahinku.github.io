@@ -10,6 +10,8 @@ import TableOfContents from "../components/blog/TableOfContents.astro";
 import ViewCounter from "../components/blog/ViewCounter.astro";
 import LikeButton from "../components/blog/LikeButton.astro";
 import CommentSection from "../components/blog/CommentSection.astro";
+import ShareRow from "../components/blog/ShareRow.astro";
+import PostNav, { type PostNavLink } from "../components/blog/PostNav.astro";
 import { useTranslations, type Lang } from "../i18n/translations";
 import "../styles/blog-post.css";
 import "../styles/firebase-components.css";
@@ -27,6 +29,8 @@ interface Props {
   demo?: string;
   backUrl?: string;
   backLabel?: string;
+  prevPost?: PostNavLink;
+  nextPost?: PostNavLink;
 }
 
 const {
@@ -38,6 +42,8 @@ const {
   demo,
   backUrl,
   backLabel,
+  prevPost,
+  nextPost,
 } = Astro.props;
 const { title, description, pubDate, updatedDate, heroImage } = post;
 const t = useTranslations(lang);
@@ -150,6 +156,10 @@ const t = useTranslations(lang);
             <LikeButton slug={slug} />
           </div>
         </div>
+
+        <ShareRow title={title} lang={lang} />
+
+        <PostNav prev={prevPost} next={nextPost} lang={lang} />
 
         <hr class="article-divider" />
 
@@ -264,15 +274,41 @@ const t = useTranslations(lang);
     });
   }
 
+  // Hover anchor links on article headings (Medium-style deep links)
+  function initHeadingAnchors() {
+    document
+      .querySelectorAll<HTMLElement>(
+        ".article-content h2[id]:not([data-anchored]), .article-content h3[id]:not([data-anchored])",
+      )
+      .forEach((heading) => {
+        heading.dataset.anchored = "true";
+        const anchor = document.createElement("a");
+        anchor.className = "heading-anchor";
+        anchor.href = `#${heading.id}`;
+        anchor.setAttribute("aria-label", "Link to this section");
+        anchor.textContent = "#";
+        anchor.addEventListener("click", () => {
+          navigator.clipboard
+            ?.writeText(
+              `${window.location.origin}${window.location.pathname}#${heading.id}`,
+            )
+            .catch(() => {});
+        });
+        heading.appendChild(anchor);
+      });
+  }
+
   // Run immediately to prevent flash
   initTextPreferences();
   initCodeBlocks();
   handleExternalLinks();
+  initHeadingAnchors();
 
   // Re-run on navigation
   document.addEventListener("astro:after-swap", () => {
     initTextPreferences();
     initCodeBlocks();
     handleExternalLinks();
+    initHeadingAnchors();
   });
 </script>

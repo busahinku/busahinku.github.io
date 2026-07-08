@@ -2,6 +2,7 @@
 import { type CollectionEntry, getCollection, render } from "astro:content";
 import BlogPostEnhanced from "../../layouts/BlogPostEnhanced.astro";
 import type { Lang } from "../../i18n/translations";
+import type { PostNavLink } from "../../components/blog/PostNav.astro";
 
 // MDX Components
 import ConceptCheck from "../../components/blog/ConceptCheck.astro";
@@ -13,17 +14,32 @@ import Reference from "../../components/blog/Reference.astro";
 import { Image } from "astro:assets";
 
 export async function getStaticPaths() {
-  const posts = await getCollection("blog", ({ data }) => !data.draft);
-  return posts.map((post) => ({
+  const posts = (
+    await getCollection("blog", ({ data }) => !data.draft)
+  ).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+  return posts.map((post, i) => ({
     params: { slug: post.id },
-    props: post,
+    props: {
+      post,
+      prevPost: posts[i + 1]
+        ? { title: posts[i + 1].data.title, href: `/blog/${posts[i + 1].id}/` }
+        : undefined,
+      nextPost: posts[i - 1]
+        ? { title: posts[i - 1].data.title, href: `/blog/${posts[i - 1].id}/` }
+        : undefined,
+    },
   }));
 }
 
-type Props = CollectionEntry<"blog">;
+interface Props {
+  post: CollectionEntry<"blog">;
+  prevPost?: PostNavLink;
+  nextPost?: PostNavLink;
+}
 
 const lang: Lang = "en";
-const post = Astro.props;
+const { post, prevPost, nextPost } = Astro.props;
 const { Content, headings } = await render(post);
 
 // MDX components to pass
@@ -43,6 +59,8 @@ const components = {
   headings={headings}
   lang={lang}
   slug={post.id}
+  prevPost={prevPost}
+  nextPost={nextPost}
 >
   <Content components={components} />
 </BlogPostEnhanced>

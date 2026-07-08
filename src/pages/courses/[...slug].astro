@@ -1,23 +1,43 @@
 ---
 import { type CollectionEntry, getCollection, render } from "astro:content";
 import BlogPostEnhanced from "../../layouts/BlogPostEnhanced.astro";
-import type { Lang } from "../../i18n/translations";
-
-import { useTranslations } from "../../i18n/translations";
+import { useTranslations, type Lang } from "../../i18n/translations";
+import type { PostNavLink } from "../../components/blog/PostNav.astro";
 
 export async function getStaticPaths() {
-  const courses = await getCollection("courses", ({ data }) => !data.draft);
-  return courses.map((course) => ({
+  const courses = (
+    await getCollection("courses", ({ data }) => !data.draft)
+  ).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+  return courses.map((course, i) => ({
     params: { slug: course.id },
-    props: course,
+    props: {
+      course,
+      prevPost: courses[i + 1]
+        ? {
+            title: courses[i + 1].data.title,
+            href: `/courses/${courses[i + 1].id}/`,
+          }
+        : undefined,
+      nextPost: courses[i - 1]
+        ? {
+            title: courses[i - 1].data.title,
+            href: `/courses/${courses[i - 1].id}/`,
+          }
+        : undefined,
+    },
   }));
 }
 
-type Props = CollectionEntry<"courses">;
+interface Props {
+  course: CollectionEntry<"courses">;
+  prevPost?: PostNavLink;
+  nextPost?: PostNavLink;
+}
 
 const lang: Lang = "en";
 const t = useTranslations(lang);
-const course = Astro.props;
+const { course, prevPost, nextPost } = Astro.props;
 const { Content, headings } = await render(course);
 ---
 
@@ -28,6 +48,8 @@ const { Content, headings } = await render(course);
   slug={course.id}
   backUrl="/courses"
   backLabel={t("nav.courses")}
+  prevPost={prevPost}
+  nextPost={nextPost}
 >
   <Content />
 </BlogPostEnhanced>
