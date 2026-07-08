@@ -1,6 +1,11 @@
 ---
 import { type Lang } from "../i18n/translations";
 import { SITE_CONFIG } from "../consts";
+import {
+  bookmarks as allBookmarks,
+  books as allBooks,
+  sources as allSources,
+} from "../data/misc";
 
 interface Props {
   lang: Lang;
@@ -49,81 +54,23 @@ const sectionIndex = [
   { id: "desk", label: copy.desk },
 ];
 
-const bookmarks = [
-  {
-    title: "Refactoring UI",
-    url: "https://www.refactoringui.com/",
-    category: tr ? "Tasarım" : "Design",
-  },
-  {
-    title: "Realtime Colors",
-    url: "https://www.realtimecolors.com/",
-    category: tr ? "Tasarım" : "Design",
-  },
-  {
-    title: "Josh W Comeau",
-    url: "https://www.joshwcomeau.com/",
-    category: "Blog",
-  },
-  { title: "Syntax.fm", url: "https://syntax.fm/", category: "Podcast" },
-  {
-    title: "Frontend Masters",
-    url: "https://frontendmasters.com/",
-    category: tr ? "Öğrenme" : "Learning",
-  },
-];
+const bookmarks = allBookmarks.slice(0, 5).map((item) => ({
+  title: item.title,
+  url: item.url ?? "#",
+  category: item.category[lang],
+}));
 
-const books = [
-  {
-    title: "Clean Code",
-    author: "Robert C. Martin",
-    category: tr ? "Programlama" : "Programming",
-  },
-  {
-    title: "The Pragmatic Programmer",
-    author: "David Thomas",
-    category: tr ? "Programlama" : "Programming",
-  },
-  {
-    title: "Designing Data-Intensive Applications",
-    author: "Martin Kleppmann",
-    category: tr ? "Sistemler" : "Systems",
-  },
-  {
-    title: "Atomic Habits",
-    author: "James Clear",
-    category: tr ? "Kişisel Gelişim" : "Self-Help",
-  },
-  {
-    title: "Deep Work",
-    author: "Cal Newport",
-    category: tr ? "Verimlilik" : "Productivity",
-  },
-];
+const books = allBooks.slice(0, 5).map((item) => ({
+  title: item.title,
+  author: item.sub ?? "",
+  category: item.category[lang],
+}));
 
-const sources = [
-  {
-    title: "Hacker News",
-    url: "https://news.ycombinator.com/",
-    category: tr ? "Haberler" : "News",
-  },
-  {
-    title: "Dev.to",
-    url: "https://dev.to/",
-    category: tr ? "Topluluk" : "Community",
-  },
-  { title: "CSS-Tricks", url: "https://css-tricks.com/", category: "CSS" },
-  {
-    title: "Smashing Magazine",
-    url: "https://www.smashingmagazine.com/",
-    category: "Web Dev",
-  },
-  {
-    title: "A List Apart",
-    url: "https://alistapart.com/",
-    category: "Web Dev",
-  },
-];
+const sources = allSources.slice(0, 5).map((item) => ({
+  title: item.title,
+  url: item.url ?? "#",
+  category: item.category[lang],
+}));
 
 const setup = [
   { name: 'MacBook Pro 14"', category: tr ? "bilgisayar" : "computer" },

@@ -1,0 +1,164 @@
+---
+import { type Lang } from "../i18n/translations";
+import type { MiscEntry } from "../data/misc";
+
+interface Props {
+  lang: Lang;
+  title: string;
+  intro: string;
+  items: MiscEntry[];
+}
+
+const { lang, title, intro, items } = Astro.props;
+const backHref = lang === "tr" ? "/tr/misc" : "/misc";
+const backLabel = lang === "tr" ? "Ivır zıvır" : "Miscellany";
+---
+
+<div class="misc-archive">
+  <a class="back-link" href={backHref}>← {backLabel}</a>
+
+  <header class="page-head">
+    <h1>{title}</h1>
+    <p class="page-intro">{intro}</p>
+  </header>
+
+  <ul class="leader-list">
+    {
+      items.map((item) => {
+        const row = (
+          <>
+            <span class="row-title">
+              {item.title}
+              {item.sub && <span class="row-sub">, {item.sub}</span>}
+            </span>
+            <span class="row-leader" aria-hidden="true" />
+            <span class="row-meta">{item.category[lang]}</span>
+          </>
+        );
+        return (
+          <li>
+            {item.url ? (
+              <a
+                class="leader-row"
+                href={item.url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {row}
+              </a>
+            ) : (
+              <div class="leader-row">{row}</div>
+            )}
+          </li>
+        );
+      })
+    }
+  </ul>
+</div>
+
+<style>
+  .misc-archive {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 1rem 0 2rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    margin-bottom: 1.5rem;
+    transition: color 0.2s ease;
+  }
+
+  .back-link:hover {
+    color: var(--accent);
+  }
+
+  .page-head {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .page-head h1 {
+    font-family: "Melodrama", serif;
+    font-weight: 600;
+    font-size: clamp(2rem, 5.5vw, 2.75rem);
+    line-height: 1.1;
+    margin: 0 0 0.5rem;
+    color: var(--text-primary);
+  }
+
+  .page-intro {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    margin: 0;
+  }
+
+  .leader-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .leader-list > li {
+    border-bottom: 1px dashed
+      color-mix(in srgb, var(--border) 70%, transparent);
+  }
+
+  .leader-list > li:last-child {
+    border-bottom: none;
+  }
+
+  .leader-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.875rem 0;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .row-title {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    transition: color 0.2s ease;
+  }
+
+  a.leader-row:hover .row-title {
+    color: var(--accent);
+  }
+
+  .row-sub {
+    font-weight: 400;
+    color: var(--text-secondary);
+  }
+
+  .row-leader {
+    flex: 1;
+    border-bottom: 1px dotted var(--border);
+    transform: translateY(-4px);
+    min-width: 2rem;
+  }
+
+  .row-meta {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 640px) {
+    .row-leader {
+      display: none;
+    }
+
+    .row-title {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+</style>

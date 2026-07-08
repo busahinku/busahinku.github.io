@@ -21,8 +21,12 @@ const isHomePage = Astro.url.pathname === "/" || Astro.url.pathname === "/tr/";
     <BaseHead title={title} description={description} />
   </head>
   <body class={isHomePage ? "home" : ""}>
+    <a class="skip-link" href="#main-content"
+      >{lang === "tr" ? "İçeriğe atla" : "Skip to content"}</a
+    >
     <Header lang={lang} />
     <main
+      id="main-content"
       class={isHomePage
         ? "container homepage"
         : wide

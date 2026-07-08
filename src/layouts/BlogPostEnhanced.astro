@@ -49,6 +49,9 @@ const t = useTranslations(lang);
   </head>
 
   <body>
+    <a class="skip-link" href="#main-content"
+      >{lang === "tr" ? "İçeriğe atla" : "Skip to content"}</a
+    >
     <!-- Progress bar at top -->
     <div class="reading-progress" id="readingProgress">
       <div class="reading-progress-bar" id="progressBar"></div>
@@ -61,7 +64,7 @@ const t = useTranslations(lang);
       <TableOfContents headings={headings} lang={lang} />
 
       <!-- Center: Article Content -->
-      <article class="article-container">
+      <article class="article-container" id="main-content">
         {
           heroImage && (
             <div class="hero-image-wrapper">
@@ -84,7 +87,7 @@ const t = useTranslations(lang);
               )
             }
           </div>
-          <h2 class="article-title">{title}</h2>
+          <h1 class="article-title">{title}</h1>
           {description && <p class="article-description">{description}</p>}
           {
             (github || demo) && (

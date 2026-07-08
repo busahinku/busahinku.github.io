@@ -1,6 +1,8 @@
 {
-    "name": "busahin",
+    "name": "Burak Sahin Kucuk",
     "short_name": "busahin",
+    "description": "Statistics reports, course notes, and side projects.",
+    "start_url": "/",
     "icons": [
         {
             "src": "/android-chrome-192x192.png",
@@ -13,7 +15,7 @@
             "type": "image/png"
         }
     ],
-    "theme_color": "#FFFFFF",
-    "background_color": "#FFFFFF",
+    "theme_color": "#faf8f1",
+    "background_color": "#faf8f1",
     "display": "standalone"
 }
