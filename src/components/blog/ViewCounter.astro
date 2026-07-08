@@ -70,9 +70,18 @@ const { slug } = Astro.props;
     return num.toString();
   }
 
-  // Initialize on page load
-  initViewCounter();
+  // Defer Firebase (~460KB of chunks) until the browser is idle so it
+  // never competes with initial render or page transitions
+  function scheduleInit() {
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => initViewCounter(), { timeout: 4000 });
+    } else {
+      setTimeout(initViewCounter, 2500);
+    }
+  }
+
+  scheduleInit();
 
   // Re-initialize on Astro navigation
-  document.addEventListener('astro:after-swap', initViewCounter);
+  document.addEventListener('astro:after-swap', scheduleInit);
 </script>

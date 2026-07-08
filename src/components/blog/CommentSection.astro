@@ -473,9 +473,27 @@ const { slug, lang = 'en' } = Astro.props;
     return t('yearsAgo', { n: diffYear });
   }
 
-  // Initialize on page load
-  initCommentSection();
+  // Load Firebase (firestore + auth) only when the comment section
+  // scrolls near the viewport
+  function initWhenVisible() {
+    const sections = document.querySelectorAll('.comment-section:not([data-initialized])');
+    if (!sections.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          observer.disconnect();
+          initCommentSection();
+        }
+      },
+      { rootMargin: '400px' },
+    );
+
+    sections.forEach((section) => observer.observe(section));
+  }
+
+  initWhenVisible();
 
   // Re-initialize on Astro navigation
-  document.addEventListener('astro:after-swap', initCommentSection);
+  document.addEventListener('astro:after-swap', initWhenVisible);
 </script>

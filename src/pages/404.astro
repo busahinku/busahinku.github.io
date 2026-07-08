@@ -1,0 +1,92 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { type Lang } from "../i18n/translations";
+
+const lang: Lang = "en";
+---
+
+<Layout
+  title="404 · Burak Sahin Kucuk"
+  description="This page does not exist."
+  lang={lang}
+>
+  <div class="notfound">
+    <p class="code">404</p>
+    <h1>This page isn't in the drafts folder either.</h1>
+    <p class="note">
+      The address may have changed, or it never existed. Either way, nothing
+      to see here.
+    </p>
+    <p class="note tr-note">
+      Aradığınız sayfa taslaklar klasöründe bile yok. Adres değişmiş ya da hiç
+      var olmamış olabilir.
+    </p>
+    <p class="links">
+      <a href="/">Home</a>
+      <span class="sep" aria-hidden="true">·</span>
+      <a href="/projects">Projects</a>
+      <span class="sep" aria-hidden="true">·</span>
+      <a href="/tr/">Türkçe</a>
+    </p>
+  </div>
+</Layout>
+
+<style>
+  .notfound {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 4rem 0;
+  }
+
+  .code {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin: 0 0 1rem;
+  }
+
+  h1 {
+    font-family: "Melodrama", serif;
+    font-weight: 500;
+    font-size: clamp(1.5rem, 4.5vw, 2.125rem);
+    line-height: 1.2;
+    margin: 0 0 1.25rem;
+    color: var(--text-primary);
+  }
+
+  .note {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    margin: 0 0 0.75rem;
+  }
+
+  .tr-note {
+    color: var(--text-muted);
+    font-size: 0.9375rem;
+  }
+
+  .links {
+    margin: 2rem 0 0;
+    display: flex;
+    gap: 0.625rem;
+    align-items: baseline;
+  }
+
+  .links a {
+    color: var(--text-primary);
+    text-decoration: underline;
+    text-decoration-color: var(--border);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+  }
+
+  .links a:hover {
+    text-decoration-color: var(--accent);
+    color: var(--text-primary);
+  }
+
+  .sep {
+    color: var(--text-muted);
+  }
+</style>

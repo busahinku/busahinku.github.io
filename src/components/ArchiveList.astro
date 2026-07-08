@@ -1,0 +1,188 @@
+---
+import FormattedDate from "./FormattedDate.astro";
+
+interface Item {
+  href: string;
+  title: string;
+  date: Date;
+  description?: string;
+  meta?: string;
+}
+
+interface Props {
+  title: string;
+  intro?: string;
+  emptyNote: string;
+  items: Item[];
+}
+
+const { title, intro, emptyNote, items } = Astro.props;
+---
+
+<div class="archive-page">
+  <header class="page-head">
+    <h1>{title}</h1>
+    {intro && <p class="page-intro">{intro}</p>}
+  </header>
+
+  {
+    items.length > 0 ? (
+      <ol class="toc-list">
+        {items.map((item) => (
+          <li>
+            <a class="toc-row" href={item.href}>
+              <span class="toc-title">{item.title}</span>
+              <span class="toc-leader" aria-hidden="true" />
+              <span class="toc-meta">
+                <FormattedDate date={item.date} />
+              </span>
+            </a>
+            {(item.description || item.meta) && (
+              <div class="toc-sub">
+                {item.description && (
+                  <p class="toc-desc">{item.description}</p>
+                )}
+                {item.meta && <p class="toc-tags">{item.meta}</p>}
+              </div>
+            )}
+          </li>
+        ))}
+      </ol>
+    ) : (
+      <p class="empty-note">{emptyNote}</p>
+    )
+  }
+</div>
+
+<style>
+  .archive-page {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 1rem 0 2rem;
+  }
+
+  .page-head {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .page-head h1 {
+    font-family: "Melodrama", serif;
+    font-weight: 600;
+    font-size: clamp(2rem, 5.5vw, 2.75rem);
+    line-height: 1.1;
+    margin: 0 0 0.5rem;
+    color: var(--text-primary);
+  }
+
+  .page-intro {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    margin: 0;
+  }
+
+  .toc-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    counter-reset: toc;
+  }
+
+  .toc-list > li {
+    padding: 1rem 0;
+    border-bottom: 1px dashed
+      color-mix(in srgb, var(--border) 70%, transparent);
+  }
+
+  .toc-list > li:last-child {
+    border-bottom: none;
+  }
+
+  .toc-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .toc-row::before {
+    counter-increment: toc;
+    content: counter(toc, decimal-leading-zero);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+
+  .toc-title {
+    font-size: 1.0625rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    transition: color 0.2s ease;
+  }
+
+  .toc-row:hover .toc-title {
+    color: var(--accent);
+  }
+
+  .toc-leader {
+    flex: 1;
+    border-bottom: 1px dotted var(--border);
+    transform: translateY(-4px);
+    min-width: 2rem;
+  }
+
+  .toc-meta {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .toc-sub {
+    margin: 0.375rem 0 0 1.9rem;
+  }
+
+  .toc-desc {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .toc-tags {
+    margin: 0.25rem 0 0;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .empty-note {
+    font-size: 0.9375rem;
+    color: var(--text-muted);
+    font-style: italic;
+    margin: 1.25rem 0 0;
+  }
+
+  @media (max-width: 640px) {
+    .toc-leader {
+      display: none;
+    }
+
+    .toc-title {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .toc-sub {
+      margin-left: 0;
+    }
+  }
+</style>

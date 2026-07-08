@@ -2,7 +2,8 @@
 // Import the global.css file here so that it is included on
 // all pages through the use of the <BaseHead /> component.
 import "../styles/global.css";
-import { SITE_TITLE } from "../consts";
+import { ClientRouter } from "astro:transitions";
+import { SITE_TITLE, SITE_CONFIG } from "../consts";
 
 interface Props {
   title: string;
@@ -14,25 +15,106 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
 // Default OG image - replace /og-image.jpg in public/ folder with your own
 const { title, description, image = "/og-image.jpg" } = Astro.props;
+
+// hreflang alternates: strip the /tr prefix to get the shared path
+const pathWithoutLang = Astro.url.pathname.replace(/^\/tr(\/|$)/, "/");
+const enURL = new URL(pathWithoutLang, Astro.site);
+const trURL = new URL(
+  pathWithoutLang === "/" ? "/tr/" : `/tr${pathWithoutLang}`,
+  Astro.site,
+);
+
+const personSchema = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: SITE_CONFIG.author,
+  url: Astro.site?.toString(),
+  email: `mailto:${SITE_CONFIG.email}`,
+  jobTitle: "Statistics & Computer Engineering student",
+  affiliation: {
+    "@type": "CollegeOrUniversity",
+    name: "Middle East Technical University",
+  },
+  sameAs: [
+    SITE_CONFIG.social.github,
+    SITE_CONFIG.social.linkedin,
+    SITE_CONFIG.social.twitter,
+  ],
+});
+
+/*
+ * Content-Security-Policy (meta form; GitHub Pages cannot send headers).
+ * Allowlist covers: self-hosted assets, Firebase (Firestore + Auth),
+ * Google sign-in, Spotify / YouTube / Vimeo embeds.
+ * frame-ancestors and X-Frame-Options cannot be set from <meta>;
+ * add those via a Cloudflare Transform Rule if desired.
+ */
+const csp = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: https:",
+  "font-src 'self'",
+  "connect-src 'self' https://*.googleapis.com wss://*.firebaseio.com",
+  "frame-src https://open.spotify.com https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com https://*.firebaseapp.com https://accounts.google.com",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "upgrade-insecure-requests",
+].join("; ");
 ---
+
+<!-- Security -->
+<meta http-equiv="Content-Security-Policy" content={csp} />
+<meta name="referrer" content="strict-origin-when-cross-origin" />
 
 <!-- Theme initialization script (inline to prevent FOUC) -->
 <script is:inline>
   (function () {
-    const theme =
-      localStorage.getItem("theme") ||
-      (window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light");
-    document.documentElement.setAttribute("data-theme", theme);
+    const THEME_COLORS = {
+      light: "#ffffff",
+      dark: "#0a0a0b",
+      paper: "#faf8f1",
+    };
+
+    function applyTheme() {
+      const theme =
+        localStorage.getItem("theme") ||
+        (window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+      syncThemeColor(theme);
+    }
+
+    function syncThemeColor(theme) {
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", THEME_COLORS[theme] || "#ffffff");
+    }
+
+    applyTheme();
+
+    // Keep the browser chrome color in sync when the toggle changes theme
+    new MutationObserver(() => {
+      syncThemeColor(document.documentElement.getAttribute("data-theme"));
+    }).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+
+    // Re-apply after view transitions swap in a fresh document
+    document.addEventListener("astro:after-swap", applyTheme);
   })();
 </script>
 
 <!-- Global Metadata -->
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="theme-color" content="#ffffff" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="icon" href="/favicon.ico" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/site.webmanifest" />
 <link rel="sitemap" href="/sitemap-index.xml" />
 <link
   rel="alternate"
@@ -41,6 +123,11 @@ const { title, description, image = "/og-image.jpg" } = Astro.props;
   href={new URL("rss.xml", Astro.site)}
 />
 <meta name="generator" content={Astro.generator} />
+
+<!-- Language alternates -->
+<link rel="alternate" hreflang="en" href={enURL} />
+<link rel="alternate" hreflang="tr" href={trURL} />
+<link rel="alternate" hreflang="x-default" href={enURL} />
 
 <!-- Local font preloads (self-hosted, no external font CDNs) -->
 <link
@@ -89,3 +176,9 @@ const { title, description, image = "/og-image.jpg" } = Astro.props;
 <meta name="twitter:title" content={title} />
 <meta name="twitter:description" content={description} />
 <meta name="twitter:image" content={new URL(image, Astro.site)} />
+
+<!-- Structured data -->
+<script type="application/ld+json" set:html={personSchema} />
+
+<!-- View transitions (SPA-feel navigation) -->
+<ClientRouter />

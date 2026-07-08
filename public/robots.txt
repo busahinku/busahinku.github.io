@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://busahin.com/sitemap-index.xml
