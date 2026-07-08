@@ -1,4 +1,12 @@
 ---
+import {
+  Github,
+  Linkedin,
+  Instagram,
+  Twitter,
+  Mail,
+  Music,
+} from "@lucide/astro";
 import { type Lang } from "../i18n/translations";
 import { SITE_CONFIG } from "../consts";
 
@@ -18,20 +26,15 @@ const copy = {
 
 const channels = [
   {
-    name: tr ? "E-posta" : "Email",
-    href: `mailto:${SITE_CONFIG.email}`,
-    desc: tr
-      ? "Bana ulaşmanın en hızlı yolu."
-      : "The fastest way to reach me.",
-    meta: SITE_CONFIG.email,
-  },
-  {
     name: "GitHub",
     href: SITE_CONFIG.social.github,
     desc: tr
       ? "Yaptıklarımın çoğu, çeşitli bitmişlik seviyelerinde burada."
       : "Most of what I build ends up here, in various states of finished.",
     meta: "@busahinku",
+    accent: "#8b5cf6",
+    span: "wide",
+    icon: "github",
   },
   {
     name: "LinkedIn",
@@ -40,12 +43,9 @@ const channels = [
       ? "Merhaba deyin. Yeni insanlarla tanışmayı gerçekten severim."
       : "Say hi. I genuinely like meeting new people.",
     meta: "in/sahinkucuk",
-  },
-  {
-    name: "X",
-    href: SITE_CONFIG.social.twitter,
-    desc: tr ? "Ara sıra kısa düşünceler." : "Short thoughts, occasionally.",
-    meta: "@busahinku",
+    accent: "#3b82f6",
+    span: "wide",
+    icon: "linkedin",
   },
   {
     name: "Spotify",
@@ -54,6 +54,18 @@ const channels = [
       ? "Çalışırken müzik benim varsayılan halim. Çalma listelerimi yargılayabilirsiniz."
       : "Music is my default state while working. Judge my playlists freely.",
     meta: tr ? "çalma listeleri" : "playlists",
+    accent: "#22c55e",
+    span: "narrow",
+    icon: "music",
+  },
+  {
+    name: "X",
+    href: SITE_CONFIG.social.twitter,
+    desc: tr ? "Ara sıra kısa düşünceler." : "Short thoughts, occasionally.",
+    meta: "@busahinku",
+    accent: "#64748b",
+    span: "narrow",
+    icon: "twitter",
   },
   {
     name: "Instagram",
@@ -62,6 +74,20 @@ const channels = [
       ? "Çoğunlukla takipteyim. Nadiren bir fotoğraf düşer."
       : "Mostly lurking. A photo appears once in a blue moon.",
     meta: "@busahinku",
+    accent: "#ec4899",
+    span: "narrow",
+    icon: "instagram",
+  },
+  {
+    name: tr ? "E-posta" : "Email",
+    href: `mailto:${SITE_CONFIG.email}`,
+    desc: tr
+      ? "Bana ulaşmanın en hızlı yolu. Hepsini okuyorum."
+      : "The fastest way to reach me. I read everything.",
+    meta: SITE_CONFIG.email,
+    accent: "#22d3ee",
+    span: "full",
+    icon: "mail",
   },
 ];
 ---
@@ -72,30 +98,40 @@ const channels = [
     <p class="page-intro">{copy.intro}</p>
   </header>
 
-  <ul class="leader-list">
+  <div class="channel-grid">
     {
       channels.map((channel) => (
-        <li>
-          <a
-            class="leader-row"
-            href={channel.href}
-            target={channel.href.startsWith("mailto") ? undefined : "_blank"}
-            rel="noreferrer"
-          >
-            <span class="row-title">{channel.name}</span>
-            <span class="row-leader" aria-hidden="true" />
-            <span class="row-meta">{channel.meta}</span>
-          </a>
-          <p class="row-desc">{channel.desc}</p>
-        </li>
+        <a
+          class:list={["channel-card", `span-${channel.span}`]}
+          href={channel.href}
+          target={channel.href.startsWith("mailto") ? undefined : "_blank"}
+          rel="noreferrer"
+          style={`--card-accent: ${channel.accent};`}
+        >
+          <span class="card-top">
+            <span class="card-name">
+              <span class="card-icon" aria-hidden="true">
+                {channel.icon === "github" && <Github size={17} />}
+                {channel.icon === "linkedin" && <Linkedin size={17} />}
+                {channel.icon === "music" && <Music size={17} />}
+                {channel.icon === "twitter" && <Twitter size={17} />}
+                {channel.icon === "instagram" && <Instagram size={17} />}
+                {channel.icon === "mail" && <Mail size={17} />}
+              </span>
+              {channel.name}
+            </span>
+            <span class="card-meta">{channel.meta}</span>
+          </span>
+          <span class="card-desc">{channel.desc}</span>
+        </a>
       ))
     }
-  </ul>
+  </div>
 </div>
 
 <style>
   .contact-page {
-    max-width: 680px;
+    max-width: 720px;
     margin: 0 auto;
     padding: 1rem 0 2rem;
   }
@@ -103,7 +139,7 @@ const channels = [
   .page-head {
     border-bottom: 1px solid var(--border);
     padding-bottom: 1rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
   }
 
   .page-head h1 {
@@ -122,69 +158,99 @@ const channels = [
     margin: 0;
   }
 
-  .leader-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .leader-list > li {
-    padding: 1rem 0;
-    border-bottom: 1px dashed
-      color-mix(in srgb, var(--border) 70%, transparent);
-  }
-
-  .leader-list > li:last-child {
-    border-bottom: none;
-  }
-
-  .leader-row {
-    display: flex;
-    align-items: baseline;
+  /* Bento grid */
+  .channel-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
     gap: 0.75rem;
+  }
+
+  .span-wide {
+    grid-column: span 3;
+  }
+
+  .span-narrow {
+    grid-column: span 2;
+  }
+
+  .span-full {
+    grid-column: span 6;
+  }
+
+  .channel-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.125rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: linear-gradient(
+      135deg,
+      var(--bg-secondary) 0%,
+      color-mix(in srgb, var(--card-accent) 6%, var(--bg-secondary)) 100%
+    );
     text-decoration: none;
     color: inherit;
+    transition:
+      border-color 0.25s ease,
+      transform 0.25s ease,
+      box-shadow 0.25s ease;
   }
 
-  .row-title {
-    font-size: 1.0625rem;
+  .channel-card:hover {
+    border-color: color-mix(in srgb, var(--card-accent) 45%, var(--border));
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px -12px var(--shadow);
+  }
+
+  .card-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .card-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9375rem;
     font-weight: 500;
     color: var(--text-primary);
-    transition: color 0.2s ease;
   }
 
-  .leader-row:hover .row-title {
-    color: var(--accent);
+  .card-icon {
+    display: inline-flex;
+    color: color-mix(in srgb, var(--card-accent) 80%, var(--text-muted));
+    transform: translateY(2px);
   }
 
-  .row-leader {
-    flex: 1;
-    border-bottom: 1px dotted var(--border);
-    transform: translateY(-4px);
-    min-width: 2rem;
-  }
-
-  .row-meta {
-    font-size: 0.8125rem;
+  .card-meta {
+    font-size: 0.75rem;
     color: var(--text-muted);
-    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .row-desc {
-    margin: 0.375rem 0 0;
+  .card-desc {
     font-size: 0.875rem;
     line-height: 1.6;
     color: var(--text-secondary);
   }
 
   @media (max-width: 640px) {
-    .row-leader {
-      display: none;
+    .channel-grid {
+      grid-template-columns: 1fr 1fr;
     }
 
-    .row-title {
-      flex: 1;
-      min-width: 0;
+    .span-wide,
+    .span-full {
+      grid-column: span 2;
+    }
+
+    .span-narrow {
+      grid-column: span 2;
     }
   }
 </style>

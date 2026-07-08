@@ -1,4 +1,6 @@
 ---
+import { Image } from "astro:assets";
+import type { ImageMetadata } from "astro";
 import FormattedDate from "./FormattedDate.astro";
 
 interface Item {
@@ -7,6 +9,8 @@ interface Item {
   date: Date;
   description?: string;
   meta?: string;
+  image?: ImageMetadata;
+  category?: string;
 }
 
 interface Props {
@@ -14,37 +18,96 @@ interface Props {
   intro?: string;
   emptyNote: string;
   items: Item[];
+  searchPlaceholder?: string;
+  allLabel?: string;
 }
 
-const { title, intro, emptyNote, items } = Astro.props;
+const {
+  title,
+  intro,
+  emptyNote,
+  items,
+  searchPlaceholder = "Search...",
+  allLabel = "All",
+} = Astro.props;
+
+const categories = [
+  ...new Set(items.map((item) => item.category).filter(Boolean)),
+] as string[];
+const showFilters = items.length > 3 || categories.length > 1;
 ---
 
-<div class="archive-page">
+<div class="archive-page" data-archive>
   <header class="page-head">
     <h1>{title}</h1>
     {intro && <p class="page-intro">{intro}</p>}
   </header>
 
   {
+    showFilters && items.length > 0 && (
+      <div class="archive-filters">
+        <input
+          class="filter-search"
+          type="search"
+          placeholder={searchPlaceholder}
+          data-archive-search
+          aria-label={searchPlaceholder}
+        />
+        {categories.length > 1 && (
+          <div class="filter-chips" role="group">
+            <button class="filter-chip active" data-archive-chip="">
+              {allLabel}
+            </button>
+            {categories.map((category) => (
+              <button class="filter-chip" data-archive-chip={category}>
+                {category}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  {
     items.length > 0 ? (
       <ol class="toc-list">
-        {items.map((item) => (
-          <li>
+        {items.map((item, index) => (
+          <li
+            data-archive-item
+            data-title={`${item.title} ${item.description || ""}`.toLowerCase()}
+            data-category={item.category || ""}
+          >
             <a class="toc-row" href={item.href}>
-              <span class="toc-title">{item.title}</span>
-              <span class="toc-leader" aria-hidden="true" />
-              <span class="toc-meta">
-                <FormattedDate date={item.date} />
+              <span class="toc-num">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              {item.image && (
+                <span class="toc-thumb">
+                  <Image
+                    src={item.image}
+                    alt=""
+                    width={264}
+                    height={176}
+                    quality={80}
+                    loading="lazy"
+                  />
+                </span>
+              )}
+              <span class="toc-body">
+                <span class="toc-title-row">
+                  <span class="toc-title">{item.title}</span>
+                  <span class="toc-leader" aria-hidden="true" />
+                  <span class="toc-meta">
+                    <FormattedDate date={item.date} />
+                  </span>
+                </span>
+                {item.description && (
+                  <span class="toc-desc">{item.description}</span>
+                )}
+                {item.meta && <span class="toc-tags">{item.meta}</span>}
               </span>
             </a>
-            {(item.description || item.meta) && (
-              <div class="toc-sub">
-                {item.description && (
-                  <p class="toc-desc">{item.description}</p>
-                )}
-                {item.meta && <p class="toc-tags">{item.meta}</p>}
-              </div>
-            )}
           </li>
         ))}
       </ol>
@@ -52,11 +115,69 @@ const { title, intro, emptyNote, items } = Astro.props;
       <p class="empty-note">{emptyNote}</p>
     )
   }
+
+  <p class="empty-note filter-empty" data-archive-empty hidden>{emptyNote}</p>
 </div>
+
+<script>
+  function initArchiveFilters() {
+    document
+      .querySelectorAll<HTMLElement>("[data-archive]")
+      .forEach((root) => {
+        if (root.dataset.initialized) return;
+        root.dataset.initialized = "true";
+
+        const search = root.querySelector<HTMLInputElement>(
+          "[data-archive-search]",
+        );
+        const chips = root.querySelectorAll<HTMLButtonElement>(
+          "[data-archive-chip]",
+        );
+        const rows = root.querySelectorAll<HTMLElement>("[data-archive-item]");
+        const emptyNote = root.querySelector<HTMLElement>(
+          "[data-archive-empty]",
+        );
+
+        if (!rows.length) return;
+
+        let activeCategory = "";
+
+        const apply = () => {
+          const query = (search?.value || "").trim().toLowerCase();
+          let visible = 0;
+
+          rows.forEach((row) => {
+            const matchesQuery =
+              !query || (row.dataset.title || "").includes(query);
+            const matchesCategory =
+              !activeCategory || row.dataset.category === activeCategory;
+            const show = matchesQuery && matchesCategory;
+            row.style.display = show ? "" : "none";
+            if (show) visible++;
+          });
+
+          if (emptyNote) emptyNote.hidden = visible > 0;
+        };
+
+        search?.addEventListener("input", apply);
+
+        chips.forEach((chip) => {
+          chip.addEventListener("click", () => {
+            activeCategory = chip.dataset.archiveChip || "";
+            chips.forEach((c) => c.classList.toggle("active", c === chip));
+            apply();
+          });
+        });
+      });
+  }
+
+  initArchiveFilters();
+  document.addEventListener("astro:after-swap", initArchiveFilters);
+</script>
 
 <style>
   .archive-page {
-    max-width: 680px;
+    max-width: 720px;
     margin: 0 auto;
     padding: 1rem 0 2rem;
   }
@@ -64,7 +185,7 @@ const { title, intro, emptyNote, items } = Astro.props;
   .page-head {
     border-bottom: 1px solid var(--border);
     padding-bottom: 1rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: 1rem;
   }
 
   .page-head h1 {
@@ -83,15 +204,76 @@ const { title, intro, emptyNote, items } = Astro.props;
     margin: 0;
   }
 
+  /* Filters */
+  .archive-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.75rem 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .filter-search {
+    flex: 1;
+    min-width: 10rem;
+    max-width: 16rem;
+    padding: 0.375rem 0;
+    font-size: 0.9375rem;
+    font-family: inherit;
+    color: var(--text-primary);
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed var(--border);
+    border-radius: 0;
+  }
+
+  .filter-search:focus {
+    outline: none;
+    border-bottom: 1px solid var(--accent);
+    box-shadow: none;
+  }
+
+  .filter-search::placeholder {
+    color: var(--text-muted);
+  }
+
+  .filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+  }
+
+  .filter-chip {
+    padding: 0.25rem 0;
+    font-size: 0.875rem;
+    font-family: inherit;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition:
+      color 0.2s ease,
+      border-color 0.2s ease;
+  }
+
+  .filter-chip:hover {
+    color: var(--text-primary);
+  }
+
+  .filter-chip.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* List */
   .toc-list {
     list-style: none;
     margin: 0;
     padding: 0;
-    counter-reset: toc;
   }
 
   .toc-list > li {
-    padding: 1rem 0;
     border-bottom: 1px dashed
       color-mix(in srgb, var(--border) 70%, transparent);
   }
@@ -102,19 +284,61 @@ const { title, intro, emptyNote, items } = Astro.props;
 
   .toc-row {
     display: flex;
-    align-items: baseline;
-    gap: 0.75rem;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.125rem 0;
     text-decoration: none;
     color: inherit;
   }
 
-  .toc-row::before {
-    counter-increment: toc;
-    content: counter(toc, decimal-leading-zero);
+  .toc-num {
     font-size: 0.75rem;
     color: var(--text-muted);
     font-variant-numeric: tabular-nums;
     flex-shrink: 0;
+    padding-top: 0.3125rem;
+  }
+
+  .toc-thumb {
+    flex-shrink: 0;
+    width: 132px;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background: var(--bg-secondary);
+    transition: border-color 0.2s ease;
+  }
+
+  .toc-thumb img {
+    display: block;
+    width: 100%;
+    height: 88px;
+    object-fit: cover;
+    border-radius: 0;
+    margin: 0;
+    transition: transform 0.35s ease;
+  }
+
+  .toc-row:hover .toc-thumb {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  }
+
+  .toc-row:hover .toc-thumb img {
+    transform: scale(1.04);
+  }
+
+  .toc-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .toc-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
   }
 
   .toc-title {
@@ -143,12 +367,7 @@ const { title, intro, emptyNote, items } = Astro.props;
     white-space: nowrap;
   }
 
-  .toc-sub {
-    margin: 0.375rem 0 0 1.9rem;
-  }
-
   .toc-desc {
-    margin: 0;
     font-size: 0.875rem;
     line-height: 1.6;
     color: var(--text-secondary);
@@ -159,7 +378,6 @@ const { title, intro, emptyNote, items } = Astro.props;
   }
 
   .toc-tags {
-    margin: 0.25rem 0 0;
     font-size: 0.75rem;
     color: var(--text-muted);
   }
@@ -171,18 +389,43 @@ const { title, intro, emptyNote, items } = Astro.props;
     margin: 1.25rem 0 0;
   }
 
+  @media (prefers-reduced-motion: reduce) {
+    .toc-thumb img,
+    .toc-row:hover .toc-thumb img {
+      transform: none;
+    }
+  }
+
   @media (max-width: 640px) {
+    .toc-row {
+      flex-wrap: wrap;
+    }
+
+    .toc-thumb {
+      width: 96px;
+    }
+
+    .toc-thumb img {
+      height: 64px;
+    }
+
+    .toc-body {
+      flex: 1;
+      min-width: 55%;
+    }
+
     .toc-leader {
       display: none;
     }
 
-    .toc-title {
-      flex: 1;
-      min-width: 0;
+    .toc-title-row {
+      flex-wrap: wrap;
+      justify-content: space-between;
     }
 
-    .toc-sub {
-      margin-left: 0;
+    .toc-title {
+      flex: 1 1 100%;
+      min-width: 0;
     }
   }
 </style>

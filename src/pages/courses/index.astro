@@ -17,6 +17,8 @@ const items = courses.map((course) => ({
   title: course.data.title,
   date: course.data.pubDate,
   description: course.data.description,
+  image: course.data.heroImage,
+  category: t(`courses.category.${course.data.category}` as any),
   meta: `${t(`courses.category.${course.data.category}` as any)} · ${calculateReadingTime(course.body || "")} ${t("blog.minRead")}`,
 }));
 ---
@@ -30,6 +32,8 @@ const items = courses.map((course) => ({
     title={t("courses.title")}
     intro="Notes from the courses I take, written up properly."
     emptyNote="No course notes published yet. They are coming as I clean them up."
+    searchPlaceholder={t("courses.search")}
+    allLabel={t("courses.allCategories")}
     items={items}
   />
 </Layout>

@@ -16,6 +16,8 @@ const items = projects.map((project) => ({
   title: project.data.title,
   date: project.data.pubDate,
   description: project.data.description,
+  image: project.data.heroImage,
+  category: t(`projects.category.${project.data.category}` as any),
   meta: [
     t(`projects.category.${project.data.category}` as any),
     project.data.tags.slice(0, 4).join(", "),
@@ -34,6 +36,8 @@ const items = projects.map((project) => ({
     title={t("projects.title")}
     intro="Raporlar, uygulamalar ve çeşitli bitmişlik seviyelerinde deneyler."
     emptyNote="Henüz bir şey yok."
+    searchPlaceholder={t("projects.search")}
+    allLabel={t("projects.allCategories")}
     items={items}
   />
 </Layout>
