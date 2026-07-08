@@ -5,6 +5,7 @@ import sitemap from '@astrojs/sitemap';
 import { defineConfig } from 'astro/config';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import { remarkMark, rehypeFigure } from './src/lib/markdown-plugins.mjs';
 
 import tailwindcss from '@tailwindcss/vite';
 
@@ -19,8 +20,8 @@ export default defineConfig({
     defaultStrategy: 'viewport',
   },
   markdown: {
-    remarkPlugins: [remarkMath],
-    rehypePlugins: [rehypeKatex],
+    remarkPlugins: [remarkMath, remarkMark],
+    rehypePlugins: [rehypeKatex, rehypeFigure],
     shikiConfig: {
       themes: {
         light: 'github-light',
