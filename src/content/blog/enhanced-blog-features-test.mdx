@@ -1,267 +1,214 @@
 ---
-title: Enhanced Blog Features Test
+title: Everything this blog can render
 description: >-
-  A comprehensive test post showcasing all the new blog features including KaTeX
-  math, interactive components, and media embeds.
+  A living reference for the writing features on busahin.com: math, callouts,
+  galleries, video, tables, footnotes, highlights, citations, and more.
 pubDate: Jan 25 2025
 tags:
-  - test
+  - reference
   - features
-  - demo
 category: tutorial
 author: Burak Sahin Kucuk
 draft: false
 ---
 
-import img1 from '../../assets/blog-placeholder-1.jpg';
+import gallery1 from '../../assets/blog-placeholder-1.jpg';
+import gallery2 from '../../assets/blog-placeholder-2.jpg';
+import gallery3 from '../../assets/blog-placeholder-3.jpg';
+import gallery4 from '../../assets/blog-placeholder-5.jpg';
 
-import img2 from '../../assets/blog-placeholder-2.jpg';
+This post is the reference I keep for myself: one page that renders every writing feature the site supports. If a piece of formatting appears here, it works in any blog, project, or course entry. Try the reading controls (the **Aa** icon in the header) to switch fonts, spacing, and width while you read.
 
-import img3 from '../../assets/blog-placeholder-3.jpg';
+## Inline text and formatting
 
-import img4 from '../../assets/blog-placeholder-4.jpg';
+Body text supports **bold**, *italic*, ~~strikethrough~~, `inline code`, and ==highlighted phrases== that read like a marker pen. Links look like [this one to the homepage](/), and you can drop a footnote at the end of a thought.[^note] Highlights and footnotes are the two most recent additions, so they are worth a second look.
 
-This post demonstrates all the enhanced blog features. Use the **text arrangement toggle** in the header to customize your reading experience with different fonts, text sizes, line heights, and content widths.
+Type a superscript like x² or a fraction inline with math, which the next section covers in full.
 
-\## Callout Cards
+## Headings and structure
 
-Use callout cards to highlight important information, warnings, tips, and more.
+The floating table of contents on the left is built from your headings, so keep them meaningful. This post uses `##` for sections and `###` for subsections.
 
-<Callout type="info" title="Information">
-  This is an informational callout. Use it to provide additional context or details that readers might find helpful.
-</Callout>
+### A third-level heading
 
-<Callout type="tip" title="Pro Tip">
-  Use keyboard shortcuts to navigate faster! Press `Ctrl + K` to open the command palette.
-</Callout>
+Subsections nest under their parent in the table of contents and get a slightly smaller size.
 
-<Callout type="warning">
-  Be careful when modifying configuration files. Always backup your data before making changes.
-</Callout>
+#### A fourth-level heading
 
-<Callout type="danger" title="Critical">
-  Never share your API keys or passwords in public repositories. This can lead to security breaches.
-</Callout>
+Fourth level is the deepest the design styles. Anything past it reads as body text, so stop here.
 
-<Callout type="success" title="Well Done!">
-  You've successfully completed the setup process. Your application is now ready to use.
+## Lists
+
+Unordered lists hold loosely related points:
+
+- A first point, long enough to wrap onto a second line so you can see the hanging indent
+- A second point
+- A third point with **bold** and a bit of `code`
+
+Ordered lists carry steps in sequence:
+
+1. Clone the repository
+2. Install dependencies
+3. Run the dev server and open the preview
+
+Nest a list to group sub-steps:
+
+- Data cleaning
+  - Drop duplicate rows
+  - Coerce dates to a single format
+- Modeling
+  - Fit the baseline
+  - Compare against the tuned model
+
+Task lists track what is done and what is left:
+
+- [x] Draft the outline
+- [x] Write the first section
+- [ ] Add the figures
+- [ ] Final proofread
+
+## Tables
+
+Tables use standard GitHub-flavored Markdown. Columns can be left, center, or right aligned.
+
+| Method        | Assumption            | Best when                    |
+| :------------ | :-------------------: | ---------------------------: |
+| OLS           | Linear, homoscedastic | Effects are roughly linear   |
+| Ridge         | Correlated predictors | Many features, some collinear|
+| Random forest | None strong           | Nonlinear, plenty of data    |
+
+## Blockquotes
+
+> The purpose of computing is insight, not numbers.
+>
+> Richard Hamming
+
+## Code blocks
+
+Fenced code blocks are syntax highlighted for both light and dark themes.
+
+```python
+def binary_search(arr, target):
+    lo, hi = 0, len(arr) - 1
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        if arr[mid] == target:
+            return mid
+        if arr[mid] < target:
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return -1
+```
+
+## Callouts
+
+Callouts pull a note out of the flow. There are six types, each with its own color and icon.
+
+<Callout type="info" title="Info">
+  Neutral context or a side note the reader might want.
 </Callout>
 
 <Callout type="note">
-  This feature is available in version 2.0 and above. Check your version before proceeding.
+  Like info, but with a lighter framing for a quick aside.
 </Callout>
 
-## Mathematical Equations with KaTeX
+<Callout type="tip" title="Tip">
+  A shortcut or better way to do something. Press `Ctrl + K` for the command palette.
+</Callout>
 
-One of the most powerful features is full LaTeX math support
+<Callout type="success" title="Done">
+  Confirmation that a step worked and it is safe to move on.
+</Callout>
 
-<Cite id="knuth" num={1} />
+<Callout type="warning" title="Careful">
+  Something that can bite you if you are not paying attention.
+</Callout>
 
-. You can write inline math like $E = mc^2$ or the quadratic formula $x^2 = \\frac{x}{y}s$directly in your text.
+<Callout type="danger" title="Do not">
+  A real hazard. Never commit API keys or passwords to a public repository.
+</Callout>
 
-For more complex equations, use display mode:
+## Math with KaTeX
+
+Inline math sits in a single line of prose: the mass-energy relation $E = mc^2$, or the sample mean $\bar{x} = \frac{1}{n}\sum_{i=1}^{n} x_i$.
+
+Display math gets its own centered block:
 
 $$
-\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}
+f'(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h}
 $$
 
-Here's the famous Euler's identity:
+The Gaussian integral, a favorite:
 
 $$
-e^{i\pi} + 1 = 0
+\int_{-\infty}^{\infty} e^{-x^2}\, dx = \sqrt{\pi}
 $$
 
-And a matrix example:
+Matrices and the OLS estimator, the kind of thing a statistics post needs:
 
 $$
-\begin{bmatrix}
-a & b \\
-c & d
-\end{bmatrix}
-\begin{bmatrix}
-x \\
-y
-\end{bmatrix}
+\hat{\beta} = (X^\top X)^{-1} X^\top y
+\qquad
+\begin{bmatrix} a & b \\ c & d \end{bmatrix}
+\begin{bmatrix} x \\ y \end{bmatrix}
 =
-\begin{bmatrix}
-ax + by \\
-cx + dy
-\end{bmatrix}
+\begin{bmatrix} ax + by \\ cx + dy \end{bmatrix}
 $$
 
-### Calculus Example
+## Images and figures
 
-The derivative of a function using t
+A standalone image with alt text becomes a figure with a caption underneath. Leave the alt text empty and it stays a plain image.
 
-![](../../assets/blog/enhanced-blog-features-test/afyonkarahisar.webp)he limit definition:
+![Afyonkarahisar at golden hour, shot on a walk through the old town.](../../assets/blog/enhanced-blog-features-test/afyonkarahisar.webp)
 
-$$
-f'(x) = \lim_{h \to 0} \frac{f(x + h) - f(x)}{h}
-$$
+## Photo galleries
 
-## Interactive Concept Checks
-
-Test your understanding with interactive questions. Click on the answer area to reveal the solution!
-
-<ConceptCheck question="What is the time complexity of binary search?">
-  **O(log n)** - The search space is halved with each iteration, leading to logarithmic time complexity<Cite id="cormen" num={2} />. For an array of 1 million elements, binary search needs at most 20 comparisons.
-</ConceptCheck>
-
-<ConceptCheck question="What does the Big O notation O(n) mean?">
-  **Linear time complexity** - The algorithm's running time grows linearly with the input size. If you double the input, the time roughly doubles as well.
-</ConceptCheck>
-
-<ConceptCheck>
-  <span slot="question">In the equation $ax^2 + bx + c = 0$, what is the discriminant?</span>
-  The discriminant is $\Delta = b^2 - 4ac$. It determines the nature of the roots:
-  - If $\Delta > 0$: Two distinct real roots
-  - If $\Delta = 0$: One repeated real root
-  - If $\Delta < 0$: Two complex conjugate roots
-</ConceptCheck>
-
-## Video Embeds
-
-Easily embed YouTube and Vimeo videos with privacy-enhanced URLs:
-
-### YouTube Video
-
-<VideoEmbed url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" title="Sample YouTube Video" />
-
-### Vimeo Video
-
-<VideoEmbed url="https://vimeo.com/148751763" title="Sample Vimeo Video" />
-
-## Single Image
-
-You can also display a single image with a caption:
-
-&lt;figure&gt; &lt;Image src={img2} alt="A beautiful mountain landscape" width={720} /&gt; &lt;figcaption&gt;A beautiful mountain landscape during sunset&lt;/figcaption&gt; &lt;/figure&gt;
-
-## Photo Gallery
-
-Display images in a beautiful grid with lightbox support. Click any image to view it in fullscreen!
-
-### Three Column Gallery
+Galleries lay images out in a grid and open a lightbox on click. Set `columns` to 2, 3, or 4.
 
 <PhotoGallery
   columns={3}
   images={[
-    { src: img1, alt: "Placeholder image 1", caption: "Beautiful landscape view" },
-    { src: img2, alt: "Placeholder image 2", caption: "Mountain scenery" },
-    { src: img3, alt: "Placeholder image 3", caption: "Ocean sunset" },
+    { src: gallery1, alt: "Rolling hills under a wide sky", caption: "Wide open" },
+    { src: gallery2, alt: "A quiet mountain ridge", caption: "The ridge" },
+    { src: gallery3, alt: "Sunlight over calm water", caption: "Low sun" },
   ]}
 />
-
-### Two Column Gallery
 
 <PhotoGallery
   columns={2}
   images={[
-    { src: img4, alt: "Placeholder image 4", caption: "Forest path" },
-    { src: img1, alt: "Placeholder image 1", caption: "Another view" },
+    { src: gallery4, alt: "A path winding into a forest", caption: "The path" },
+    { src: gallery1, alt: "Rolling hills, seen again", caption: "Back again" },
   ]}
 />
 
-## Typography and Text Formatting
+## Video embeds
 
-The enhanced blog layout includes improved typography with proper heading hierarchy and spacing.
+Paste a YouTube or Vimeo URL and it embeds with a privacy-friendly player.
 
-### Code Blocks
+<VideoEmbed url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" title="A sample YouTube video" />
 
-```javascript
-function binarySearch(arr, target) {
-  let left = 0;
-  let right = arr.length - 1;
+## Concept checks
 
-  while (left <= right) {
-    const mid = Math.floor((left + right) / 2);
+A concept check hides its answer until the reader clicks, which is handy for tutorials.
 
-    if (arr[mid] === target) {
-      return mid;
-    } else if (arr[mid] < target) {
-      left = mid + 1;
-    } else {
-      right = mid - 1;
-    }
-  }
+<ConceptCheck question="What is the time complexity of binary search?">
+  **O(log n).** Each comparison halves the search space, so a million elements need at most about twenty steps<Cite id="clrs" num={1} />.
+</ConceptCheck>
 
-  return -1;
-}
-```
+<ConceptCheck>
+  <span slot="question">In $ax^2 + bx + c = 0$, what is the discriminant?</span>
+  It is $\Delta = b^2 - 4ac$. It decides the roots: $\Delta > 0$ gives two real roots, $\Delta = 0$ gives one, and $\Delta < 0$ gives a complex conjugate pair.
+</ConceptCheck>
 
-### Blockquotes
+## Citations and references
 
-> The only way to do great work is to love what you do. If you haven't found it yet, keep looking. Don't settle.
->
-> — Steve Jobs
-
-### Lists
-
-Unordered list:
-
-- First item with some additional text to show wrapping
-- Second item
-- Third item with **bold** and *italic* text
-
-Ordered list:
-
-1. First step in the process
-2. Second step with more details
-3. Third step to complete the task
-
-## Table of Contents
-
-Notice the floating table of contents on the left side (on desktop). It highlights the current section as you scroll and allows quick navigation to any heading.
-
-On mobile devices, you'll find a collapsible TOC dropdown at the top of the article.
-
-## Reading Preferences
-
-Click the text icon (Aa) in the header to customize:
-
-- **Font**: Switch between Sans-serif and Serif fonts
-- **Line Height**: Choose Compact, Normal, or Relaxed spacing
-- **Width**: Select Narrow, Normal, or Wide content width
-
-Your preferences are saved and will persist across sessions!
-
-## Conclusion
-
-This enhanced blog layout provides a modern, feature-rich reading experience with:
-
-- Full KaTeX/LaTeX math support
-- Interactive concept check components
-- Video embeds for YouTube and Vimeo
-- Photo galleries with lightbox
-- Floating table of contents
-- Customizable text arrangement
-- Improved typography and spacing
-
-All features work seamlessly across light, dark, and paper themes.
-
-## Citations and References
-
-You can add citations to your text using the `Cite` component
-
-<Cite id="markdown" num={3} />
-
-. Each citation links to the corresponding reference at the bottom of the page.
-
-<Callout type="info">
-
-work work work work
-</Callout>
+Drop a citation marker in the text with the `Cite` component and it links to the reference list below<Cite id="knuth" num={2} />. The list itself is the `Reference` component, and each entry links back up to where it was cited.
 
 <Reference references={[
   {
-    id: "knuth",
-    authors: "Knuth, Donald E.",
-    title: "The TeXbook",
-    source: "Addison-Wesley",
-    year: 1984
-  },
-  {
-    id: "cormen",
+    id: "clrs",
     authors: "Cormen, T. H., Leiserson, C. E., Rivest, R. L., & Stein, C.",
     title: "Introduction to Algorithms",
     source: "MIT Press",
@@ -269,10 +216,12 @@ work work work work
     url: "https://mitpress.mit.edu/books/introduction-algorithms"
   },
   {
-    id: "markdown",
-    authors: "Gruber, John",
-    title: "Markdown: Syntax",
-    year: 2004,
-    url: "https://daringfireball.net/projects/markdown/syntax"
+    id: "knuth",
+    authors: "Knuth, Donald E.",
+    title: "The TeXbook",
+    source: "Addison-Wesley",
+    year: 1984
   }
 ]} />
+
+[^note]: Footnotes collect at the bottom of the article and link back to the sentence that raised them.
