@@ -1,0 +1,190 @@
+---
+import { type Lang } from "../i18n/translations";
+import { SITE_CONFIG } from "../consts";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const tr = lang === "tr";
+
+const copy = {
+  title: tr ? "İletişim" : "Contact",
+  intro: tr
+    ? "Bir sorunuz mu var? Ulaşmaktan çekinmeyin. En hızlı cevap e-postadan gelir."
+    : "Have a question? Reach out. Email gets the fastest reply.",
+};
+
+const channels = [
+  {
+    name: tr ? "E-posta" : "Email",
+    href: `mailto:${SITE_CONFIG.email}`,
+    desc: tr
+      ? "Bana ulaşmanın en hızlı yolu."
+      : "The fastest way to reach me.",
+    meta: SITE_CONFIG.email,
+  },
+  {
+    name: "GitHub",
+    href: SITE_CONFIG.social.github,
+    desc: tr
+      ? "Yaptıklarımın çoğu, çeşitli bitmişlik seviyelerinde burada."
+      : "Most of what I build ends up here, in various states of finished.",
+    meta: "@busahinku",
+  },
+  {
+    name: "LinkedIn",
+    href: SITE_CONFIG.social.linkedin,
+    desc: tr
+      ? "Merhaba deyin. Yeni insanlarla tanışmayı gerçekten severim."
+      : "Say hi. I genuinely like meeting new people.",
+    meta: "in/sahinkucuk",
+  },
+  {
+    name: "X",
+    href: SITE_CONFIG.social.twitter,
+    desc: tr ? "Ara sıra kısa düşünceler." : "Short thoughts, occasionally.",
+    meta: "@busahinku",
+  },
+  {
+    name: "Spotify",
+    href: SITE_CONFIG.social.spotify,
+    desc: tr
+      ? "Çalışırken müzik benim varsayılan halim. Çalma listelerimi yargılayabilirsiniz."
+      : "Music is my default state while working. Judge my playlists freely.",
+    meta: tr ? "çalma listeleri" : "playlists",
+  },
+  {
+    name: "Instagram",
+    href: SITE_CONFIG.social.instagram,
+    desc: tr
+      ? "Çoğunlukla takipteyim. Nadiren bir fotoğraf düşer."
+      : "Mostly lurking. A photo appears once in a blue moon.",
+    meta: "@busahinku",
+  },
+];
+---
+
+<div class="contact-page">
+  <header class="page-head">
+    <h1>{copy.title}</h1>
+    <p class="page-intro">{copy.intro}</p>
+  </header>
+
+  <ul class="leader-list">
+    {
+      channels.map((channel) => (
+        <li>
+          <a
+            class="leader-row"
+            href={channel.href}
+            target={channel.href.startsWith("mailto") ? undefined : "_blank"}
+            rel="noreferrer"
+          >
+            <span class="row-title">{channel.name}</span>
+            <span class="row-leader" aria-hidden="true" />
+            <span class="row-meta">{channel.meta}</span>
+          </a>
+          <p class="row-desc">{channel.desc}</p>
+        </li>
+      ))
+    }
+  </ul>
+</div>
+
+<style>
+  .contact-page {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 1rem 0 2rem;
+  }
+
+  .page-head {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .page-head h1 {
+    font-family: "Melodrama", serif;
+    font-weight: 600;
+    font-size: clamp(2rem, 5.5vw, 2.75rem);
+    line-height: 1.1;
+    margin: 0 0 0.5rem;
+    color: var(--text-primary);
+  }
+
+  .page-intro {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    margin: 0;
+  }
+
+  .leader-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .leader-list > li {
+    padding: 1rem 0;
+    border-bottom: 1px dashed
+      color-mix(in srgb, var(--border) 70%, transparent);
+  }
+
+  .leader-list > li:last-child {
+    border-bottom: none;
+  }
+
+  .leader-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .row-title {
+    font-size: 1.0625rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    transition: color 0.2s ease;
+  }
+
+  .leader-row:hover .row-title {
+    color: var(--accent);
+  }
+
+  .row-leader {
+    flex: 1;
+    border-bottom: 1px dotted var(--border);
+    transform: translateY(-4px);
+    min-width: 2rem;
+  }
+
+  .row-meta {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .row-desc {
+    margin: 0.375rem 0 0;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  @media (max-width: 640px) {
+    .row-leader {
+      display: none;
+    }
+
+    .row-title {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+</style>

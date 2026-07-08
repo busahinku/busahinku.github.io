@@ -1,0 +1,61 @@
+// Reference Firestore security rules for the engagement features
+// (views, likes, comments). NOT deployed automatically: apply via the
+// Firebase console (Firestore Database -> Rules) or `firebase deploy`.
+//
+// Model assumed by src/lib/firebase/firestore.ts:
+//   posts/{slug}                    -> { views, likes } counters
+//   posts/{slug}/comments/{id}      -> user comments
+// Adjust collection names if the client code differs.
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /posts/{slug} {
+      // Anyone may read counters.
+      allow read: if true;
+
+      // Counters may only change by small increments, and no other
+      // fields may be written.
+      allow create: if isCounterShape(request.resource.data);
+      allow update: if isCounterShape(request.resource.data)
+        && changesAreSmallIncrements();
+      allow delete: if false;
+
+      match /comments/{commentId} {
+        allow read: if true;
+
+        // Only signed-in users may comment, as themselves, with a
+        // bounded comment length.
+        allow create: if request.auth != null
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.content is string
+          && request.resource.data.content.size() > 0
+          && request.resource.data.content.size() < 2000;
+
+        // Authors may edit or delete only their own comments.
+        allow update, delete: if request.auth != null
+          && resource.data.authorId == request.auth.uid;
+      }
+    }
+
+    function isCounterShape(data) {
+      return data.keys().hasOnly(['views', 'likes'])
+        && data.views is int && data.views >= 0
+        && data.likes is int && data.likes >= 0;
+    }
+
+    function changesAreSmallIncrements() {
+      return request.resource.data.views - resource.data.views <= 1
+        && request.resource.data.likes - resource.data.likes <= 1
+        && resource.data.views - request.resource.data.views <= 0
+        && resource.data.likes - request.resource.data.likes <= 1;
+    }
+
+    // Everything else is closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

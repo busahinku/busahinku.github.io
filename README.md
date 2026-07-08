@@ -1,62 +1,32 @@
-# Astro Starter Kit: Blog
+# busahin.com
+
+Personal site of Burak Sahin Kucuk: a working notebook of statistics reports, course notes, and side projects. Statistics + Computer Engineering student at METU, Ankara.
+
+Live at [busahin.com](https://busahin.com), in English and Turkish (`/tr/`).
+
+## Stack
+
+- [Astro 5](https://astro.build) (static output) with MDX, KaTeX, and Shiki
+- Vanilla CSS with custom properties; three themes (light / dark / paper)
+- Melodrama + Inter, self-hosted
+- Firebase (Firestore) for view counts, likes, and comments; loaded lazily
+- GitHub Pages behind Cloudflare
+
+## Development
 
 ```sh
-npm create astro@latest -- --template blog
+npm install
+npm run dev       # dev server at localhost:4321
+npm run build     # static build into dist/
+npm run preview   # serve the built site
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+Firebase credentials go in `.env` (see `.env.example`). The site builds and runs without them; the engagement widgets just stay idle.
 
-Features:
+## Content
 
-- ✅ Minimal styling (make it your own!)
-- ✅ 100/100 Lighthouse performance
-- ✅ SEO-friendly with canonical URLs and OpenGraph data
-- ✅ Sitemap support
-- ✅ RSS Feed support
-- ✅ Markdown & MDX support
+Content lives in `src/content/{blog,projects,courses}` as Markdown/MDX with frontmatter. Set `draft: true` to keep an entry out of every listing, feed, and generated page. Every English page has a Turkish mirror under `src/pages/tr/`.
 
-## 🚀 Project Structure
+## Design notes
 
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-├── public/
-├── src/
-│   ├── components/
-│   ├── content/
-│   ├── layouts/
-│   └── pages/
-├── astro.config.mjs
-├── README.md
-├── package.json
-└── tsconfig.json
-```
-
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
-
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
-
-The `src/content/` directory contains "collections" of related Markdown and MDX documents. Use `getCollection()` to retrieve posts from `src/content/blog/`, and type-check your frontmatter using an optional schema. See [Astro's Content Collections docs](https://docs.astro.build/en/guides/content-collections/) to learn more.
-
-Any static assets, like images, can be placed in the `public/` directory.
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Check out [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
-
-## Credit
-
-This theme is based off of the lovely [Bear Blog](https://github.com/HermanMartinus/bearblog/).
+The identity is editorial minimalism: table-of-contents style lists with dotted leaders, numbered rows, dashed dividers, and as little chrome as possible. House rules: no em dashes, no uppercase eyebrow labels, and both languages ship together.
