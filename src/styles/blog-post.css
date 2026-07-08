@@ -16,8 +16,7 @@ body {
    =========================== */
 :root {
   /* Reading defaults: book-style serif, comfortable measure */
-  --blog-font-family: "Charter", "Georgia", "Cambria", "Times New Roman",
-    serif;
+  --blog-font-family: "Fraunces", Georgia, Cambria, "Times New Roman", serif;
   --blog-heading-font: "Inter", system-ui, sans-serif;
   --blog-font-size: 1.125rem;
   --blog-font-size-desktop: 1.1875rem;
@@ -37,8 +36,7 @@ html[data-blog-font="sans"] {
 }
 
 html[data-blog-font="serif"] {
-  --blog-font-family: "Charter", "Georgia", "Cambria", "Times New Roman",
-    serif;
+  --blog-font-family: "Fraunces", Georgia, Cambria, "Times New Roman", serif;
 }
 
 html[data-blog-size="small"] {
@@ -325,7 +323,7 @@ html[data-blog-width="wide"] {
 }
 
 .toc-title {
-  font-family: "Melodrama", serif;
+  font-family: "Fraunces", Georgia, serif;
   font-size: 1.0625rem;
   font-weight: 500;
   color: var(--text-primary);
@@ -435,7 +433,7 @@ html[data-blog-width="wide"] {
 
 .article-title {
   margin: 0 0 1rem 0;
-  font-family: "Melodrama", var(--blog-heading-font), serif;
+  font-family: "Fraunces", var(--blog-heading-font), serif;
   font-size: 1.75rem;
   font-weight: 600;
   line-height: 1.15;
@@ -539,7 +537,7 @@ html[data-blog-width="wide"] {
 .article-content h2 {
   margin-top: 2.5rem;
   margin-bottom: 1rem;
-  font-family: "Melodrama", var(--blog-heading-font), serif;
+  font-family: "Fraunces", var(--blog-heading-font), serif;
   font-size: var(--blog-h2-size);
   font-weight: 500;
   color: var(--text-primary);
@@ -555,7 +553,7 @@ html[data-blog-width="wide"] {
 .article-content h3 {
   margin-top: 2rem;
   margin-bottom: 0.75rem;
-  font-family: "Melodrama", var(--blog-heading-font), serif;
+  font-family: "Fraunces", var(--blog-heading-font), serif;
   font-size: var(--blog-h3-size);
   font-weight: 500;
   color: var(--text-primary);
@@ -619,22 +617,41 @@ html[data-blog-width="wide"] {
   }
 }
 
+/* Images breathe a step wider than the text column (Gates Notes effect).
+   --media-bleed is the overflow per side; capped so it never exceeds the
+   viewport on smaller screens. */
+.article-content {
+  --media-bleed: clamp(0rem, (100vw - var(--blog-content-width)) / 2 - 1rem, 3.5rem);
+}
+
+.article-content img,
+.article-content figure,
+.article-content .photo-gallery,
+.article-content .video-embed {
+  margin-left: calc(-1 * var(--media-bleed));
+  margin-right: calc(-1 * var(--media-bleed));
+  width: calc(100% + 2 * var(--media-bleed));
+}
+
 .article-content img {
   display: block;
-  max-width: 100%;
+  max-width: none;
   height: auto;
-  margin: 1.5rem auto;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
   border-radius: 0.5rem;
 }
 
 /* Figure with caption */
 .article-content figure {
-  margin: 1.5rem 0;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
   text-align: center;
 }
 
 .article-content figure img {
   margin: 0 auto 0.75rem;
+  width: 100%;
 }
 
 .article-content figcaption {

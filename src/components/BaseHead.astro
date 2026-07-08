@@ -129,24 +129,18 @@ const csp = [
 <link rel="alternate" hreflang="tr" href={trURL} />
 <link rel="alternate" hreflang="x-default" href={enURL} />
 
-<!-- Local font preloads (self-hosted, no external font CDNs) -->
+<!-- Local font preloads (self-hosted, no external font CDNs).
+     Fraunces is the site-wide serif; preload its Latin subsets. -->
 <link
   rel="preload"
-  href="/fonts/Inter-Regular.woff2"
+  href="/fonts/Fraunces-normal-5.woff2"
   as="font"
   type="font/woff2"
   crossorigin
 />
 <link
   rel="preload"
-  href="/fonts/Inter-Medium.woff2"
-  as="font"
-  type="font/woff2"
-  crossorigin
-/>
-<link
-  rel="preload"
-  href="/fonts/Melodrama-Semibold.woff2"
+  href="/fonts/Fraunces-normal-4.woff2"
   as="font"
   type="font/woff2"
   crossorigin
