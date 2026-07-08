@@ -1,5 +1,5 @@
 ---
-import { Image } from "astro:assets";
+import { Image, getImage } from "astro:assets";
 import { X, ChevronLeft, ChevronRight, ZoomIn } from "@lucide/astro";
 import type { ImageMetadata } from "astro";
 
@@ -17,6 +17,18 @@ interface Props {
 
 const { images, columns = 3, layout = "grid" } = Astro.props;
 const galleryId = `gallery-${Math.random().toString(36).slice(2, 9)}`;
+
+// Optimized lightbox renditions; never ship the raw originals
+const fullImages = await Promise.all(
+  images.map((image) =>
+    getImage({
+      src: image.src,
+      width: Math.min(1600, image.src.width),
+      format: "webp",
+      quality: 82,
+    }),
+  ),
+);
 ---
 
 <div class="photo-gallery" data-gallery={galleryId} data-layout={layout}>
@@ -28,7 +40,7 @@ const galleryId = `gallery-${Math.random().toString(36).slice(2, 9)}`;
           data-gallery-item
           data-index={index}
           data-caption={image.caption || ""}
-          data-full-src={image.src.src}
+          data-full-src={fullImages[index].src}
           aria-label={`View ${image.alt}`}
         >
           <div class="gallery-item-inner">
@@ -36,7 +48,9 @@ const galleryId = `gallery-${Math.random().toString(36).slice(2, 9)}`;
               src={image.src}
               alt={image.alt}
               width={900}
-              quality="max"
+              widths={[400, 800]}
+              sizes="(max-width: 768px) 50vw, 320px"
+              quality={80}
               height={layout === "grid" ? 600 : undefined}
               loading="lazy"
               class="gallery-image"
