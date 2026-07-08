@@ -48,10 +48,9 @@ const fullImages = await Promise.all(
               src={image.src}
               alt={image.alt}
               width={900}
-              widths={[400, 800]}
-              sizes="(max-width: 768px) 50vw, 320px"
+              widths={[400, 700, 900]}
+              sizes="(max-width: 768px) 50vw, 360px"
               quality={80}
-              height={layout === "grid" ? 600 : undefined}
               loading="lazy"
               class="gallery-image"
             />
@@ -309,44 +308,30 @@ const fullImages = await Promise.all(
     margin: 1.75rem 0;
   }
 
+  /* Masonry via CSS columns: images keep their natural aspect ratio
+     (never cropped) and pack tightly by column. */
   .gallery-grid {
-    display: grid;
-    gap: 0.75rem;
+    column-gap: 0.75rem;
   }
 
   .gallery-grid[data-columns="2"] {
-    grid-template-columns: repeat(2, 1fr);
+    column-count: 2;
   }
 
   .gallery-grid[data-columns="3"] {
-    grid-template-columns: repeat(3, 1fr);
+    column-count: 3;
   }
 
   .gallery-grid[data-columns="4"] {
-    grid-template-columns: repeat(4, 1fr);
-  }
-
-  @media (max-width: 1024px) {
-    .gallery-grid[data-columns="4"] {
-      grid-template-columns: repeat(3, 1fr);
-    }
+    column-count: 3;
   }
 
   @media (max-width: 768px) {
+    .gallery-grid[data-columns="2"],
     .gallery-grid[data-columns="3"],
     .gallery-grid[data-columns="4"] {
-      grid-template-columns: repeat(2, 1fr);
-    }
-
-    .gallery-grid {
-      gap: 0.5rem;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .photo-gallery[data-layout="grid"] .gallery-grid,
-    .photo-gallery[data-layout="masonry"] .gallery-grid {
-      grid-template-columns: repeat(2, 1fr) !important;
+      column-count: 2;
+      column-gap: 0.5rem;
     }
   }
 
@@ -399,21 +384,28 @@ const fullImages = await Promise.all(
     }
   }
 
-  /* Gallery Item */
+  /* Gallery Item: full image, no crop; sits in a masonry column */
   .gallery-item {
     position: relative;
-    /* flex ignores stray whitespace text nodes inside the button, which
-       otherwise push the image down and leave a gap at the top */
-    display: flex;
+    display: block;
+    width: 100%;
+    margin: 0 0 0.75rem;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     padding: 0;
     cursor: zoom-in;
     overflow: hidden;
     border-radius: 0.5rem;
-    aspect-ratio: 3 / 2;
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid;
     transition: border-color 0.2s ease;
     line-height: 0;
+  }
+
+  @media (max-width: 768px) {
+    .gallery-item {
+      margin-bottom: 0.5rem;
+    }
   }
 
   .gallery-item:hover,
@@ -421,24 +413,19 @@ const fullImages = await Promise.all(
     border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
   }
 
-  .photo-gallery[data-layout="masonry"] .gallery-item {
-    aspect-ratio: auto;
-  }
-
   .gallery-item-inner {
     position: relative;
     width: 100%;
-    height: 100%;
   }
 
   .gallery-image {
+    display: block;
     width: 100%;
-    height: 100%;
-    /* override the global .article-content img margin, which otherwise
-       pushes the image down inside the clipped frame */
+    height: auto;
+    /* override the global .article-content img margin/bleed */
     margin: 0;
+    max-width: none;
     border-radius: 0;
-    object-fit: cover;
     transition: transform 0.35s ease;
   }
 
