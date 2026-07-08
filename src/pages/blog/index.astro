@@ -17,6 +17,8 @@ const items = posts.map((post) => ({
   title: post.data.title,
   date: post.data.pubDate,
   description: post.data.description,
+  image: post.data.heroImage,
+  category: t(`blog.category.${post.data.category}` as any),
   meta: `${t(`blog.category.${post.data.category}` as any)} · ${calculateReadingTime(post.body || "")} ${t("blog.minRead")}`,
 }));
 ---
@@ -26,6 +28,8 @@ const items = posts.map((post) => ({
     title={t("blog.title")}
     intro="Notes and essays, newest first."
     emptyNote="Nothing published yet. The first proper post is still in the drafts folder."
+    searchPlaceholder={t("blog.search")}
+    allLabel={t("blog.allCategories")}
     items={items}
   />
 </Layout>
