@@ -16,7 +16,7 @@ body {
    =========================== */
 :root {
   /* Reading defaults: book-style serif, comfortable measure */
-  --blog-font-family: "Newsreader", Georgia, Cambria, "Times New Roman", serif;
+  --blog-font-family: "Merriweather", Georgia, Cambria, "Times New Roman", serif;
   --blog-heading-font: "Inter", system-ui, sans-serif;
   --blog-font-size: 1.125rem;
   --blog-font-size-desktop: 1.1875rem;
@@ -36,7 +36,7 @@ html[data-blog-font="sans"] {
 }
 
 html[data-blog-font="serif"] {
-  --blog-font-family: "Newsreader", Georgia, Cambria, "Times New Roman", serif;
+  --blog-font-family: "Merriweather", Georgia, Cambria, "Times New Roman", serif;
 }
 
 html[data-blog-size="small"] {
@@ -323,7 +323,7 @@ html[data-blog-width="wide"] {
 }
 
 .toc-title {
-  font-family: "Newsreader", Georgia, serif;
+  font-family: "Merriweather", Georgia, serif;
   font-size: 1.0625rem;
   font-weight: 500;
   color: var(--text-primary);
@@ -433,7 +433,7 @@ html[data-blog-width="wide"] {
 
 .article-title {
   margin: 0 0 1rem 0;
-  font-family: "Newsreader", var(--blog-heading-font), serif;
+  font-family: "Merriweather", var(--blog-heading-font), serif;
   font-size: 1.75rem;
   font-weight: 600;
   line-height: 1.15;
@@ -543,7 +543,7 @@ html[data-blog-font="sans"] .article-content {
 .article-content h2 {
   margin-top: 2.5rem;
   margin-bottom: 1rem;
-  font-family: "Newsreader", var(--blog-heading-font), serif;
+  font-family: "Merriweather", var(--blog-heading-font), serif;
   font-size: var(--blog-h2-size);
   font-weight: 500;
   color: var(--text-primary);
@@ -559,7 +559,7 @@ html[data-blog-font="sans"] .article-content {
 .article-content h3 {
   margin-top: 2rem;
   margin-bottom: 0.75rem;
-  font-family: "Newsreader", var(--blog-heading-font), serif;
+  font-family: "Merriweather", var(--blog-heading-font), serif;
   font-size: var(--blog-h3-size);
   font-weight: 500;
   color: var(--text-primary);
