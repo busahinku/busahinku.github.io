@@ -185,6 +185,7 @@ const t = useTranslations(lang);
           <img
             src="/logo.svg"
             alt="Portfolio"
+            class="site-logo-img"
             onerror="this.style.display='none'"
           />
         </div>
@@ -570,6 +571,11 @@ const t = useTranslations(lang);
     width: 32px;
     height: 32px;
     object-fit: contain;
+  }
+
+  /* logo.svg strokes are near-white; force it black like the navbar */
+  .proj-logo .site-logo-img {
+    filter: brightness(0) saturate(100%);
   }
 
   :global([data-theme="dark"]) .proj-logo {
