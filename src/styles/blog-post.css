@@ -15,11 +15,12 @@ body {
    CSS Variables for Text Arrangement
    =========================== */
 :root {
-  /* Reading defaults: book-style serif, comfortable measure */
+  /* Reading defaults. One size scale drives both fonts so serif and sans
+     never differ in point size at the same setting. */
   --blog-font-family: "Merriweather", Georgia, Cambria, "Times New Roman", serif;
   --blog-heading-font: "Inter", system-ui, sans-serif;
-  --blog-font-size: 1.125rem;
-  --blog-font-size-desktop: 1.1875rem;
+  --blog-font-size: 1rem;
+  --blog-font-size-desktop: 1.0625rem;
   --blog-h2-size: 1.5rem;
   --blog-h2-size-desktop: 1.625rem;
   --blog-h3-size: 1.25rem;
@@ -29,10 +30,9 @@ body {
   --blog-content-width: 640px;
 }
 
+/* Font toggle only swaps the family; size stays on the shared scale */
 html[data-blog-font="sans"] {
   --blog-font-family: "Inter", system-ui, sans-serif;
-  --blog-font-size: 1.0625rem;
-  --blog-font-size-desktop: 1.0625rem;
 }
 
 html[data-blog-font="serif"] {
@@ -41,7 +41,7 @@ html[data-blog-font="serif"] {
 
 html[data-blog-size="small"] {
   --blog-font-size: 0.9375rem;
-  --blog-font-size-desktop: 1rem;
+  --blog-font-size-desktop: 0.9375rem;
   --blog-h2-size: 1.375rem;
   --blog-h2-size-desktop: 1.5rem;
   --blog-h3-size: 1.125rem;
