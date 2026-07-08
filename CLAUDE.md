@@ -11,7 +11,7 @@ Personal site of Burak Sahin Kucuk (statistics + computer engineering student at
 
 ## Design identity
 
-Editorial minimalism: Melodrama (display serif) + Inter, both self-hosted from `public/fonts`. Table-of-contents style lists with `01/02` counters, dotted leaders, and dashed row dividers instead of card grids. Three themes (light / dark / paper) via `data-theme` on `<html>` and CSS custom properties in `src/styles/global.css`. One accent color per theme; never hardcode theme colors in components.
+Editorial minimalism, Gates Notes leaning. **Fraunces** (variable serif, self-hosted from `public/fonts`) is the site-wide font for both body and headings; `font-variation-settings` sets a text `opsz` on body and a display `opsz` on headings. It is a free OFL stand-in for Gates Notes' ABC Marist. Inter stays loaded only for the blog reader's optional "sans" font toggle. Table-of-contents style lists with `01/02` counters, dotted leaders, and dashed row dividers instead of card grids. Article images bleed a step wider than the text column (`--media-bleed` in `blog-post.css`). Three themes (light / dark / paper) via `data-theme` on `<html>` and CSS custom properties in `src/styles/global.css`. One accent color per theme; never hardcode theme colors in components.
 
 Shared building blocks: `ArchiveList.astro` (blog/projects/courses listings), `MiscPage.astro` + `MiscArchive.astro` (misc pages, data in `src/data/misc.ts`), `ContactPage.astro`.
 
