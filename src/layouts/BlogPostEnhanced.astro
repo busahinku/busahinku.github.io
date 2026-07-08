@@ -13,6 +13,7 @@ import CommentSection from "../components/blog/CommentSection.astro";
 import { useTranslations, type Lang } from "../i18n/translations";
 import "../styles/blog-post.css";
 import "../styles/firebase-components.css";
+import "katex/dist/katex.min.css";
 
 interface Props {
   post:
@@ -45,13 +46,6 @@ const t = useTranslations(lang);
 <html lang={lang}>
   <head>
     <BaseHead title={title} description={description} />
-    <!-- KaTeX CSS -->
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
-      integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV"
-      crossorigin="anonymous"
-    />
   </head>
 
   <body>

@@ -42,47 +42,28 @@ const { title, description, image = "/og-image.jpg" } = Astro.props;
 />
 <meta name="generator" content={Astro.generator} />
 
-<!-- Font preconnects -->
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="preconnect" href="https://api.fontshare.com" crossorigin />
-
-<!-- Local font preloads -->
+<!-- Local font preloads (self-hosted, no external font CDNs) -->
 <link
   rel="preload"
-  href="/fonts/atkinson-regular.woff"
+  href="/fonts/Inter-Regular.woff2"
   as="font"
-  type="font/woff"
+  type="font/woff2"
   crossorigin
 />
 <link
   rel="preload"
-  href="/fonts/atkinson-bold.woff"
+  href="/fonts/Inter-Medium.woff2"
   as="font"
-  type="font/woff"
+  type="font/woff2"
   crossorigin
 />
-
-<!-- Non-blocking external fonts -->
 <link
   rel="preload"
-  href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap"
-  as="style"
-  onload="this.onload=null;this.rel='stylesheet'"
+  href="/fonts/Melodrama-Semibold.woff2"
+  as="font"
+  type="font/woff2"
+  crossorigin
 />
-<noscript>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" />
-</noscript>
-
-<link
-  rel="preload"
-  href="https://api.fontshare.com/v2/css?f[]=melodrama@400,500,600,700&display=swap"
-  as="style"
-  onload="this.onload=null;this.rel='stylesheet'"
-/>
-<noscript>
-  <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=melodrama@400,500,600,700&display=swap" />
-</noscript>
 
 <!-- Canonical URL -->
 <link rel="canonical" href={canonicalURL} />

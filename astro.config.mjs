@@ -13,6 +13,11 @@ export default defineConfig({
   site: 'https://busahin.com',
   integrations: [mdx(), sitemap()],
   output: 'static',
+  // Prefetch pages before the user clicks so navigation feels instant
+  prefetch: {
+    prefetchAll: true,
+    defaultStrategy: 'viewport',
+  },
   markdown: {
     remarkPlugins: [remarkMath],
     rehypePlugins: [rehypeKatex],
