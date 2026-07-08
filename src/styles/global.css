@@ -116,6 +116,8 @@
 }
 
 html {
+  /* 15px base: proportionally scales every rem-based size on the site */
+  font-size: 93.75%;
   scroll-behavior: smooth;
 }
 
@@ -125,7 +127,7 @@ body {
   padding: 0;
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: 1.0625rem;
   line-height: 1.7;
   font-weight: 400;
   transition: background-color 0.3s ease, color 0.3s ease;
@@ -225,7 +227,8 @@ th {
 
 /* Form Elements */
 input, textarea, select {
-  font-size: 1rem;
+  /* fixed 16px so iOS Safari does not zoom on focus */
+  font-size: 16px;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: 0.375rem;
@@ -312,7 +315,7 @@ input:focus, textarea:focus, select:focus {
 /* Responsive */
 @media (max-width: 640px) {
   body {
-    font-size: 16px;
+    font-size: 1rem;
   }
 
   h1 { font-size: 2rem; }

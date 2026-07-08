@@ -28,7 +28,7 @@ const t = useTranslations(lang);
       <div class="text-option-buttons">
         <button
           type="button"
-          class="text-option-btn active"
+          class="text-option-btn"
           data-setting="font"
           data-value="sans"
         >
@@ -36,7 +36,7 @@ const t = useTranslations(lang);
         </button>
         <button
           type="button"
-          class="text-option-btn"
+          class="text-option-btn active"
           data-setting="font"
           data-value="serif"
         >
@@ -160,7 +160,7 @@ const t = useTranslations(lang);
 
     // Load saved preferences
     const loadPreferences = () => {
-      const font = localStorage.getItem('blog-font') || 'sans';
+      const font = localStorage.getItem('blog-font') || 'serif';
       const size = localStorage.getItem('blog-size') || 'normal';
       const lineHeight = localStorage.getItem('blog-line-height') || 'compact';
       const width = localStorage.getItem('blog-width') || 'normal';
@@ -177,7 +177,7 @@ const t = useTranslations(lang);
 
       // Remove existing attribute if value is default
       if (setting === 'font') {
-        if (value === 'sans') {
+        if (value === 'serif') {
           html.removeAttribute('data-blog-font');
         } else {
           html.setAttribute('data-blog-font', value);
