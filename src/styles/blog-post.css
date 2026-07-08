@@ -15,21 +15,30 @@ body {
    CSS Variables for Text Arrangement
    =========================== */
 :root {
-  --blog-font-family: "Inter", system-ui, sans-serif;
-  --blog-heading-font: var(--blog-font-family);
-  --blog-font-size: 1.0625rem;
-  --blog-font-size-desktop: 1.125rem;
+  /* Reading defaults: book-style serif, comfortable measure */
+  --blog-font-family: "Charter", "Georgia", "Cambria", "Times New Roman",
+    serif;
+  --blog-heading-font: "Inter", system-ui, sans-serif;
+  --blog-font-size: 1.125rem;
+  --blog-font-size-desktop: 1.1875rem;
   --blog-h2-size: 1.5rem;
-  --blog-h2-size-desktop: 1.75rem;
+  --blog-h2-size-desktop: 1.625rem;
   --blog-h3-size: 1.25rem;
   --blog-h3-size-desktop: 1.375rem;
   --blog-h4-size: 1.125rem;
-  --blog-line-height: 1.6;
-  --blog-content-width: 720px;
+  --blog-line-height: 1.75;
+  --blog-content-width: 640px;
+}
+
+html[data-blog-font="sans"] {
+  --blog-font-family: "Inter", system-ui, sans-serif;
+  --blog-font-size: 1.0625rem;
+  --blog-font-size-desktop: 1.0625rem;
 }
 
 html[data-blog-font="serif"] {
-  --blog-font-family: "Times New Roman", Times, "Noto Serif", Georgia, serif;
+  --blog-font-family: "Charter", "Georgia", "Cambria", "Times New Roman",
+    serif;
 }
 
 html[data-blog-size="small"] {
@@ -61,11 +70,11 @@ html[data-blog-line-height="relaxed"] {
 }
 
 html[data-blog-width="narrow"] {
-  --blog-content-width: 600px;
+  --blog-content-width: 560px;
 }
 
 html[data-blog-width="wide"] {
-  --blog-content-width: 900px;
+  --blog-content-width: 760px;
 }
 
 /* ===========================
@@ -530,9 +539,9 @@ html[data-blog-width="wide"] {
 .article-content h2 {
   margin-top: 2.5rem;
   margin-bottom: 1rem;
-  font-family: var(--blog-heading-font);
+  font-family: "Melodrama", var(--blog-heading-font), serif;
   font-size: var(--blog-h2-size);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--text-primary);
   transition: font-size 0.3s ease;
 }
@@ -546,9 +555,9 @@ html[data-blog-width="wide"] {
 .article-content h3 {
   margin-top: 2rem;
   margin-bottom: 0.75rem;
-  font-family: var(--blog-heading-font);
+  font-family: "Melodrama", var(--blog-heading-font), serif;
   font-size: var(--blog-h3-size);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--text-primary);
   transition: font-size 0.3s ease;
 }
