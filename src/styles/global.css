@@ -44,6 +44,32 @@
   --hero-gradient-direction: 180deg;
 }
 
+/* E-ink Theme.
+   Grayscale panels show ~16 levels and have no backlight, so every colour
+   that carried meaning is flattened to black and the greys are pushed far
+   apart. --text-muted was 2.56:1 on white (unreadable here); it is now
+   ~12:1. Structural overrides (motion, depth, sticky) live at the bottom
+   of this file. */
+[data-theme="eink"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #ededed;
+  --text-primary: #000000;
+  --text-secondary: #000000;
+  --text-muted: #333333;
+  --accent: #000000;
+  --accent-hover: #000000;
+  --success: #000000;
+  --border: #4a4a4a;
+  --shadow: transparent;
+  --code-bg: #ffffff;
+  --hero-bg-1: #ffffff;
+  --hero-bg-2: #ffffff;
+  --hero-bg-3: #ffffff;
+  --hero-spotlight: #ffffff;
+  --hero-gradient-direction: 0deg;
+}
+
 [data-theme="paper"] {
   /* Paper Theme - Yellowish/Sepia */
   --bg-primary: #faf8f1;
@@ -356,3 +382,72 @@ input:focus, textarea:focus, select:focus {
   h3 { font-size: 1.5rem; }
 }
 
+
+/* ===========================
+   E-ink structural overrides
+   ===========================
+   A grayscale panel refreshes slowly and ghosts: motion, blur and depth all
+   smear. Everything below flattens the page and hands meaning back to shape
+   (borders, underlines, icons) rather than hue. Keyed off the attribute
+   rather than a media query because the theme script sets it, including
+   when it auto-detects (update: slow). */
+
+[data-theme="eink"] *,
+[data-theme="eink"] *::before,
+[data-theme="eink"] *::after {
+  transition: none !important;
+  animation: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-image: none !important;
+}
+
+/* jumping straight there beats repainting every frame of a scroll */
+[data-theme="eink"] {
+  scroll-behavior: auto;
+}
+
+/* view transitions repaint the whole screen on every navigation */
+[data-theme="eink"]::view-transition-old(root),
+[data-theme="eink"]::view-transition-new(root) {
+  animation: none !important;
+}
+
+/* a bar that repaints on every scroll tick is the worst case for ghosting */
+[data-theme="eink"] .reading-progress {
+  display: none;
+}
+
+/* anything pinned repaints against moving content underneath it */
+[data-theme="eink"] .blog-header {
+  position: static;
+  height: auto;
+  pointer-events: auto;
+}
+
+[data-theme="eink"] .blog-header-container {
+  background-color: var(--bg-primary);
+}
+
+[data-theme="eink"] .back-link,
+[data-theme="eink"] .blog-header-controls {
+  background-color: transparent;
+}
+
+[data-theme="eink"] .blog-layout {
+  padding-top: 1rem;
+}
+
+/* colour alone no longer marks a link */
+[data-theme="eink"] .article-content a {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+/* 25% of black is a flat grey box; the rule underneath is what reads */
+[data-theme="eink"] mark.highlight {
+  background-color: #e4e4e4;
+  border-bottom: 2px solid #000000;
+}

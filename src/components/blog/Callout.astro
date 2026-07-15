@@ -187,4 +187,21 @@ const displayTitle = title || defaultTitle;
       padding: 0.875rem 1rem;
     }
   }
+
+  /* E-ink.
+     Every type's tint lands between 240 and 246 of 255 on white, and a
+     grayscale panel resolves ~16 levels, so all six collapse into the same
+     shade: "Danger" reads exactly like "Success". The meaning moves to the
+     frame plus the per-type icon shape and title, which survive grayscale. */
+  :global([data-theme="eink"]) .callout {
+    background-color: #ffffff !important;
+    border: 1px solid #000000;
+    border-left-width: 5px;
+  }
+
+  :global([data-theme="eink"]) .callout-icon,
+  :global([data-theme="eink"]) .callout-title,
+  :global([data-theme="eink"]) .callout-content {
+    color: #000000 !important;
+  }
 </style>

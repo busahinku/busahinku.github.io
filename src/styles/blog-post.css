@@ -1324,3 +1324,51 @@ html[data-blog-font="sans"] .article-content {
     padding: 0 1rem;
   }
 }
+
+/* ===========================
+   E-ink reading mode
+   =========================== */
+
+/* 380 is lighter than regular; thin strokes break up on a panel with no
+   backlight, and the body was --text-secondary rather than full black. */
+[data-theme="eink"] .article-content {
+  font-weight: 400;
+  color: var(--text-primary);
+}
+
+/* A slow panel makes click-to-open cost a full refresh, and sticky repaints
+   the rail against every scroll. Show the contents inline and be done. */
+[data-theme="eink"] .toc-container {
+  position: static;
+  transform: none;
+  z-index: auto;
+}
+
+[data-theme="eink"] .toc-rail {
+  display: none;
+}
+
+[data-theme="eink"] .toc-panel {
+  position: static;
+  width: auto;
+  max-height: none;
+  padding: 0;
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  background-color: transparent;
+  border: none;
+  overflow: visible;
+}
+
+/* Shiki tints keywords and strings; those hues become near-identical greys,
+   so keep the luminance steps and drop the colour. */
+[data-theme="eink"] .article-content pre,
+[data-theme="eink"] .article-content pre code {
+  filter: grayscale(1) contrast(1.35);
+}
+
+/* the tick rail is hidden here, but the sheet still opens on small screens */
+[data-theme="eink"] .toc-sheet {
+  border-width: 1px;
+}

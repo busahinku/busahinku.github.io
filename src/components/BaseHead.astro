@@ -75,14 +75,23 @@ const csp = [
       light: "#ffffff",
       dark: "#0a0a0b",
       paper: "#faf8f1",
+      eink: "#ffffff",
     };
 
+    // E-readers report update: slow, and some also report monochrome. E-ink
+    // tablets running full Chrome report neither, so the mode stays pickable
+    // by hand in the theme menu.
+    function detectTheme() {
+      if (window.matchMedia("(update: slow), (monochrome)").matches) {
+        return "eink";
+      }
+      return window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+    }
+
     function applyTheme() {
-      const theme =
-        localStorage.getItem("theme") ||
-        (window.matchMedia("(prefers-color-scheme: dark)").matches
-          ? "dark"
-          : "light");
+      const theme = localStorage.getItem("theme") || detectTheme();
       document.documentElement.setAttribute("data-theme", theme);
       syncThemeColor(theme);
     }

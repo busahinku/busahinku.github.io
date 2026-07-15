@@ -1,6 +1,6 @@
 ---
 import { useTranslations, type Lang } from '../i18n/translations';
-import { Sun, Moon, FileText } from '@lucide/astro';
+import { Sun, Moon, FileText, BookOpen } from '@lucide/astro';
 
 interface Props {
   lang?: Lang;
@@ -40,6 +40,15 @@ const t = useTranslations(lang);
     >
       <FileText size={16} />
     </button>
+    <button
+      type="button"
+      data-theme-btn="eink"
+      class="theme-btn-mobile"
+      aria-label={t('theme.eink')}
+      title={t('theme.eink')}
+    >
+      <BookOpen size={16} />
+    </button>
   </div>
 ) : (
   <div class="theme-toggle" id="themeToggle">
@@ -47,6 +56,7 @@ const t = useTranslations(lang);
       <Sun size={16} class="icon-light" />
       <Moon size={16} class="icon-dark" />
       <FileText size={16} class="icon-paper" />
+      <BookOpen size={16} class="icon-eink" />
     </button>
     <div class="theme-dropdown" id="themeDropdown">
       <button
@@ -75,6 +85,15 @@ const t = useTranslations(lang);
       >
         <FileText size={16} />
         <span>Paper</span>
+      </button>
+      <button
+        type="button"
+        data-theme-btn="eink"
+        class="theme-option"
+        aria-label={t('theme.eink')}
+      >
+        <BookOpen size={16} />
+        <span>E-ink</span>
       </button>
     </div>
   </div>
@@ -143,7 +162,8 @@ const t = useTranslations(lang);
   /* Show only the current theme icon */
   .theme-trigger .icon-light,
   .theme-trigger .icon-dark,
-  .theme-trigger .icon-paper {
+  .theme-trigger .icon-paper,
+  .theme-trigger .icon-eink {
     display: none;
   }
 
@@ -156,6 +176,10 @@ const t = useTranslations(lang);
   }
 
   :global([data-theme='paper']) .theme-trigger .icon-paper {
+    display: block;
+  }
+
+  :global([data-theme='eink']) .theme-trigger .icon-eink {
     display: block;
   }
 
@@ -215,6 +239,9 @@ const t = useTranslations(lang);
     const getThemePreference = (): string => {
       const stored = localStorage.getItem('theme');
       if (stored) return stored;
+      // Must mirror the pre-paint detection in BaseHead, or the two disagree
+      // on the first render.
+      if (window.matchMedia('(update: slow), (monochrome)').matches) return 'eink';
       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     };
 
