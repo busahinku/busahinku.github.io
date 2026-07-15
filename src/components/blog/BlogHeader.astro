@@ -1,6 +1,6 @@
 ---
 import { useTranslations, type Lang } from "../../i18n/translations";
-import { ArrowLeft } from "@lucide/astro";
+import { ArrowLeft, List } from "@lucide/astro";
 import ThemeToggle from "../ThemeToggle.astro";
 import TextArrangementToggle from "./TextArrangementToggle.astro";
 
@@ -8,9 +8,11 @@ interface Props {
   lang?: Lang;
   backUrl?: string;
   backLabel?: string;
+  /** Only true when the post actually has headings to list. */
+  showToc?: boolean;
 }
 
-const { lang = "en", backUrl, backLabel } = Astro.props;
+const { lang = "en", backUrl, backLabel, showToc = false } = Astro.props;
 const t = useTranslations(lang);
 
 const basePath = lang === "en" ? "" : `/${lang}`;
@@ -29,6 +31,21 @@ const finalBackLabel = backLabel || t("nav.blog");
     <div class="blog-header-controls">
       <TextArrangementToggle lang={lang} />
       <ThemeToggle lang={lang} />
+      {
+        showToc && (
+          <button
+            type="button"
+            class="toc-sheet-trigger"
+            data-toc-sheet-open
+            aria-expanded="false"
+            aria-controls="toc-sheet"
+            aria-label={t("blog.contents")}
+            title={t("blog.contents")}
+          >
+            <List size={16} />
+          </button>
+        )
+      }
     </div>
   </div>
 </header>

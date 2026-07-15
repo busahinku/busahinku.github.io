@@ -268,17 +268,20 @@ html[data-blog-width="wide"] {
   align-items: flex-start;
 }
 
+/* Sticky at half the viewport, then pulled back by half its own height, so
+   the rail sits vertically centred on screen at any scroll position.
+   vh (not %) because a sticky top:% resolves against the tall article. */
 .toc-container {
   position: sticky;
-  top: 84px;
+  top: 50vh;
+  transform: translateY(-50%);
   width: 220px;
   flex-shrink: 0;
   align-self: flex-start;
-  max-height: calc(100vh - 110px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
   padding: 1rem 0.25rem 1rem 0;
-  scrollbar-width: thin;
+  /* above article media (galleries and embeds paint at z-index 1-10), below
+     the fixed header (1000) and the gallery lightbox (2000) */
+  z-index: 900;
 }
 
 .blog-spacer {
@@ -311,15 +314,206 @@ html[data-blog-width="wide"] {
 
 /* ===========================
    Table of Contents (Desktop)
-   =========================== */
+   ===========================
+   Collapsed to a rail of ticks, one per heading. Hovering the column
+   previews the panel; clicking the rail pins it open. */
 
-.toc-container::-webkit-scrollbar {
+.toc-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem 1.5rem 0.5rem 0.75rem;
+  margin: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  /* clears quickly so it never smears through the panel fading in over it */
+  transition: opacity 0.1s ease;
+}
+
+.toc-tick {
+  height: 2px;
+  width: 22px;
+  border-radius: 1px;
+  background-color: var(--text-muted);
+  opacity: 0.4;
+  transition:
+    width 0.2s ease,
+    opacity 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.toc-tick-h3 {
+  width: 13px;
+  margin-left: 0.5rem;
+}
+
+.toc-tick.active {
+  background-color: var(--accent);
+  opacity: 1;
+  width: 30px;
+}
+
+.toc-tick-h3.active {
+  width: 20px;
+}
+
+.toc-rail:hover .toc-tick {
+  opacity: 0.75;
+}
+
+/* Floats over the article, so opening it never shifts the text. Takes the
+   rail's place (the rail fades out) and stays centred on it. */
+.toc-panel {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 250px;
+  max-height: calc(100vh - 8rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 1rem 0.75rem;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 24px var(--shadow);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-0.5rem, -50%);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease,
+    visibility 0.18s;
+}
+
+.toc-container.open .toc-panel {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(0, -50%);
+}
+
+/* the rail folds away while open; clicking outside (or Escape) closes it */
+.toc-container.open .toc-rail {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toc-panel::-webkit-scrollbar {
   width: 4px;
 }
 
-.toc-container::-webkit-scrollbar-thumb {
+.toc-panel::-webkit-scrollbar-thumb {
   background-color: var(--border);
   border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toc-panel,
+  .toc-rail,
+  .toc-tick {
+    transition: none;
+  }
+}
+
+/* ---------- Mobile contents sheet ----------
+   The rail is desktop-only, so under 1280px the header gets a trigger that
+   opens this near-fullscreen sheet. */
+
+.toc-sheet-trigger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toc-sheet-trigger:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-tertiary);
+}
+
+.toc-sheet {
+  display: none;
+  position: fixed;
+  inset: 0.75rem;
+  /* above the fixed header and progress bar (1000/1001) */
+  z-index: 1100;
+  flex-direction: column;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  box-shadow: 0 20px 60px var(--shadow);
+  overflow: hidden;
+}
+
+@media (max-width: 1280px) {
+  .toc-sheet-trigger {
+    display: flex;
+  }
+
+  .toc-sheet.open {
+    display: flex;
+  }
+}
+
+.toc-sheet-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  padding: 0.875rem 0.75rem 0.875rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.toc-sheet-title {
+  font-family: "Merriweather", Georgia, serif;
+  font-size: 1.0625rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.toc-sheet-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.toc-sheet-close:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-tertiary);
+}
+
+.toc-sheet-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1rem 1.25rem 1.5rem;
+}
+
+.toc-sheet .toc-link {
+  font-size: 0.9375rem;
+  padding: 0.625rem 0.75rem;
+}
+
+.toc-sheet .toc-link.toc-h3 {
+  font-size: 0.875rem;
+  padding-left: 1.5rem;
 }
 
 .toc-title {
@@ -690,34 +884,71 @@ html[data-blog-font="sans"] .article-content {
   border-radius: 3px;
 }
 
-/* GFM tables */
-.article-content table {
-  width: 100%;
-  border-collapse: collapse;
+/* GFM tables.
+   The wrapper (added by rehypeTableWrap) owns the single outer border and
+   the radius, and clips the table's square corners. The table keeps
+   border-collapse so every rule is one crisp line. */
+.table-wrap {
   margin: 1.75rem 0;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  /* clips the table's square corners, and scrolls a wide one sideways */
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* auto + min-width: a narrow table still fills the column, a wide one keeps
+   its natural width and scrolls rather than squeezing every column. */
+.article-content table {
+  width: auto;
+  min-width: 100%;
+  border-collapse: collapse;
+  margin: 0;
   font-size: 0.9375rem;
 }
 
+/* global.css borders all four sides of every cell. Left as-is, those outer
+   edges sit a pixel inside the wrapper's border and read as a doubled line,
+   so cells draw only the interior grid and the wrapper draws the boundary. */
 .article-content thead th {
   text-align: left;
   font-weight: 600;
   color: var(--text-primary);
-  border-bottom: 2px solid var(--border);
+  background-color: var(--bg-secondary);
+  border: none;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   padding: 0.6rem 0.75rem;
+  white-space: nowrap;
 }
 
 .article-content tbody td {
+  border: none;
+  border-right: 1px solid
+    color-mix(in srgb, var(--border) 70%, transparent);
   border-bottom: 1px solid
     color-mix(in srgb, var(--border) 70%, transparent);
   padding: 0.6rem 0.75rem;
   color: var(--text-secondary);
+  /* without this a cell would wrap and let the table shrink to the column
+     instead of overflowing into the wrapper's scroll */
+  white-space: nowrap;
+}
+
+/* the wrapper draws the outer boundary, so the edge cells drop theirs */
+.article-content tr > th:last-child,
+.article-content tr > td:last-child {
+  border-right: none;
 }
 
 .article-content tbody tr:last-child td {
   border-bottom: none;
 }
 
-/* Task lists (GFM) */
+/* Task lists (GFM).
+   Markdown renders these as disabled inputs, which the browser paints grey
+   and which ignore accent-color, so the box is drawn from scratch. */
 .article-content .contains-task-list {
   list-style: none;
   padding-left: 0.25rem;
@@ -729,8 +960,39 @@ html[data-blog-font="sans"] .article-content {
   gap: 0.5rem;
 }
 
-.article-content .task-list-item input {
-  accent-color: var(--accent);
+.article-content .task-list-item input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 1.05rem;
+  height: 1.05rem;
+  /* the global input padding would set a min size and force an oblong box */
+  padding: 0;
+  margin: 0;
+  border: 1.5px solid var(--text-muted);
+  border-radius: 0.25rem;
+  background-color: var(--bg-primary);
+  opacity: 1;
+  transform: translateY(0.15rem);
+}
+
+.article-content .task-list-item input[type="checkbox"]:checked {
+  background-color: var(--success);
+  border-color: var(--success);
+}
+
+.article-content .task-list-item input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 4.5px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 /* Footnotes (GFM) */
