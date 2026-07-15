@@ -11,6 +11,8 @@
   --text-muted: #94a3b8;
   --accent: #2563eb;
   --accent-hover: #1d4ed8;
+  /* "done" in task lists: semantic, deliberately not the theme accent */
+  --success: #16a34a;
   --border: #e2e8f0;
   --shadow: rgba(0, 0, 0, 0.1);
   --code-bg: #f1f5f9;
@@ -31,6 +33,7 @@
   --text-muted: #a1a1aa;
   --accent: #ef4444;
   --accent-hover: #f87171;
+  --success: #22c55e;
   --border: #27272a;
   --shadow: rgba(0, 0, 0, 0.5);
   --code-bg: #18181b;
@@ -51,6 +54,7 @@
   --text-muted: #8a8475;
   --accent: #b45309;
   --accent-hover: #92400e;
+  --success: #15803d;
   --border: #d6ceb8;
   --shadow: rgba(61, 57, 41, 0.1);
   --code-bg: #ebe4d1;

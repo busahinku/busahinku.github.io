@@ -47,6 +47,9 @@ const {
 } = Astro.props;
 const { title, description, pubDate, updatedDate, heroImage } = post;
 const t = useTranslations(lang);
+
+// The TOC lists h2/h3 only; the mobile trigger appears only if there are any.
+const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
 ---
 
 <html lang={lang}>
@@ -63,7 +66,12 @@ const t = useTranslations(lang);
       <div class="reading-progress-bar" id="progressBar"></div>
     </div>
 
-    <BlogHeader lang={lang} backUrl={backUrl} backLabel={backLabel} />
+    <BlogHeader
+      lang={lang}
+      backUrl={backUrl}
+      backLabel={backLabel}
+      showToc={hasToc}
+    />
 
     <div class="blog-layout">
       <!-- Left: Table of Contents -->

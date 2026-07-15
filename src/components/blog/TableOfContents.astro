@@ -1,5 +1,6 @@
 ---
 import { useTranslations, type Lang } from '../../i18n/translations';
+import { X } from '@lucide/astro';
 
 interface Heading {
   depth: number;
@@ -20,104 +21,206 @@ const tocHeadings = headings.filter(h => h.depth === 2 || h.depth === 3);
 ---
 
 {tocHeadings.length > 0 && (
-  <aside class="toc-container">
-    <div class="toc-title">{t('blog.contents')}</div>
-    <ul class="toc-list">
+  <aside class="toc-container" data-toc>
+    {/* Collapsed state: one tick per heading. Hovering previews the panel,
+        clicking pins it open. */}
+    <button
+      type="button"
+      class="toc-rail"
+      data-toc-rail
+      aria-expanded="false"
+      aria-controls="toc-panel"
+      aria-label={t('blog.contents')}
+    >
       {tocHeadings.map((heading) => (
-        <li class="toc-item">
-          <a
-            href={`#${heading.slug}`}
-            class:list={['toc-link', { 'toc-h3': heading.depth === 3 }]}
-            data-toc-link
-            data-target={heading.slug}
-          >
-            {heading.text}
-          </a>
-        </li>
+        <span
+          class:list={['toc-tick', { 'toc-tick-h3': heading.depth === 3 }]}
+          data-tick={heading.slug}
+        />
       ))}
-    </ul>
+    </button>
+
+    <div class="toc-panel" id="toc-panel" data-toc-panel>
+      <div class="toc-title">{t('blog.contents')}</div>
+      <ul class="toc-list">
+        {tocHeadings.map((heading) => (
+          <li class="toc-item">
+            <a
+              href={`#${heading.slug}`}
+              class:list={['toc-link', { 'toc-h3': heading.depth === 3 }]}
+              data-toc-link
+              data-target={heading.slug}
+            >
+              {heading.text}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
   </aside>
 )}
 
+{tocHeadings.length > 0 && (
+  /* Mobile: opened from the header trigger, closed with the X. The desktop
+     rail is hidden below 1280px, so this is the only TOC there. */
+  <div class="toc-sheet" id="toc-sheet" data-toc-sheet role="dialog" aria-modal="true" aria-label={t('blog.contents')}>
+    <div class="toc-sheet-bar">
+      <span class="toc-sheet-title">{t('blog.contents')}</span>
+      <button
+        type="button"
+        class="toc-sheet-close"
+        data-toc-sheet-close
+        aria-label={lang === 'tr' ? 'Kapat' : 'Close'}
+      >
+        <X size={20} />
+      </button>
+    </div>
+    <div class="toc-sheet-body">
+      <ul class="toc-list">
+        {tocHeadings.map((heading) => (
+          <li class="toc-item">
+            <a
+              href={`#${heading.slug}`}
+              class:list={['toc-link', { 'toc-h3': heading.depth === 3 }]}
+              data-toc-link
+              data-target={heading.slug}
+            >
+              {heading.text}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+)}
+
 <script>
+  // Cleanup from the previous page, so view transitions never stack
+  // observers or document listeners.
+  let teardownTOC: (() => void) | null = null;
+
   function initTOC() {
-    const tocLinks = document.querySelectorAll('[data-toc-link]');
+    teardownTOC?.();
+    teardownTOC = null;
 
-    if (tocLinks.length === 0) return;
+    const container = document.querySelector<HTMLElement>('[data-toc]');
+    const rail = document.querySelector<HTMLElement>('[data-toc-rail]');
+    const tocLinks = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-toc-link]'),
+    );
+    if (!container || !rail || tocLinks.length === 0) return;
 
-    // Get all heading elements that we're tracking
-    const headingIds = Array.from(tocLinks).map(link => link.getAttribute('data-target'));
-    const headings = headingIds
-      .map(id => document.getElementById(id as string))
+    const ticks = Array.from(document.querySelectorAll<HTMLElement>('[data-tick]'));
+    const headings = tocLinks
+      .map((link) => document.getElementById(link.dataset.target as string))
       .filter(Boolean) as HTMLElement[];
-
     if (headings.length === 0) return;
 
-    // Intersection Observer for active section
-    const observerOptions = {
-      root: null,
-      rootMargin: '-80px 0px -70% 0px',
-      threshold: 0
+    /* ---------- open / close ---------- */
+    // Click-only: the rail toggles the panel. The class on the container is
+    // the single source of truth, so repeated inits can never disagree.
+    const isOpen = () => container.classList.contains('open');
+
+    const setOpen = (open: boolean) => {
+      container.classList.toggle('open', open);
+      rail.setAttribute('aria-expanded', String(open));
     };
 
+    const onRailClick = (event: MouseEvent) => {
+      event.stopPropagation();
+      setOpen(!isOpen());
+    };
+    const onDocClick = (event: MouseEvent) => {
+      if (isOpen() && !container.contains(event.target as Node)) setOpen(false);
+    };
+    /* ---------- mobile sheet ---------- */
+    // Below 1280px the rail is hidden, so the header trigger opens a
+    // near-fullscreen sheet instead.
+    const sheet = document.querySelector<HTMLElement>('[data-toc-sheet]');
+    const sheetTrigger = document.querySelector<HTMLElement>('[data-toc-sheet-open]');
+    const sheetCloseBtn = document.querySelector<HTMLElement>('[data-toc-sheet-close]');
+
+    const setSheet = (open: boolean) => {
+      sheet?.classList.toggle('open', open);
+      sheetTrigger?.setAttribute('aria-expanded', String(open));
+      // the sheet covers the page, so stop the article scrolling behind it
+      document.body.style.overflow = open ? 'hidden' : '';
+    };
+    const onSheetOpen = (event: MouseEvent) => {
+      event.stopPropagation();
+      setSheet(true);
+    };
+    const onSheetClose = () => setSheet(false);
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (isOpen()) setOpen(false);
+      if (sheet?.classList.contains('open')) setSheet(false);
+    };
+
+    rail.addEventListener('click', onRailClick);
+    sheetTrigger?.addEventListener('click', onSheetOpen);
+    sheetCloseBtn?.addEventListener('click', onSheetClose);
+    document.addEventListener('click', onDocClick);
+    document.addEventListener('keydown', onKey);
+
+    /* ---------- active section ---------- */
     let currentActive: string | null = null;
 
     const setActiveLink = (id: string) => {
       if (currentActive === id) return;
       currentActive = id;
 
-      tocLinks.forEach(link => {
-        const target = link.getAttribute('data-target');
-        link.classList.toggle('active', target === id);
+      tocLinks.forEach((link) => {
+        link.classList.toggle('active', link.dataset.target === id);
+      });
+      ticks.forEach((tick) => {
+        tick.classList.toggle('active', tick.dataset.tick === id);
       });
     };
 
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          setActiveLink(entry.target.id);
-        }
-      });
-    }, observerOptions);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) setActiveLink(entry.target.id);
+        });
+      },
+      { root: null, rootMargin: '-80px 0px -70% 0px', threshold: 0 },
+    );
+    headings.forEach((heading) => observer.observe(heading));
 
-    headings.forEach(heading => observer.observe(heading));
-
-    // Smooth scroll for TOC links
-    tocLinks.forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const target = link.getAttribute('data-target');
-        if (target) {
-          const element = document.getElementById(target);
-          if (element) {
-            const offset = 80;
-            const top = element.getBoundingClientRect().top + window.scrollY - offset;
-            window.scrollTo({ top, behavior: 'smooth' });
-          }
-        }
-      });
-    });
-
-    // Set initial active based on scroll position
-    const setInitialActive = () => {
-      const scrollY = window.scrollY + 100;
-      let active = headings[0]?.id;
-
-      for (const heading of headings) {
-        if (heading.offsetTop <= scrollY) {
-          active = heading.id;
-        }
-      }
-
-      if (active) {
-        setActiveLink(active);
-      }
+    /* ---------- smooth scroll ---------- */
+    const onLinkClick = (event: Event) => {
+      event.preventDefault();
+      const link = event.currentTarget as HTMLElement;
+      const element = document.getElementById(link.dataset.target as string);
+      if (!element) return;
+      const top = element.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo({ top, behavior: 'smooth' });
+      // jumping to a section is the end of the interaction; fold it away
+      setOpen(false);
+      setSheet(false);
     };
+    tocLinks.forEach((link) => link.addEventListener('click', onLinkClick));
 
-    setInitialActive();
+    // Initial active state from the current scroll offset
+    const scrollY = window.scrollY + 100;
+    let active = headings[0]?.id;
+    for (const heading of headings) {
+      if (heading.offsetTop <= scrollY) active = heading.id;
+    }
+    if (active) setActiveLink(active);
 
-    return () => {
-      headings.forEach(heading => observer.unobserve(heading));
+    teardownTOC = () => {
+      observer.disconnect();
+      rail.removeEventListener('click', onRailClick);
+      sheetTrigger?.removeEventListener('click', onSheetOpen);
+      sheetCloseBtn?.removeEventListener('click', onSheetClose);
+      document.removeEventListener('click', onDocClick);
+      document.removeEventListener('keydown', onKey);
+      tocLinks.forEach((link) => link.removeEventListener('click', onLinkClick));
+      // never leave the body locked behind a navigation
+      document.body.style.overflow = '';
     };
   }
 

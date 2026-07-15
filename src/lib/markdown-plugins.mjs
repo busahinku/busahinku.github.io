@@ -1,4 +1,4 @@
-import { visit } from "unist-util-visit";
+import { visit, SKIP } from "unist-util-visit";
 
 /**
  * remark: turn ==highlighted text== into <mark>highlighted text</mark>,
@@ -22,6 +22,31 @@ export function remarkMark() {
         }
       });
       parent.children.splice(index, 1, ...replacement);
+    });
+  };
+}
+
+/**
+ * rehype: wrap every table in a rounded, scrollable container.
+ *
+ * The wrapper owns the outer border and the corner radius and clips the
+ * table, so the table keeps border-collapse and draws single crisp rules.
+ * Rounding the table itself instead would leave its border and the corner
+ * cells as two concentric arcs a pixel apart. The wrapper also lets a wide
+ * table scroll on its own rather than stretching the page.
+ */
+export function rehypeTableWrap() {
+  return (tree) => {
+    visit(tree, "element", (node, index, parent) => {
+      if (node.tagName !== "table" || !parent || index === null) return;
+      parent.children[index] = {
+        type: "element",
+        tagName: "div",
+        properties: { className: ["table-wrap"] },
+        children: [node],
+      };
+      // step past the wrapper, or we would re-visit this table forever
+      return [SKIP, index + 1];
     });
   };
 }
