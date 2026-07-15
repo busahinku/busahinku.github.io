@@ -22,6 +22,7 @@ export const translations = {
     'theme.light': 'Light',
     'theme.dark': 'Dark',
     'theme.paper': 'Paper',
+    'theme.eink': 'E-ink',
 
     // Home
     'home.title': 'Burak Sahin Kucuk',
@@ -177,6 +178,7 @@ export const translations = {
     'theme.light': 'Açık',
     'theme.dark': 'Koyu',
     'theme.paper': 'Kağıt',
+    'theme.eink': 'E-mürekkep',
 
     // Home
     'home.title': 'Burak Şahin Küçük',
