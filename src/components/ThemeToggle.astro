@@ -236,19 +236,28 @@ const t = useTranslations(lang);
 
 <script>
   function initTheme() {
-    const getThemePreference = (): string => {
-      const stored = localStorage.getItem('theme');
-      if (stored) return stored;
-      // Must mirror the pre-paint detection in BaseHead, or the two disagree
-      // on the first render.
+    // Must mirror the pre-paint detection in BaseHead, or the two disagree
+    // on the first render.
+    const detectTheme = (): string => {
       if (window.matchMedia('(update: slow), (monochrome)').matches) return 'eink';
       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     };
 
-    const setTheme = (theme: string) => {
+    const getThemePreference = (): string =>
+      localStorage.getItem('theme') || detectTheme();
+
+    // Paint a theme without claiming the reader chose it.
+    const applyTheme = (theme: string) => {
       document.documentElement.setAttribute('data-theme', theme);
-      localStorage.setItem('theme', theme);
       updateButtons(theme);
+    };
+
+    // Only an explicit pick is stored. Persisting the detected value here
+    // would pin the site to whatever the display reported on the first
+    // visit, so it could never follow the system again.
+    const setTheme = (theme: string) => {
+      localStorage.setItem('theme', theme);
+      applyTheme(theme);
     };
 
     const updateButtons = (theme: string) => {
@@ -259,8 +268,7 @@ const t = useTranslations(lang);
     };
 
     // Set initial theme
-    const currentTheme = getThemePreference();
-    setTheme(currentTheme);
+    applyTheme(getThemePreference());
 
     // Add click handlers for theme options
     document.querySelectorAll('[data-theme-btn]').forEach((btn) => {
@@ -315,4 +323,20 @@ const t = useTranslations(lang);
 
   // Re-run on navigation (for View Transitions)
   document.addEventListener('astro:after-swap', initTheme);
+
+  // While the reader has expressed no preference, keep following the system.
+  // Bound once, outside initTheme, so navigations do not stack listeners.
+  window
+    .matchMedia('(prefers-color-scheme: dark)')
+    .addEventListener('change', (event) => {
+      if (localStorage.getItem('theme')) return;
+      document.documentElement.setAttribute(
+        'data-theme',
+        window.matchMedia('(update: slow), (monochrome)').matches
+          ? 'eink'
+          : event.matches
+            ? 'dark'
+            : 'light',
+      );
+    });
 </script>

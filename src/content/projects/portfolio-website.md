@@ -8,7 +8,7 @@ category: 'web'
 author: 'Burak Sahin'
 featured: true
 github: 'https://github.com/busahinku/portfolio'
-demo: 'https://busahinku.github.io'
+demo: 'https://busahin.com'
 status: 'active'
 ---
 

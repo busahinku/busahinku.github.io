@@ -16,6 +16,10 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 // Default OG image - replace /og-image.jpg in public/ folder with your own
 const { title, description, image = "/og-image.jpg" } = Astro.props;
 
+// The 404 page is served for any unmatched URL, so the path it is built
+// from is not a real address: it gets no alternates and no indexing.
+const is404 = Astro.url.pathname === "/404" || Astro.url.pathname === "/404/";
+
 // hreflang alternates: strip the /tr prefix to get the shared path
 const pathWithoutLang = Astro.url.pathname.replace(/^\/tr(\/|$)/, "/");
 const enURL = new URL(pathWithoutLang, Astro.site);
@@ -134,9 +138,16 @@ const csp = [
 <meta name="generator" content={Astro.generator} />
 
 <!-- Language alternates -->
-<link rel="alternate" hreflang="en" href={enURL} />
-<link rel="alternate" hreflang="tr" href={trURL} />
-<link rel="alternate" hreflang="x-default" href={enURL} />
+{
+  !is404 && (
+    <>
+      <link rel="alternate" hreflang="en" href={enURL} />
+      <link rel="alternate" hreflang="tr" href={trURL} />
+      <link rel="alternate" hreflang="x-default" href={enURL} />
+    </>
+  )
+}
+{is404 && <meta name="robots" content="noindex" />}
 
 <!-- Local font preloads (self-hosted, no external font CDNs).
      Merriweather is the site-wide serif; preload its Latin subsets. -->

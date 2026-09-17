@@ -440,10 +440,31 @@ input:focus, textarea:focus, select:focus {
   padding-top: 1rem;
 }
 
-/* colour alone no longer marks a link */
-[data-theme="eink"] .article-content a {
+/* Colour alone no longer marks a link: --accent is black here, so every
+   link would otherwise be indistinguishable from body text. Underline by
+   default so nothing can go invisible, then drop it again where layout
+   already says "this is navigation" (header, nav, footer) or where the row
+   is its own affordance (archive rows, prev/next, contents entries). */
+[data-theme="eink"] a {
   text-decoration: underline;
   text-underline-offset: 0.15em;
+}
+
+[data-theme="eink"] header a,
+[data-theme="eink"] nav a,
+[data-theme="eink"] footer a,
+[data-theme="eink"] .skip-link,
+[data-theme="eink"] .toc-row,
+[data-theme="eink"] .toc-link,
+[data-theme="eink"] .leader-row,
+[data-theme="eink"] .post-nav-link {
+  text-decoration: none;
+}
+
+/* Component-scoped styles outrank the rule above on specificity, so the
+   few content links that set their own text-decoration are named here. */
+[data-theme="eink"] .reference-title {
+  text-decoration: underline !important;
 }
 
 /* 25% of black is a flat grey box; the rule underneath is what reads */
