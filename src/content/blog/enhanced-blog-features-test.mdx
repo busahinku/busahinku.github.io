@@ -164,18 +164,25 @@ A standalone image with alt text becomes a figure with a caption underneath. Lea
 
 ## Photo galleries
 
-Galleries lay images out in a grid and open a lightbox on click. Set `columns` to 2, 3, or 4.
+A gallery is a swipeable row by default: drag it sideways, use the arrows on a
+desktop, or click any image to open it full size. Each picture keeps its own
+proportions, so screenshots and photos can sit in the same set without being
+cropped.
 
 <PhotoGallery
-  columns={3}
   images={[
     { src: gallery1, alt: "Rolling hills under a wide sky", caption: "Wide open" },
     { src: gallery2, alt: "A quiet mountain ridge", caption: "The ridge" },
     { src: gallery3, alt: "Sunlight over calm water", caption: "Low sun" },
+    { src: gallery4, alt: "A path winding into a forest", caption: "The path" },
   ]}
 />
 
+Pass `layout="grid"` instead when the images are better compared side by side,
+with `columns` set to 2, 3, or 4.
+
 <PhotoGallery
+  layout="grid"
   columns={2}
   images={[
     { src: gallery4, alt: "A path winding into a forest", caption: "The path" },

@@ -201,15 +201,16 @@ A colored box that pulls a note out of the flow.
 
 ### PhotoGallery
 
-A grid of images with a click-to-zoom lightbox. Images must be imported at the
-top of the file.
+A set of images with a click-to-zoom lightbox. By default it is a swipeable
+row: the reader drags sideways (or uses arrows on a desktop), and every image
+keeps its own proportions instead of being cropped to a shared shape. Images
+must be imported at the top of the file.
 
 ```jsx
 import img1 from '../../assets/my-post/one.jpg';
 import img2 from '../../assets/my-post/two.jpg';
 
 <PhotoGallery
-  columns={3}
   images={[
     { src: img1, alt: "Describe image one", caption: "Optional caption" },
     { src: img2, alt: "Describe image two", caption: "Optional caption" },
@@ -217,8 +218,10 @@ import img2 from '../../assets/my-post/two.jpg';
 />
 ```
 
-- `columns`: `2`, `3`, or `4`.
-- `layout`: optional, one of `grid` (default), `strip`, `masonry`.
+- `layout`: optional, one of `carousel` (default), `grid`, `strip`, `masonry`.
+  Use `grid` when the images are meant to be compared side by side.
+- `columns`: `2`, `3`, or `4`. Applies to `grid` only; the carousel sizes
+  itself from each image.
 - Each image needs `src` (an imported asset) and `alt`; `caption` is optional.
 
 ### VideoEmbed
