@@ -9,9 +9,15 @@ interface Props {
 
 const { currentLang, mobile = false } = Astro.props;
 
-// Get the current path without the language prefix
+// Get the current path without the language prefix.
+// The 404 page is served for arbitrary unmatched URLs, so the path baked in
+// at build time ("/404") points nowhere. Send it to the language root, which
+// is somewhere the reader can actually continue from.
 const pathname = Astro.url.pathname;
-const pathWithoutLang = pathname.replace(/^\/(en|tr)/, '') || '/';
+const is404 = pathname === '/404' || pathname === '/404/';
+const pathWithoutLang = is404
+  ? '/'
+  : pathname.replace(/^\/(en|tr)/, '') || '/';
 ---
 
 {mobile ? (
