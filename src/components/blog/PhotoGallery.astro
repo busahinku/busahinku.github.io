@@ -12,10 +12,14 @@ interface GalleryImage {
 interface Props {
   images: GalleryImage[];
   columns?: 2 | 3 | 4;
-  layout?: "strip" | "grid" | "masonry";
+  layout?: "carousel" | "strip" | "grid" | "masonry";
 }
 
-const { images, columns = 3, layout = "grid" } = Astro.props;
+// Carousel by default: a wall of cropped thumbnails buries the post, while a
+// swipeable row reads as one set you flip through. grid/strip/masonry stay
+// available for entries that ask for them.
+const { images, columns = 3, layout = "carousel" } = Astro.props;
+const isCarousel = layout === "carousel";
 const galleryId = `gallery-${Math.random().toString(36).slice(2, 9)}`;
 
 // Optimized lightbox renditions; never ship the raw originals
@@ -32,7 +36,29 @@ const fullImages = await Promise.all(
 ---
 
 <div class="photo-gallery" data-gallery={galleryId} data-layout={layout}>
-  <div class="gallery-grid" data-columns={columns}>
+  <div class="gallery-viewport">
+    {
+      isCarousel && images.length > 1 && (
+        <>
+          <button
+            class="gallery-nav gallery-nav-prev"
+            data-track-prev
+            aria-label="Previous image"
+            hidden
+          >
+            <ChevronLeft size={22} />
+          </button>
+          <button
+            class="gallery-nav gallery-nav-next"
+            data-track-next
+            aria-label="Next image"
+          >
+            <ChevronRight size={22} />
+          </button>
+        </>
+      )
+    }
+  <div class="gallery-grid" data-columns={columns} data-track>
     {
       images.map((image, index) => (
         <button
@@ -65,6 +91,21 @@ const fullImages = await Promise.all(
       ))
     }
   </div>
+  </div>
+
+  {
+    isCarousel && images.length > 1 && (
+      <div class="gallery-dots" data-dots>
+        {images.map((image, index) => (
+          <button
+            class="gallery-dot"
+            data-dot={index}
+            aria-label={`Go to image ${index + 1} of ${images.length}`}
+          />
+        ))}
+      </div>
+    )
+  }
 
   <!-- Lightbox -->
   <div
@@ -157,6 +198,102 @@ const fullImages = await Promise.all(
 
         let currentIndex = 0;
         const totalImages = items.length;
+
+        // ---------- carousel: arrows, dots, position ----------
+        const track = gallery.querySelector<HTMLElement>("[data-track]");
+        if (track && gallery.dataset.layout === "carousel") {
+          const prevBtn = gallery.querySelector<HTMLButtonElement>(
+            "[data-track-prev]",
+          );
+          const nextBtn = gallery.querySelector<HTMLButtonElement>(
+            "[data-track-next]",
+          );
+          const dots = Array.from(
+            gallery.querySelectorAll<HTMLButtonElement>("[data-dot]"),
+          );
+
+          // Which slide is nearest the middle of the viewport right now.
+          const nearestIndex = () => {
+            const centre = track.scrollLeft + track.clientWidth / 2;
+            let best = 0;
+            let bestDistance = Infinity;
+            items.forEach((item, index) => {
+              const el = item as HTMLElement;
+              const distance = Math.abs(
+                el.offsetLeft + el.clientWidth / 2 - centre,
+              );
+              if (distance < bestDistance) {
+                bestDistance = distance;
+                best = index;
+              }
+            });
+            return best;
+          };
+
+          // Scroll the track itself, never the page.
+          const goTo = (index: number) => {
+            const el = items[
+              Math.max(0, Math.min(totalImages - 1, index))
+            ] as HTMLElement;
+            if (!el) return;
+            track.scrollTo({
+              left: el.offsetLeft - (track.clientWidth - el.clientWidth) / 2,
+            });
+          };
+
+          const setActive = (index: number) => {
+            dots.forEach((dot, i) => dot.classList.toggle("active", i === index));
+          };
+
+          const sync = () => {
+            setActive(nearestIndex());
+            // hide an arrow once there is nothing further that way
+            if (prevBtn) prevBtn.hidden = track.scrollLeft <= 2;
+            if (nextBtn) {
+              nextBtn.hidden =
+                track.scrollLeft + track.clientWidth >= track.scrollWidth - 2;
+            }
+          };
+
+          // Mark the destination straight away rather than waiting for the
+          // smooth scroll to settle, so the dots answer the tap immediately.
+          const move = (index: number) => {
+            const target = Math.max(0, Math.min(totalImages - 1, index));
+            setActive(target);
+            goTo(target);
+          };
+
+          prevBtn?.addEventListener("click", () => move(nearestIndex() - 1));
+          nextBtn?.addEventListener("click", () => move(nearestIndex() + 1));
+          dots.forEach((dot, index) =>
+            dot.addEventListener("click", () => move(index)),
+          );
+
+          let frame = 0;
+          track.addEventListener(
+            "scroll",
+            () => {
+              cancelAnimationFrame(frame);
+              frame = requestAnimationFrame(sync);
+            },
+            { passive: true },
+          );
+
+          // Arrow keys move the row, but not while the lightbox owns them.
+          track.addEventListener("keydown", (event) => {
+            if (lightbox.getAttribute("aria-hidden") === "false") return;
+            if (event.key === "ArrowRight") {
+              event.preventDefault();
+              move(nearestIndex() + 1);
+            } else if (event.key === "ArrowLeft") {
+              event.preventDefault();
+              move(nearestIndex() - 1);
+            }
+          });
+
+          window.addEventListener("resize", sync, { passive: true });
+          sync();
+        }
 
         // Get image src from the actual img elements in the gallery
         const getImageSrc = (index: number) => {
@@ -306,6 +443,168 @@ const fullImages = await Promise.all(
   /* Gallery Grid */
   .photo-gallery {
     margin: 1.75rem 0;
+  }
+
+  /* ---------- Carousel (default) ----------
+     One swipeable row instead of a wall of thumbnails. Slides keep a fixed
+     height and take their width from the image's own aspect ratio, so
+     screenshots and photos sit side by side without being cropped or
+     letterboxed. */
+  .gallery-viewport {
+    position: relative;
+  }
+
+  .photo-gallery[data-layout="carousel"] .gallery-grid {
+    display: flex;
+    grid-template-columns: none;
+    gap: 0.75rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    /* the dots and arrows are the affordance; a bar under a photo row is noise */
+    scrollbar-width: none;
+    padding-bottom: 0.25rem;
+  }
+
+  .photo-gallery[data-layout="carousel"] .gallery-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* width: max-content lets the image's own aspect ratio set the slide
+     width at a fixed height. Without it the wrappers stretch to the track
+     and the picture is distorted. */
+  .photo-gallery[data-layout="carousel"] .gallery-item {
+    flex: 0 0 auto;
+    height: clamp(220px, 40vh, 420px);
+    width: max-content;
+    max-width: 86vw;
+    aspect-ratio: auto;
+    scroll-snap-align: center;
+    border-radius: 0.75rem;
+    overflow: hidden;
+  }
+
+  .photo-gallery[data-layout="carousel"] .gallery-item-inner {
+    height: 100%;
+    width: max-content;
+  }
+
+  .photo-gallery[data-layout="carousel"] .gallery-image {
+    height: 100%;
+    width: auto;
+    max-width: none;
+    object-fit: contain;
+  }
+
+  /* Edge arrows: pointer devices only, since touch already swipes. */
+  .gallery-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    box-shadow: 0 2px 10px var(--shadow);
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+  }
+
+  .gallery-nav-prev {
+    left: -0.5rem;
+  }
+  .gallery-nav-next {
+    right: -0.5rem;
+  }
+
+  .gallery-nav[hidden] {
+    display: none !important;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .photo-gallery[data-layout="carousel"] .gallery-nav:not([hidden]) {
+      display: flex;
+    }
+  }
+
+  .gallery-dots {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+  }
+
+  .gallery-dot {
+    width: 6px;
+    height: 6px;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background-color: var(--text-muted);
+    opacity: 0.35;
+    cursor: pointer;
+    transition:
+      opacity 0.2s ease,
+      width 0.2s ease;
+  }
+
+  .gallery-dot.active {
+    opacity: 1;
+    width: 18px;
+    background-color: var(--accent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .photo-gallery[data-layout="carousel"] .gallery-grid {
+      scroll-behavior: auto;
+    }
+    .gallery-dot {
+      transition: none;
+    }
+  }
+
+  /* E-ink: sideways scrolling costs a full panel refresh per swipe and
+     ghosts badly, so the set becomes a plain vertical stack. */
+  :global([data-theme="eink"])
+    .photo-gallery[data-layout="carousel"]
+    .gallery-grid {
+    display: block;
+    overflow-x: visible;
+    scroll-snap-type: none;
+  }
+
+  :global([data-theme="eink"])
+    .photo-gallery[data-layout="carousel"]
+    .gallery-item {
+    height: auto;
+    width: 100%;
+    margin-bottom: 0.75rem;
+  }
+
+  :global([data-theme="eink"])
+    .photo-gallery[data-layout="carousel"]
+    .gallery-item-inner,
+  :global([data-theme="eink"])
+    .photo-gallery[data-layout="carousel"]
+    .gallery-image {
+    height: auto;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  :global([data-theme="eink"]) .gallery-nav,
+  :global([data-theme="eink"]) .gallery-dots {
+    display: none !important;
   }
 
   /* Simple grid: images sit left-to-right, keep their natural aspect
