@@ -1,0 +1,30 @@
+---
+interface Props {
+  label?: string;
+}
+
+const { label = "Burak Sahin Kucuk" } = Astro.props;
+---
+
+<!--
+  The visible mark comes from public/signature.svg. It is used as a mask so
+  one black, transparent SVG automatically follows every site theme.
+-->
+<span class="signature" role="img" aria-label={label}></span>
+
+<style>
+  .signature {
+    display: block;
+    width: clamp(150px, 24vw, 200px);
+    aspect-ratio: 1486 / 633;
+    color: var(--text-primary);
+    background-color: currentColor;
+    opacity: 0.9;
+    -webkit-mask: url("/signature.svg") center / contain no-repeat;
+    mask: url("/signature.svg") center / contain no-repeat;
+  }
+
+  :global([data-theme="eink"]) .signature {
+    opacity: 1;
+  }
+</style>

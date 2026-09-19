@@ -149,18 +149,19 @@ const csp = [
 }
 {is404 && <meta name="robots" content="noindex" />}
 
-<!-- Local font preloads (self-hosted, no external font CDNs).
-     Merriweather is the site-wide serif; preload its Latin subsets. -->
+<!-- Local font preloads (self-hosted, no external font CDNs). Only the two
+     faces every page paints with: the roman for reading, the slab for
+     names and headings. Italic is fetched on demand. -->
 <link
   rel="preload"
-  href="/fonts/Merriweather-normal-5.woff2"
+  href="/fonts/Merriweather-normal.woff2"
   as="font"
   type="font/woff2"
   crossorigin
 />
 <link
   rel="preload"
-  href="/fonts/Merriweather-normal-4.woff2"
+  href="/fonts/Rokkitt.woff2"
   as="font"
   type="font/woff2"
   crossorigin
@@ -194,5 +195,25 @@ const csp = [
 <!-- Structured data -->
 <script type="application/ld+json" set:html={personSchema} />
 
-<!-- View transitions (SPA-feel navigation) -->
+<!-- View transitions (SPA-feel navigation). The swap itself takes ~18ms
+     with prefetch on; the default cross-fade adds a quarter second of
+     animation on top, which is the part that reads as slow. Cut it to a
+     near-instant fade and drop it entirely for reduced-motion. -->
 <ClientRouter />
+
+<style is:global>
+  /* Duration only. Declaring @view-transition { navigation: auto } here
+     turns on the browser's own cross-document transitions, which race
+     Astro's same-document ones and throw InvalidStateError on every nav. */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 90ms;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation: none;
+    }
+  }
+</style>

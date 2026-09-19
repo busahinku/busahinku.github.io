@@ -15,10 +15,6 @@ const t = useTranslations(lang);
   <div class="about-page">
     <!-- Header Section -->
     <header class="profile-header">
-      <div class="profile-photo">
-        <img src="/photo.png" alt="Burak Sahin Kucuk" />
-        <span class="status-dot"></span>
-      </div>
       <div class="profile-info">
         <h1>Burak Sahin Kucuk</h1>
         <p class="subtitle">
@@ -337,33 +333,10 @@ const t = useTranslations(lang);
     margin-bottom: 3rem;
   }
 
-  .profile-photo {
-    position: relative;
-    flex-shrink: 0;
-  }
-
-  .profile-photo img {
-    width: 80px;
-    height: 80px;
-    border-radius: 12px;
-    object-fit: cover;
-  }
-
-  .status-dot {
-    position: absolute;
-    bottom: -2px;
-    right: -2px;
-    width: 14px;
-    height: 14px;
-    background: #22c55e;
-    border: 3px solid var(--bg-primary);
-    border-radius: 50%;
-  }
-
   .profile-info h1 {
     margin: 0 0 0.25rem;
-    font-family: "Merriweather", Georgia, serif;
-    font-size: 2rem;
+    font-family: var(--font-serif);
+    font-size: var(--page-title);
     font-weight: 500;
   }
 

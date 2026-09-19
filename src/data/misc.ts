@@ -36,17 +36,3 @@ export const books: MiscEntry[] = [
   { title: 'Domain-Driven Design', sub: 'Eric Evans', category: { en: 'Architecture', tr: 'Mimari' } },
 ];
 
-export const sources: MiscEntry[] = [
-  { title: 'Hacker News', url: 'https://news.ycombinator.com/', category: { en: 'News', tr: 'Haberler' } },
-  { title: 'Dev.to', url: 'https://dev.to/', category: { en: 'Community', tr: 'Topluluk' } },
-  { title: 'CSS-Tricks', url: 'https://css-tricks.com/', category: { en: 'CSS', tr: 'CSS' } },
-  { title: 'Smashing Magazine', url: 'https://www.smashingmagazine.com/', category: { en: 'Web Dev', tr: 'Web Dev' } },
-  { title: 'A List Apart', url: 'https://alistapart.com/', category: { en: 'Web Dev', tr: 'Web Dev' } },
-  { title: 'The Verge', url: 'https://www.theverge.com/', category: { en: 'Tech News', tr: 'Teknoloji' } },
-  { title: 'Ars Technica', url: 'https://arstechnica.com/', category: { en: 'Tech News', tr: 'Teknoloji' } },
-  { title: 'TechCrunch', url: 'https://techcrunch.com/', category: { en: 'Startups', tr: 'Girişimler' } },
-  { title: 'Product Hunt', url: 'https://www.producthunt.com/', category: { en: 'Products', tr: 'Ürünler' } },
-  { title: 'Lobsters', url: 'https://lobste.rs/', category: { en: 'News', tr: 'Haberler' } },
-  { title: 'Morning Brew', url: 'https://www.morningbrew.com/', category: { en: 'Newsletter', tr: 'Bülten' } },
-  { title: 'TLDR Newsletter', url: 'https://tldr.tech/', category: { en: 'Newsletter', tr: 'Bülten' } },
-];
