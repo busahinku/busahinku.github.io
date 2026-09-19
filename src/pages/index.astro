@@ -5,6 +5,10 @@ import { type Lang } from "../i18n/translations";
 import { SITE_TITLE, SITE_DESCRIPTION, SITE_CONFIG } from "../consts";
 import FormattedDate from "../components/FormattedDate.astro";
 import Signature from "../components/Signature.astro";
+import {
+  getLocalizedProjects,
+  getProjectSlug,
+} from "../utils/project-localization";
 
 const lang: Lang = "en";
 
@@ -12,8 +16,9 @@ const latestPosts = (await getCollection("blog", ({ data }) => !data.draft))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
   .slice(0, 4);
 
-const latestProjects = (
-  await getCollection("projects", ({ data }) => !data.draft)
+const latestProjects = getLocalizedProjects(
+  await getCollection("projects", ({ data }) => !data.draft),
+  lang,
 )
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
   .slice(0, 4);
@@ -68,7 +73,7 @@ const links = [
           <ol class="toc-list">
             {latestProjects.map((project) => (
               <li>
-                <a class="toc-row" href={`/projects/${project.id}/`}>
+                <a class="toc-row" href={`/projects/${getProjectSlug(project)}/`}>
                   <span class="toc-title">{project.data.title}</span>
                   <span class="toc-leader" aria-hidden="true" />
                   <span class="toc-meta">

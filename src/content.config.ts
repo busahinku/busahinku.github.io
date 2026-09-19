@@ -45,6 +45,9 @@ const projects = defineCollection({
 			github: z.string().url().optional(),
 			demo: z.string().url().optional(),
 			status: z.enum(['active', 'completed', 'archived', 'in-progress']).default('completed'),
+			// A translated entry points back to the URL slug of its original entry.
+			lang: z.enum(['en', 'tr']).default('en'),
+			translationKey: z.string().optional(),
 		}),
 });
 

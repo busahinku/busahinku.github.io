@@ -3,20 +3,27 @@ import { getCollection } from "astro:content";
 import Layout from "../../layouts/Layout.astro";
 import ArchiveList from "../../components/ArchiveList.astro";
 import { useTranslations, type Lang } from "../../i18n/translations";
+import {
+  getProjectCover,
+  getLocalizedProjects,
+  getProjectSlug,
+} from "../../utils/project-localization";
 
 const lang: Lang = "en";
 const t = useTranslations(lang);
 
-const projects = (
-  await getCollection("projects", ({ data }) => !data.draft)
+const projects = getLocalizedProjects(
+  await getCollection("projects", ({ data }) => !data.draft),
+  lang,
 ).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
 const items = projects.map((project) => ({
-  href: `/projects/${project.id}/`,
+  href: `/projects/${getProjectSlug(project)}/`,
   title: project.data.title,
   date: project.data.pubDate,
   description: project.data.description,
-  image: project.data.heroImage,
+  image:
+    project.data.heroImage ?? getProjectCover(getProjectSlug(project)),
   category: t(`projects.category.${project.data.category}` as any),
   meta: [
     t(`projects.category.${project.data.category}` as any),

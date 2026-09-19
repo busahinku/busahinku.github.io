@@ -3,26 +3,32 @@ import { type CollectionEntry, getCollection, render } from "astro:content";
 import BlogPostEnhanced from "../../layouts/BlogPostEnhanced.astro";
 import { useTranslations, type Lang } from "../../i18n/translations";
 import type { PostNavLink } from "../../components/blog/PostNav.astro";
+import {
+  getProjectCover,
+  getLocalizedProjects,
+  getProjectSlug,
+} from "../../utils/project-localization";
 
 export async function getStaticPaths() {
-  const projects = (
-    await getCollection("projects", ({ data }) => !data.draft)
+  const projects = getLocalizedProjects(
+    await getCollection("projects", ({ data }) => !data.draft),
+    "en",
   ).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
   return projects.map((project, i) => ({
-    params: { slug: project.id },
+    params: { slug: getProjectSlug(project) },
     props: {
       project,
       prevPost: projects[i + 1]
         ? {
             title: projects[i + 1].data.title,
-            href: `/projects/${projects[i + 1].id}/`,
+            href: `/projects/${getProjectSlug(projects[i + 1])}/`,
           }
         : undefined,
       nextPost: projects[i - 1]
         ? {
             title: projects[i - 1].data.title,
-            href: `/projects/${projects[i - 1].id}/`,
+            href: `/projects/${getProjectSlug(projects[i - 1])}/`,
           }
         : undefined,
     },
@@ -38,14 +44,19 @@ interface Props {
 const lang: Lang = "en";
 const t = useTranslations(lang);
 const { project, prevPost, nextPost } = Astro.props;
+const projectSlug = getProjectSlug(project);
+const localizedProject = {
+  ...project.data,
+  heroImage: project.data.heroImage ?? getProjectCover(projectSlug),
+};
 const { Content, headings } = await render(project);
 ---
 
 <BlogPostEnhanced
-  post={project.data}
+  post={localizedProject}
   headings={headings}
   lang={lang}
-  slug={project.id}
+  slug={projectSlug}
   github={project.data.github}
   demo={project.data.demo}
   backUrl="/projects"

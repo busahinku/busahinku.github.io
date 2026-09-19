@@ -1,0 +1,58 @@
+---
+title: "METUANS — Course Planning for METU Students"
+description: "A course planning and academic guidance platform built around live METU data and used by more than 10,000 students."
+pubDate: "July 30 2025"
+updatedDate: "September 20 2026"
+tags: ["vue", "fastapi", "postgresql", "redis", "docker"]
+category: "web"
+author: "Burak Sahin Kucuk"
+featured: true
+github: "https://github.com/Kangurubu/metuans"
+demo: "https://metuans.com"
+status: "active"
+lang: "en"
+---
+
+## A registration-week problem that became a real product
+
+At METU, putting together a course schedule is not just a matter of placing classes on a calendar. Sections have department, year and surname restrictions. Courses may have several lecture and recitation combinations, the rooms may be far apart, and a double major or minor adds another curriculum to the same week. Most students used to solve all of this with several OIBS tabs, a spreadsheet and a lot of trial and error.
+
+We built METUANS to put that work in one place. A student selects their department and semester, adds the courses they want and marks the hours when they are unavailable. METUANS checks the restrictions, finds the section combinations that actually work and presents every valid schedule instead of stopping at the first one.
+
+More than 10,000 METU students have used METUANS. Seeing it passed around in department groups during registration week changed the way I thought about the project: it was no longer a side project with sample data, but a service people depended on while making real academic decisions.
+
+## What it does
+
+The schedule builder is still the centre of the product, but METUANS now covers much more of the planning process:
+
+- It builds conflict-free schedules from required courses, electives and personal time blocks.
+- It applies department, class year, surname and campus rules before suggesting a section.
+- It supports double-major and minor curricula without making the student repeat the same setup.
+- It searches the current course catalog and shows sections, instructors, rooms and course details.
+- It helps students find electives that both satisfy their curriculum and fit the free hours in their week.
+- It includes GPA and grade calculators, a prerequisite map, anonymous course evaluations and classroom schedules.
+- A finished schedule can be saved, shared with a link or exported to Google Calendar and Apple Calendar.
+
+The course catalog is refreshed from OIBS every hour. When a department publishes temporary hours somewhere else before OIBS is ready, the system can use that source as a clearly marked fallback and replace it once the official data arrives.
+
+## How it is built
+
+The frontend is a Vue 3 application built with Vite. It is installable as a PWA and keeps the schedule interface responsive even when there are many possible section combinations. The API is written in Python with FastAPI, with PostgreSQL holding course, curriculum and evaluation data. Redis handles short-lived state, caching, queues and rate limits.
+
+Schedule generation is treated as a constraint problem rather than a long list of special cases. The backend prepares and validates the available sections, while isolated workers handle the expensive combination work. The result explains not only which schedules work, but also why a course could not be added and what the student can change to make room for it.
+
+The production services run in Docker behind Nginx and Cloudflare. Prometheus metrics, Grafana dashboards, health checks, database backups and alerting are part of the project as well. They became necessary once registration-week traffic stopped looking like ordinary portfolio traffic.
+
+METUANS also exposes a public, read-only MCP endpoint for the live course catalog. An assistant can search courses, read current section hours, check prerequisites or explain whether a course fits a schedule without relying on an old search-engine copy of OIBS.
+
+## Working on it
+
+I built METUANS with Batuhan Teberoğlu and Ali Eren Pancaroğlu. The most useful feedback has always come from students trying to build an actual schedule under time pressure. Their edge cases shaped the product: surname ranges, split sections, courses on another campus, missing department hours, long walks between buildings and the many small rules that only become obvious during registration.
+
+The project is still active. Each term brings a new catalog, new constraints and usually a new idea from someone who used it the term before.
+
+## Links
+
+- [Open METUANS](https://metuans.com)
+- [View the source code](https://github.com/Kangurubu/metuans)
+- [Use the public MCP endpoint](https://metuans.com/mcp)
