@@ -1,5 +1,5 @@
 ---
-title: "METUANS — ODTÜ Öğrencileri İçin Ders Planlama"
+title: "metuans | ODTÜ Öğrencileri İçin Ders Planlama"
 description: "Güncel ODTÜ verileriyle çalışan ve 10.000'den fazla öğrencinin kullandığı ders planlama ve akademik rehberlik platformu."
 pubDate: "July 30 2025"
 updatedDate: "September 20 2026"
@@ -19,13 +19,13 @@ translationKey: "metuans"
 
 ODTÜ'de ders programı hazırlamak, dersleri haftalık bir tabloya yerleştirmekten ibaret değil. Şubelerin bölüm, sınıf ve soyadı kısıtları var. Bir dersin birden fazla derslik ve uygulama birleşimi olabiliyor, iki ders arasında kampüsün bir ucundan diğerine yetişmek gerekebiliyor, çift ana dal veya yan dal yapınca aynı haftaya ikinci bir müfredat daha ekleniyor. Çoğu öğrenci bütün bunları birkaç OİBS sekmesi, bir Excel dosyası ve bolca deneme yanılmayla çözmeye çalışıyordu.
 
-METUANS'ı bu işi tek yerde toparlamak için geliştirdik. Öğrenci bölümünü ve dönemini seçiyor, almak istediği dersleri ekliyor, müsait olmadığı saatleri işaretliyor. METUANS kısıtları kontrol ediyor, gerçekten bir araya gelebilen şubeleri buluyor ve yalnızca ilk sonucu değil, geçerli bütün program seçeneklerini gösteriyor.
+metuans'ı bu işi tek yerde toparlamak için geliştirdik. Öğrenci bölümünü ve dönemini seçiyor, almak istediği dersleri ekliyor, müsait olmadığı saatleri işaretliyor. metuans kısıtları kontrol ediyor, gerçekten bir araya gelebilen şubeleri buluyor ve yalnızca ilk sonucu değil, geçerli bütün program seçeneklerini gösteriyor.
 
-Bugüne kadar 10.000'den fazla ODTÜ öğrencisi METUANS'ı kullandı. Kayıt haftalarında bölüm gruplarında paylaşılmaya başladığını görmek benim için projenin kırılma noktasıydı. Artık örnek verilerle çalışan bir yan proje değil, insanların gerçek akademik kararlar verirken güvendiği bir araçtı.
+Bugüne kadar 10.000'den fazla ODTÜ öğrencisi metuans'ı kullandı. Kayıt haftalarında bölüm gruplarında paylaşılmaya başladığını görmek benim için projenin kırılma noktasıydı. Artık örnek verilerle çalışan bir yan proje değil, insanların gerçek akademik kararlar verirken güvendiği bir araçtı.
 
 ## Neler yapıyor?
 
-Ders programı oluşturucu hâlâ ürünün merkezinde, fakat METUANS artık planlama sürecinin çok daha büyük bir bölümünü kapsıyor:
+Ders programı oluşturucu hâlâ ürünün merkezinde, fakat metuans artık planlama sürecinin çok daha büyük bir bölümünü kapsıyor:
 
 - Zorunlu dersleri, seçmelileri ve öğrencinin ayırdığı boş saatleri birlikte değerlendirerek çakışmasız programlar hazırlıyor.
 - Bir şubeyi önermeden önce bölüm, sınıf, soyadı ve kampüs kurallarını uyguluyor.
@@ -45,16 +45,15 @@ Program oluşturma işi uzun bir `if` listesinden ziyade bir kısıt problemi ol
 
 Üretim servisleri Docker içinde, Nginx ve Cloudflare arkasında çalışıyor. Prometheus metrikleri, Grafana panoları, sağlık kontrolleri, veritabanı yedekleri ve uyarılar da projenin bir parçası. Kayıt haftası trafiği sıradan bir portfolyo trafiği olmaktan çıkınca bunlar tercih değil, ihtiyaç hâline geldi.
 
-METUANS ayrıca güncel ders kataloğunu salt okunur bir MCP uç noktası üzerinden açıyor. Böylece bir asistan; arama motorunda kalmış eski bir OİBS kopyısına güvenmek yerine güncel dersleri arayabiliyor, şube saatlerini ve önkoşulları okuyabiliyor, bir dersin programa uyup uymadığını açıklayabiliyor.
+metuans ayrıca güncel ders kataloğunu salt okunur bir MCP uç noktası üzerinden açıyor. Böylece bir asistan; arama motorunda kalmış eski bir OİBS kopyısına güvenmek yerine güncel dersleri arayabiliyor, şube saatlerini ve önkoşulları okuyabiliyor, bir dersin programa uyup uymadığını açıklayabiliyor.
 
 ## Birlikte geliştirmek
 
-METUANS'ı Batuhan Teberoğlu ve Ali Eren Pancaroğlu ile birlikte geliştirdim. En işe yarayan geri bildirimler her zaman gerçek bir programı yetiştirmeye çalışan öğrencilerden geldi. Soyadı aralıkları, birleşik şubeler, farklı kampüsteki dersler, henüz açıklanmamış bölüm saatleri, binalar arasındaki mesafe ve ancak kayıt sırasında fark edilen onlarca küçük kural ürünün bugünkü hâlini belirledi.
+metuans'ı Batuhan ve Ali Eren ile birlikte geliştirdim. En işe yarayan geri bildirimler her zaman gerçek bir programı yetiştirmeye çalışan öğrencilerden geldi. Soyadı aralıkları, birleşik şubeler, farklı kampüsteki dersler, henüz açıklanmamış bölüm saatleri, binalar arasındaki mesafe ve ancak kayıt sırasında fark edilen onlarca küçük kural ürünün bugünkü hâlini belirledi.
 
 Proje hâlâ aktif olarak geliştiriliyor. Her dönem yeni bir ders kataloğu, yeni kısıtlar ve genellikle bir önceki dönem kullanan bir öğrenciden gelen yeni bir fikir getiriyor.
 
 ## Bağlantılar
 
-- [METUANS'ı aç](https://metuans.com)
-- [Kaynak kodunu incele](https://github.com/Kangurubu/metuans)
+- [metuans'ı aç](https://metuans.com)
 - [Herkese açık MCP uç noktasını kullan](https://metuans.com/mcp)
