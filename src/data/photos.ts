@@ -23,6 +23,6 @@ export const photos: Photo[] = [
     alt: 'Night view of the 8th dormitory building at METU, with a tree in the foreground.',
     caption: { en: 'The window of the 406', tr: '406\'nın penceresi' },
     place: 'Ankara',
-    taken: '2026-04',
+    taken: '2026-08',
   }
 ];
