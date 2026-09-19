@@ -9,9 +9,17 @@ interface Props {
   description: string;
   lang?: Lang;
   wide?: boolean;
+  /** near-full-width, for pages that are one big visual */
+  bleed?: boolean;
 }
 
-const { title, description, lang = "en", wide = false } = Astro.props;
+const {
+  title,
+  description,
+  lang = "en",
+  wide = false,
+  bleed = false,
+} = Astro.props;
 const isHomePage = Astro.url.pathname === "/" || Astro.url.pathname === "/tr/";
 ---
 
@@ -20,7 +28,7 @@ const isHomePage = Astro.url.pathname === "/" || Astro.url.pathname === "/tr/";
   <head>
     <BaseHead title={title} description={description} />
   </head>
-  <body class={isHomePage ? "home" : ""}>
+  <body>
     <a class="skip-link" href="#main-content"
       >{lang === "tr" ? "İçeriğe atla" : "Skip to content"}</a
     >
@@ -29,9 +37,11 @@ const isHomePage = Astro.url.pathname === "/" || Astro.url.pathname === "/tr/";
       id="main-content"
       class={isHomePage
         ? "container homepage"
-        : wide
-          ? "container wide"
-          : "container"}
+        : bleed
+          ? "container bleed"
+          : wide
+            ? "container wide"
+            : "container"}
     >
       <slot />
     </main>
@@ -45,7 +55,8 @@ const isHomePage = Astro.url.pathname === "/" || Astro.url.pathname === "/tr/";
     max-width: 720px;
     margin: 0 auto;
     padding: 6rem 1rem 2rem;
-    min-height: calc(100vh - 200px);
+    /* takes the slack in the body flex column, so the footer stays put */
+    flex: 1 0 auto;
   }
 
   main.container.wide {
@@ -53,41 +64,15 @@ const isHomePage = Astro.url.pathname === "/" || Astro.url.pathname === "/tr/";
     padding: 6rem 2rem 2rem;
   }
 
+  /* A wall of pictures wants the edges, not a reading column. */
+  main.container.bleed {
+    max-width: 1600px;
+    padding: 5rem 0.75rem 1.5rem;
+  }
+
   main.container.homepage {
     max-width: 100%;
     padding: 0;
     margin: 0;
-  }
-
-  body.home {
-    position: relative;
-    background-color: var(--bg-primary);
-    background-image:
-      radial-gradient(
-        1200px circle at 15% -10%,
-        var(--hero-spotlight),
-        transparent 55%
-      ),
-      radial-gradient(
-        900px circle at 85% 10%,
-        var(--hero-bg-2),
-        transparent 55%
-      ),
-      linear-gradient(
-        var(--hero-gradient-direction),
-        var(--hero-bg-1),
-        var(--hero-bg-3)
-      ),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.25'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-size: cover;
-    background-attachment: fixed;
-    background-blend-mode: normal, normal, normal, soft-light;
-  }
-
-  @media (max-width: 900px) {
-    body.home {
-      background-attachment: scroll;
-    }
   }
 </style>

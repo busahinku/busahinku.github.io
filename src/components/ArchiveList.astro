@@ -20,6 +20,10 @@ interface Props {
   items: Item[];
   searchPlaceholder?: string;
   allLabel?: string;
+  /** "list" is the table-of-contents row; "gallery" leads with the image. */
+  variant?: "list" | "gallery";
+  /** Labels for the grid/list switch, only used by the gallery variant. */
+  viewLabels?: { group: string; grid: string; list: string };
 }
 
 const {
@@ -29,12 +33,17 @@ const {
   items,
   searchPlaceholder = "Search...",
   allLabel = "All",
+  variant = "list",
+  viewLabels,
 } = Astro.props;
+const isGallery = variant === "gallery";
 
 const categories = [
   ...new Set(items.map((item) => item.category).filter(Boolean)),
 ] as string[];
-const showFilters = items.length > 3 || categories.length > 1;
+// Search earns its place from the third entry; the chips need at least two
+// categories to choose between.
+const showFilters = items.length > 2 || categories.length > 1;
 ---
 
 <div class="archive-page" data-archive>
@@ -65,12 +74,62 @@ const showFilters = items.length > 3 || categories.length > 1;
             ))}
           </div>
         )}
+        {isGallery && viewLabels && (
+          <div class="view-switch" role="group" aria-label={viewLabels.group}>
+            <button class="view-btn active" data-archive-view="grid">
+              {viewLabels.grid}
+            </button>
+            <button class="view-btn" data-archive-view="list">
+              {viewLabels.list}
+            </button>
+          </div>
+        )}
       </div>
     )
   }
 
   {
-    items.length > 0 ? (
+    items.length > 0 && isGallery ? (
+      <ol class="card-grid" data-archive-grid data-view="grid">
+        {items.map((item) => (
+          <li
+            data-archive-item
+            data-title={`${item.title} ${item.description || ""}`.toLowerCase()}
+            data-category={item.category || ""}
+          >
+            <a class="card" href={item.href}>
+              <span class="card-media">
+                {item.image ? (
+                  <Image
+                    src={item.image}
+                    alt=""
+                    width={720}
+                    widths={[360, 560, 720]}
+                    sizes="(max-width: 640px) 92vw, 340px"
+                    quality={80}
+                    loading="lazy"
+                  />
+                ) : (
+                  <span class="card-media-empty" aria-hidden="true" />
+                )}
+              </span>
+              <span class="card-body">
+                <span class="card-title">{item.title}</span>
+                {item.description && (
+                  <span class="card-desc">{item.description}</span>
+                )}
+                <span class="card-meta">
+                  {item.category && <span>{item.category}</span>}
+                  <span class="card-date">
+                    <FormattedDate date={item.date} />
+                  </span>
+                </span>
+              </span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    ) : items.length > 0 ? (
       <ol class="toc-list">
         {items.map((item, index) => (
           <li
@@ -127,6 +186,81 @@ const showFilters = items.length > 3 || categories.length > 1;
         if (root.dataset.initialized) return;
         root.dataset.initialized = "true";
 
+        // ---------- fit each blurb to the room its title left ----------
+        // Rows are all the same height, so the space under a one-line title
+        // is larger than under a three-line one. Measure what each blurb
+        // actually got and clamp it to a whole number of lines, otherwise
+        // the last visible line is a sliced-off half.
+        const fitDescriptions = () => {
+          const descs = root.querySelectorAll<HTMLElement>(".card-desc");
+          if (!descs.length) return;
+          // read every height first, then write, so one card's clamp does
+          // not reflow the next card mid-measurement
+          const plan: Array<[HTMLElement, number]> = [];
+          descs.forEach((desc) => {
+            desc.style.removeProperty("--desc-lines");
+          });
+          descs.forEach((desc) => {
+            const lineHeight = parseFloat(getComputedStyle(desc).lineHeight);
+            if (!lineHeight) return;
+            const lines = Math.max(1, Math.floor(desc.clientHeight / lineHeight));
+            plan.push([desc, lines]);
+          });
+          plan.forEach(([desc, lines]) => {
+            desc.style.setProperty("--desc-lines", String(lines));
+          });
+        };
+
+        const grid0 = root.querySelector<HTMLElement>("[data-archive-grid]");
+        if (grid0) {
+          fitDescriptions();
+          if (document.fonts?.ready) {
+            document.fonts.ready.then(fitDescriptions);
+          }
+          let frame = 0;
+          window.addEventListener(
+            "resize",
+            () => {
+              cancelAnimationFrame(frame);
+              frame = requestAnimationFrame(fitDescriptions);
+            },
+            { passive: true },
+          );
+          root.addEventListener("archive:refit", fitDescriptions);
+        }
+
+        // ---------- grid / list switch ----------
+        const grid = root.querySelector<HTMLElement>("[data-archive-grid]");
+        const viewButtons = root.querySelectorAll<HTMLButtonElement>(
+          "[data-archive-view]",
+        );
+        if (grid && viewButtons.length) {
+          const setView = (view: string) => {
+            grid.dataset.view = view;
+            viewButtons.forEach((b) =>
+              b.classList.toggle("active", b.dataset.archiveView === view),
+            );
+            // a layout preference is this browser's business and nobody
+            // else's, so it never leaves localStorage
+            try {
+              localStorage.setItem("archive-view", view);
+            } catch {}
+            root.dispatchEvent(new CustomEvent("archive:refit"));
+          };
+
+          let saved: string | null = null;
+          try {
+            saved = localStorage.getItem("archive-view");
+          } catch {}
+          if (saved === "list" || saved === "grid") setView(saved);
+
+          viewButtons.forEach((b) =>
+            b.addEventListener("click", () =>
+              setView(b.dataset.archiveView || "grid"),
+            ),
+          );
+        }
+
         const search = root.querySelector<HTMLInputElement>(
           "[data-archive-search]",
         );
@@ -176,6 +310,234 @@ const showFilters = items.length > 3 || categories.length > 1;
 </script>
 
 <style>
+  /* ---------- Gallery: the image leads ----------
+     Covers are locked to 16/10 so nothing is ever cropped: design artwork at
+     that ratio (1600x1000 is the safe master size) and it lands untouched.
+     Two columns at every width, because a project grid you have to scroll
+     one card at a time stops being a grid. */
+  .card-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    /* every row as tall as the tallest card on the page, not just the
+       tallest in its own row, so no card is a different size from another */
+    grid-auto-rows: 1fr;
+    gap: 2.25rem 1.5rem;
+  }
+
+  .card-grid > li {
+    display: flex;
+    min-width: 0;
+  }
+
+  .card {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.875rem;
+    min-width: 0;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .card-media {
+    display: block;
+    aspect-ratio: 16 / 10;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    background: var(--bg-secondary);
+    transition: border-color 0.2s ease;
+  }
+
+  .card-media :global(img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    margin: 0;
+    border-radius: 0;
+    transition: transform 0.4s ease;
+  }
+
+  .card-media-empty {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-tertiary);
+  }
+
+  .card:hover .card-media {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  }
+
+  .card:hover .card-media :global(img) {
+    transform: scale(1.03);
+  }
+
+  .card-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-width: 0;
+  }
+
+  .card-title {
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--text-primary);
+    transition: color 0.2s ease;
+  }
+
+  .card:hover .card-title {
+    color: var(--accent);
+  }
+
+  /* Cut the blurb, never the title: a truncated name is unreadable, a
+     truncated summary is just shorter. The blurb takes whatever room the
+     title left over, so a three-line title simply gets fewer lines of
+     description and both cards still end up the same height. The line count
+     is measured at runtime; the value here is only the no-JS fallback. */
+  .card-desc {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    flex: 1 1 auto;
+    min-height: 0;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: var(--desc-lines, 3);
+    line-clamp: var(--desc-lines, 3);
+    overflow: hidden;
+  }
+
+  /* pinned to the bottom so the meta lines up across a row */
+  .card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding-top: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+  }
+
+  .card-date {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- List view ----------
+     Same markup, the cover just steps aside and shrinks. */
+  .card-grid[data-view="list"] {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .card-grid[data-view="list"] > li {
+    border-bottom: 1px dashed
+      color-mix(in srgb, var(--border) 70%, transparent);
+  }
+
+  .card-grid[data-view="list"] > li:last-child {
+    border-bottom: none;
+  }
+
+  .card-grid[data-view="list"] .card {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1.125rem;
+    padding: 1.125rem 0;
+  }
+
+  .card-grid[data-view="list"] .card-media {
+    flex-shrink: 0;
+    width: 168px;
+    border-radius: 0.5rem;
+  }
+
+  .card-grid[data-view="list"] .card-desc {
+    flex: 0 1 auto;
+    --desc-lines: 2;
+  }
+
+  .card-grid[data-view="list"] .card-meta {
+    margin-top: 0.35rem;
+    padding-top: 0;
+  }
+
+  @media (max-width: 640px) {
+    .card-grid {
+      gap: 1.5rem 0.875rem;
+    }
+
+    .card-title {
+      font-size: 0.9375rem;
+    }
+
+    .card-desc {
+      font-size: 0.875rem;
+    }
+
+    .card-meta {
+      font-size: 0.75rem;
+    }
+
+    .card-grid[data-view="list"] .card-media {
+      width: 108px;
+    }
+  }
+
+  /* ---------- Grid / list switch ---------- */
+  .view-switch {
+    display: flex;
+    gap: 0.25rem;
+    margin-left: auto;
+  }
+
+  .view-btn {
+    padding: 0.25rem 0.55rem;
+    border: 1px solid transparent;
+    border-radius: 0.375rem;
+    background: none;
+    font: inherit;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition:
+      color 0.2s ease,
+      border-color 0.2s ease;
+  }
+
+  .view-btn:hover {
+    color: var(--text-primary);
+  }
+
+  /* the border carries the state as well as the colour, so the active view
+     is still obvious once e-ink flattens every accent to black */
+  .view-btn.active {
+    color: var(--text-primary);
+    border-color: var(--border);
+  }
+
+  :global([data-theme="eink"]) .view-btn.active {
+    border-color: var(--text-primary);
+  }
+
+  :global([data-theme="eink"]) .card-media {
+    border-color: var(--text-primary);
+  }
+
+  :global([data-theme="eink"]) .card:hover .card-media :global(img) {
+    transform: none;
+  }
+
+
   .archive-page {
     max-width: 720px;
     margin: 0 auto;
@@ -191,7 +553,7 @@ const showFilters = items.length > 3 || categories.length > 1;
   .page-head h1 {
     font-family: "Merriweather", Georgia, serif;
     font-weight: 600;
-    font-size: clamp(2rem, 5.5vw, 2.75rem);
+    font-size: var(--page-title);
     line-height: 1.1;
     margin: 0 0 0.5rem;
     color: var(--text-primary);

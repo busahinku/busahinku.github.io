@@ -33,6 +33,12 @@ const items = projects.map((project) => ({
   lang={lang}
 >
   <ArchiveList
+    variant="gallery"
+    viewLabels={{
+      group: t("archive.viewLabel"),
+      grid: t("archive.viewGrid"),
+      list: t("archive.viewList"),
+    }}
     title={t("projects.title")}
     intro="Reports, apps, and experiments in various states of finished."
     emptyNote="Nothing here yet."

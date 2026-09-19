@@ -119,16 +119,36 @@ const pathname = Astro.url.pathname.replace(/\/$/, "") || "/";
     z-index: 1000;
     padding: 1rem;
     transform: translateY(0);
-    opacity: 1;
+    /* The nav is not what someone came here to look at, so it sits back
+       until it is reached for. Pointing at it or tabbing into it brings it
+       fully forward. */
+    opacity: 0.55;
     transition:
       transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
-      opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+      opacity 0.35s ease;
     will-change: transform, opacity;
+  }
+
+  .header:hover,
+  .header:focus-within {
+    opacity: 1;
+  }
+
+  /* Touch has no hover to recover the contrast with, and e-ink dithers a
+     half-opaque bar into mush, so both get it at full strength. */
+  @media (hover: none) {
+    .header {
+      opacity: 1;
+    }
+  }
+
+  :global([data-theme="eink"]) .header {
+    opacity: 1;
   }
 
   .header.header--hidden {
     transform: translateY(-120%);
-    opacity: 0;
+    opacity: 0 !important;
     pointer-events: none;
     transition-duration: 0.85s;
   }

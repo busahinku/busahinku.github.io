@@ -1,0 +1,433 @@
+---
+import { Image, getImage } from "astro:assets";
+import { X, ChevronLeft, ChevronRight } from "@lucide/astro";
+import { photos } from "../data/photos";
+import type { Lang } from "../i18n/translations";
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const tr = lang === "tr";
+
+const copy = {
+  close: tr ? "Kapat" : "Close",
+  prev: tr ? "Önceki" : "Previous",
+  next: tr ? "Sonraki" : "Next",
+  open: tr ? "Büyüt" : "Open larger",
+  empty: tr ? "Henüz fotoğraf yok." : "No photographs yet.",
+};
+
+// Full-size renditions for the detail view, never the untouched originals.
+const full = await Promise.all(
+  photos.map((photo) =>
+    getImage({
+      src: photo.src,
+      width: Math.min(2000, photo.src.width),
+      format: "webp",
+      quality: 84,
+    }),
+  ),
+);
+
+const formatTaken = (value?: string) => {
+  if (!value) return "";
+  const [year, month] = value.split("-");
+  if (!month) return year;
+  const date = new Date(Number(year), Number(month) - 1, 1);
+  return date.toLocaleDateString(tr ? "tr-TR" : "en-GB", {
+    month: "long",
+    year: "numeric",
+  });
+};
+---
+
+<div class="photo-wall" data-wall>
+  {
+    photos.length === 0 ? (
+      <p class="wall-empty">{copy.empty}</p>
+    ) : (
+      <div class="wall-columns">
+        {photos.map((photo, index) => {
+          const caption = photo.caption
+            ? tr
+              ? photo.caption.tr
+              : photo.caption.en
+            : "";
+          const meta = [photo.place, formatTaken(photo.taken)]
+            .filter(Boolean)
+            .join(", ");
+          return (
+            <figure class="shot">
+              <button
+                class="shot-button"
+                data-shot
+                data-index={index}
+                data-full={full[index].src}
+                data-caption={caption}
+                data-meta={meta}
+                aria-label={`${copy.open}: ${caption || photo.alt}`}
+              >
+                <Image
+                  src={photo.src}
+                  alt={photo.alt}
+                  widths={[400, 700, 1000]}
+                  sizes="(max-width: 700px) 92vw, (max-width: 1100px) 46vw, 30vw"
+                  quality={80}
+                  loading={index < 4 ? "eager" : "lazy"}
+                  class="shot-image"
+                />
+              </button>
+            </figure>
+          );
+        })}
+      </div>
+    )
+  }
+
+  <div class="viewer" data-viewer aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="viewer-backdrop" data-viewer-close></div>
+    <button class="viewer-close" data-viewer-close aria-label={copy.close}>
+      <X size={22} />
+    </button>
+    <button class="viewer-nav viewer-prev" data-viewer-prev aria-label={copy.prev}>
+      <ChevronLeft size={28} />
+    </button>
+    <figure class="viewer-stage">
+      <img class="viewer-image" data-viewer-image src="" alt="" />
+      <figcaption class="viewer-caption">
+        <span class="viewer-title" data-viewer-title></span>
+        <span class="viewer-meta" data-viewer-meta></span>
+        <span class="viewer-count" data-viewer-count></span>
+      </figcaption>
+    </figure>
+    <button class="viewer-nav viewer-next" data-viewer-next aria-label={copy.next}>
+      <ChevronRight size={28} />
+    </button>
+  </div>
+</div>
+
+<script>
+  function initPhotoWall() {
+    document.querySelectorAll<HTMLElement>("[data-wall]").forEach((wall) => {
+      if (wall.dataset.initialized) return;
+      wall.dataset.initialized = "true";
+
+      const shots = Array.from(
+        wall.querySelectorAll<HTMLButtonElement>("[data-shot]"),
+      );
+      if (!shots.length) return;
+
+      const viewer = wall.querySelector<HTMLElement>("[data-viewer]")!;
+      const image = wall.querySelector<HTMLImageElement>("[data-viewer-image]")!;
+      const title = wall.querySelector<HTMLElement>("[data-viewer-title]")!;
+      const meta = wall.querySelector<HTMLElement>("[data-viewer-meta]")!;
+      const count = wall.querySelector<HTMLElement>("[data-viewer-count]")!;
+      const prevBtn = wall.querySelector<HTMLElement>("[data-viewer-prev]")!;
+      const nextBtn = wall.querySelector<HTMLElement>("[data-viewer-next]")!;
+
+      let index = 0;
+      let opener: HTMLElement | null = null;
+
+      const show = (next: number) => {
+        index = (next + shots.length) % shots.length;
+        const shot = shots[index];
+        const img = shot.querySelector("img");
+        image.src = shot.dataset.full || img?.src || "";
+        image.alt = img?.alt || "";
+        title.textContent = shot.dataset.caption || "";
+        meta.textContent = shot.dataset.meta || "";
+        count.textContent = `${index + 1} / ${shots.length}`;
+      };
+
+      const open = (next: number, from: HTMLElement) => {
+        opener = from;
+        show(next);
+        viewer.setAttribute("aria-hidden", "false");
+        viewer.classList.add("open");
+        document.body.style.overflow = "hidden";
+        // the close button is the one control that is always present, so it
+        // is where the keyboard should land
+        (viewer.querySelector(".viewer-close") as HTMLElement)?.focus();
+      };
+
+      const close = () => {
+        viewer.setAttribute("aria-hidden", "true");
+        viewer.classList.remove("open");
+        document.body.style.overflow = "";
+        // hand the keyboard back to the thumbnail that opened it
+        opener?.focus();
+        opener = null;
+      };
+
+      shots.forEach((shot, i) =>
+        shot.addEventListener("click", () => open(i, shot)),
+      );
+      wall
+        .querySelectorAll<HTMLElement>("[data-viewer-close]")
+        .forEach((el) => el.addEventListener("click", close));
+      prevBtn.addEventListener("click", () => show(index - 1));
+      nextBtn.addEventListener("click", () => show(index + 1));
+
+      document.addEventListener("keydown", (event) => {
+        if (viewer.getAttribute("aria-hidden") !== "false") return;
+        if (event.key === "Escape") close();
+        else if (event.key === "ArrowRight") show(index + 1);
+        else if (event.key === "ArrowLeft") show(index - 1);
+      });
+
+      // swipe, for the way people actually hold a phone
+      let startX = 0;
+      viewer.addEventListener(
+        "touchstart",
+        (e) => (startX = e.changedTouches[0].clientX),
+        { passive: true },
+      );
+      viewer.addEventListener(
+        "touchend",
+        (e) => {
+          const dx = e.changedTouches[0].clientX - startX;
+          if (Math.abs(dx) > 50) show(index + (dx < 0 ? 1 : -1));
+        },
+        { passive: true },
+      );
+    });
+  }
+
+  initPhotoWall();
+  document.addEventListener("astro:after-swap", initPhotoWall);
+</script>
+
+<style>
+  /* A wall, not a grid. Photographs keep the shape they were taken in, so
+     the columns flow at natural heights instead of cropping everything to a
+     shared rectangle the way the project cards do. */
+  .wall-columns {
+    columns: 3;
+    column-gap: 0.5rem;
+  }
+
+  .shot {
+    margin: 0 0 0.5rem;
+    /* a figure must not be split across two columns */
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .shot-button {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0.25rem;
+    overflow: hidden;
+    background: var(--bg-secondary);
+    cursor: zoom-in;
+    line-height: 0;
+    transition: border-color 0.2s ease;
+  }
+
+  .shot-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    border-radius: 0;
+    transition:
+      transform 0.45s ease,
+      filter 0.3s ease;
+  }
+
+  /* Pointer devices only: on touch the first tap would spend itself on the
+     hover state instead of opening the picture. */
+  @media (hover: hover) and (pointer: fine) {
+    .shot-button:hover .shot-image {
+      transform: scale(1.03);
+    }
+
+    /* everything else dims a touch so the one under the cursor comes forward */
+    .wall-columns:hover .shot-button:not(:hover) .shot-image {
+      filter: brightness(0.78);
+    }
+  }
+
+  .shot-button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  .wall-empty {
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  @media (min-width: 1500px) {
+    .wall-columns {
+      columns: 4;
+    }
+  }
+
+  @media (max-width: 1100px) {
+    .wall-columns {
+      columns: 2;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .wall-columns {
+      column-gap: 0.375rem;
+    }
+
+    .shot {
+      margin-bottom: 0.375rem;
+    }
+  }
+
+  /* ---------- Detail view ---------- */
+  .viewer {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(1rem, 4vw, 3rem);
+  }
+
+  .viewer.open {
+    display: flex;
+  }
+
+  .viewer-backdrop {
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--bg-primary) 92%, black);
+  }
+
+  .viewer-stage {
+    position: relative;
+    z-index: 1;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.875rem;
+    max-width: min(1200px, 100%);
+    max-height: 100%;
+  }
+
+  .viewer-image {
+    display: block;
+    max-width: 100%;
+    /* leaves room for the caption under it */
+    max-height: calc(100vh - 9rem);
+    width: auto;
+    height: auto;
+    margin: 0;
+    border-radius: 0.375rem;
+  }
+
+  .viewer-caption {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+
+  .viewer-meta,
+  .viewer-count {
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+  }
+
+  .viewer-count {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .viewer-close,
+  .viewer-nav {
+    position: absolute;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* 44px: the smallest target a thumb can hit reliably */
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+  }
+
+  .viewer-close:hover,
+  .viewer-nav:hover,
+  .viewer-close:focus-visible,
+  .viewer-nav:focus-visible {
+    border-color: var(--accent);
+  }
+
+  .viewer-close {
+    top: 1rem;
+    right: 1rem;
+  }
+
+  .viewer-prev {
+    left: 1rem;
+  }
+
+  .viewer-next {
+    right: 1rem;
+  }
+
+  @media (max-width: 640px) {
+    .viewer-prev {
+      left: 0.5rem;
+    }
+    .viewer-next {
+      right: 0.5rem;
+    }
+    .viewer-image {
+      max-height: calc(100svh - 11rem);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .shot-image {
+      transition: none;
+    }
+    .shot-button:hover .shot-image {
+      transform: none;
+    }
+  }
+
+  /* E-ink: one column, no zoom, and a solid frame on every picture, since a
+     hairline in a flattened palette is the only thing separating a pale sky
+     from the page. */
+  :global([data-theme="eink"]) .wall-columns {
+    columns: 1;
+  }
+
+  :global([data-theme="eink"]) .shot-button {
+    border-color: var(--text-primary);
+    cursor: pointer;
+  }
+
+  :global([data-theme="eink"]) .shot-button:hover .shot-image {
+    transform: none;
+  }
+
+  :global([data-theme="eink"]) .viewer-backdrop {
+    background: var(--bg-primary);
+  }
+
+  :global([data-theme="eink"]) .viewer-image {
+    border: 1px solid var(--text-primary);
+  }
+</style>
