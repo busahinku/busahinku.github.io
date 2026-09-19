@@ -202,6 +202,12 @@ const formatTaken = (value?: string) => {
   /* A wall, not a grid. Photographs keep the shape they were taken in, so
      the columns flow at natural heights instead of cropping everything to a
      shared rectangle the way the project cards do. */
+  .photo-wall {
+    width: 100%;
+    max-width: 1200px;
+    margin-inline: auto;
+  }
+
   .wall-columns {
     columns: 3;
     column-gap: 0.5rem;
@@ -259,12 +265,6 @@ const formatTaken = (value?: string) => {
   .wall-empty {
     color: var(--text-muted);
     font-style: italic;
-  }
-
-  @media (min-width: 1500px) {
-    .wall-columns {
-      columns: 4;
-    }
   }
 
   @media (max-width: 1100px) {
