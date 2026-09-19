@@ -2,7 +2,7 @@
 title: 'Personal Portfolio Website'
 description: 'A modern, responsive portfolio website built with Astro and TypeScript featuring dark mode, internationalization, and a blog system.'
 pubDate: 'Jan 15 2024'
-heroImage: '../../assets/blog-placeholder-1.jpg'
+heroImage: '../../assets/projects/portfolio/cover.jpg'
 tags: ['astro', 'typescript', 'css', 'responsive']
 category: 'web'
 author: 'Burak Sahin'

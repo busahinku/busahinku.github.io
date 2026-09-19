@@ -31,6 +31,8 @@ interface Props {
   backLabel?: string;
   prevPost?: PostNavLink;
   nextPost?: PostNavLink;
+  /** Project/course covers are authored at 16:10; blog heroes keep their existing crop. */
+  heroAspect?: "default" | "16:10";
 }
 
 const {
@@ -44,9 +46,11 @@ const {
   backLabel,
   prevPost,
   nextPost,
+  heroAspect = "default",
 } = Astro.props;
 const { title, description, pubDate, updatedDate, heroImage } = post;
 const t = useTranslations(lang);
+const isCoverHero = heroAspect === "16:10";
 
 // The TOC lists h2/h3 only; the mobile trigger appears only if there are any.
 const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
@@ -81,8 +85,18 @@ const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
       <article class="article-container" id="main-content">
         {
           heroImage && (
-            <div class="hero-image-wrapper">
-              <Image width={900} height={400} src={heroImage} alt={title} />
+            <div
+              class:list={[
+                "hero-image-wrapper",
+                { "hero-image-cover": isCoverHero },
+              ]}
+            >
+              <Image
+                width={isCoverHero ? 1600 : 900}
+                height={isCoverHero ? 1000 : 400}
+                src={heroImage}
+                alt={title}
+              />
             </div>
           )
         }

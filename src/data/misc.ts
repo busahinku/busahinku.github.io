@@ -9,18 +9,8 @@ export interface MiscEntry {
 }
 
 export const bookmarks: MiscEntry[] = [
-  { title: 'Refactoring UI', url: 'https://www.refactoringui.com/', category: { en: 'Design', tr: 'Tasarım' } },
-  { title: 'Realtime Colors', url: 'https://www.realtimecolors.com/', category: { en: 'Design', tr: 'Tasarım' } },
-  { title: 'Josh W Comeau', url: 'https://www.joshwcomeau.com/', category: { en: 'Blog', tr: 'Blog' } },
-  { title: 'Syntax.fm', url: 'https://syntax.fm/', category: { en: 'Podcast', tr: 'Podcast' } },
   { title: 'Frontend Masters', url: 'https://frontendmasters.com/', category: { en: 'Learning', tr: 'Öğrenme' } },
   { title: 'Roadmap.sh', url: 'https://roadmap.sh/', category: { en: 'Learning', tr: 'Öğrenme' } },
-  { title: 'MDN Web Docs', url: 'https://developer.mozilla.org/', category: { en: 'Docs', tr: 'Dokümanlar' } },
-  { title: 'Can I Use', url: 'https://caniuse.com/', category: { en: 'Tools', tr: 'Araçlar' } },
-  { title: 'Dribbble', url: 'https://dribbble.com/', category: { en: 'Design', tr: 'Tasarım' } },
-  { title: 'Awwwards', url: 'https://www.awwwards.com/', category: { en: 'Design', tr: 'Tasarım' } },
-  { title: 'CodePen', url: 'https://codepen.io/', category: { en: 'Tools', tr: 'Araçlar' } },
-  { title: 'GitHub', url: 'https://github.com/', category: { en: 'Tools', tr: 'Araçlar' } },
 ];
 
 export const books: MiscEntry[] = [
@@ -35,4 +25,3 @@ export const books: MiscEntry[] = [
   { title: 'Refactoring', sub: 'Martin Fowler', category: { en: 'Programming', tr: 'Programlama' } },
   { title: 'Domain-Driven Design', sub: 'Eric Evans', category: { en: 'Architecture', tr: 'Mimari' } },
 ];
-
