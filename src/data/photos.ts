@@ -4,12 +4,12 @@ import type { ImageMetadata } from 'astro';
 // has something to lay out. Drop your own files into src/assets/photos, import
 // them here and delete these. Nothing else needs to change: the wall reads each
 // image's real dimensions and keeps its aspect ratio, so any shape works.
-import p1 from '../assets/blog-placeholder-1.jpg';
-import p2 from '../assets/blog-placeholder-2.jpg';
-import p3 from '../assets/blog-placeholder-3.jpg';
-import p4 from '../assets/blog-placeholder-4.jpg';
-import p5 from '../assets/blog-placeholder-5.jpg';
-import p6 from '../assets/blog-placeholder-about.jpg';
+import p1 from '../assets/photos/blog-placeholder-1.jpg';
+import p2 from '../assets/photos/blog-placeholder-2.jpg';
+import p3 from '../assets/photos/blog-placeholder-3.jpg';
+import p4 from '../assets/photos/blog-placeholder-4.jpg';
+import p5 from '../assets/photos/blog-placeholder-5.jpg';
+import p6 from '../assets/projects/portfolio/cover.jpg';
 
 export interface Photo {
   src: ImageMetadata;
