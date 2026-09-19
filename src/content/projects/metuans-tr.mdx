@@ -1,0 +1,59 @@
+---
+title: "METUANS — ODTÜ Öğrencileri İçin Ders Planlama"
+description: "Güncel ODTÜ verileriyle çalışan ve 10.000'den fazla öğrencinin kullandığı ders planlama ve akademik rehberlik platformu."
+pubDate: "July 30 2025"
+updatedDate: "September 20 2026"
+tags: ["vue", "fastapi", "postgresql", "redis", "docker"]
+category: "web"
+author: "Burak Şahin Küçük"
+featured: true
+github: "https://github.com/Kangurubu/metuans"
+demo: "https://metuans.com"
+status: "active"
+lang: "tr"
+translationKey: "metuans"
+---
+
+## Kayıt haftası sorunundan gerçek bir ürüne
+
+ODTÜ'de ders programı hazırlamak, dersleri haftalık bir tabloya yerleştirmekten ibaret değil. Şubelerin bölüm, sınıf ve soyadı kısıtları var. Bir dersin birden fazla derslik ve uygulama birleşimi olabiliyor, iki ders arasında kampüsün bir ucundan diğerine yetişmek gerekebiliyor, çift ana dal veya yan dal yapınca aynı haftaya ikinci bir müfredat daha ekleniyor. Çoğu öğrenci bütün bunları birkaç OİBS sekmesi, bir Excel dosyası ve bolca deneme yanılmayla çözmeye çalışıyordu.
+
+METUANS'ı bu işi tek yerde toparlamak için geliştirdik. Öğrenci bölümünü ve dönemini seçiyor, almak istediği dersleri ekliyor, müsait olmadığı saatleri işaretliyor. METUANS kısıtları kontrol ediyor, gerçekten bir araya gelebilen şubeleri buluyor ve yalnızca ilk sonucu değil, geçerli bütün program seçeneklerini gösteriyor.
+
+Bugüne kadar 10.000'den fazla ODTÜ öğrencisi METUANS'ı kullandı. Kayıt haftalarında bölüm gruplarında paylaşılmaya başladığını görmek benim için projenin kırılma noktasıydı. Artık örnek verilerle çalışan bir yan proje değil, insanların gerçek akademik kararlar verirken güvendiği bir araçtı.
+
+## Neler yapıyor?
+
+Ders programı oluşturucu hâlâ ürünün merkezinde, fakat METUANS artık planlama sürecinin çok daha büyük bir bölümünü kapsıyor:
+
+- Zorunlu dersleri, seçmelileri ve öğrencinin ayırdığı boş saatleri birlikte değerlendirerek çakışmasız programlar hazırlıyor.
+- Bir şubeyi önermeden önce bölüm, sınıf, soyadı ve kampüs kurallarını uyguluyor.
+- Çift ana dal ve yan dal müfredatlarını aynı planın içinde destekliyor.
+- Güncel ders kataloğunda arama yapıyor; şubeleri, öğretim elemanlarını, sınıfları ve ders ayrıntılarını gösteriyor.
+- Öğrencinin müfredatına uygun ve mevcut programındaki boş saatlere sığan seçmeli dersleri buluyor.
+- GPA ve not hesaplayıcı, önkoşul haritası, anonim ders değerlendirmeleri ve sınıf programları sunuyor.
+- Hazırlanan program bağlantıyla paylaşılabiliyor, kaydedilebiliyor veya Google Calendar ve Apple Calendar'a aktarılabiliyor.
+
+Ders kataloğu OİBS'ten saatte bir yenileniyor. Bir bölüm, OİBS güncellenmeden önce geçici ders saatlerini başka bir yerde yayımlarsa sistem bunu açıkça işaretlenmiş geçici bir kaynak olarak kullanabiliyor; resmi veri geldiğinde de kendiliğinden ona dönüyor.
+
+## Teknik tarafı
+
+Ön yüz Vue 3 ve Vite ile geliştirildi. PWA olarak kurulabiliyor ve çok sayıda şube birleşimi hesaplanırken bile arayüzün akıcı kalması için ağır işler kullanıcı arayüzünden ayrılıyor. API tarafında Python ve FastAPI, veritabanında PostgreSQL kullanılıyor. Redis ise kısa ömürlü durumları, önbelleği, iş kuyruklarını ve hız sınırlarını yönetiyor.
+
+Program oluşturma işi uzun bir `if` listesinden ziyade bir kısıt problemi olarak ele alınıyor. Arka uç kullanılabilir şubeleri hazırlayıp doğruluyor, maliyetli birleşim hesabını izole çalışanlar yapıyor. Sistem yalnızca hangi programların mümkün olduğunu göstermiyor; bir ders eklenemediğinde sebebini ve yer açmak için neyin değiştirilebileceğini de açıklıyor.
+
+Üretim servisleri Docker içinde, Nginx ve Cloudflare arkasında çalışıyor. Prometheus metrikleri, Grafana panoları, sağlık kontrolleri, veritabanı yedekleri ve uyarılar da projenin bir parçası. Kayıt haftası trafiği sıradan bir portfolyo trafiği olmaktan çıkınca bunlar tercih değil, ihtiyaç hâline geldi.
+
+METUANS ayrıca güncel ders kataloğunu salt okunur bir MCP uç noktası üzerinden açıyor. Böylece bir asistan; arama motorunda kalmış eski bir OİBS kopyısına güvenmek yerine güncel dersleri arayabiliyor, şube saatlerini ve önkoşulları okuyabiliyor, bir dersin programa uyup uymadığını açıklayabiliyor.
+
+## Birlikte geliştirmek
+
+METUANS'ı Batuhan Teberoğlu ve Ali Eren Pancaroğlu ile birlikte geliştirdim. En işe yarayan geri bildirimler her zaman gerçek bir programı yetiştirmeye çalışan öğrencilerden geldi. Soyadı aralıkları, birleşik şubeler, farklı kampüsteki dersler, henüz açıklanmamış bölüm saatleri, binalar arasındaki mesafe ve ancak kayıt sırasında fark edilen onlarca küçük kural ürünün bugünkü hâlini belirledi.
+
+Proje hâlâ aktif olarak geliştiriliyor. Her dönem yeni bir ders kataloğu, yeni kısıtlar ve genellikle bir önceki dönem kullanan bir öğrenciden gelen yeni bir fikir getiriyor.
+
+## Bağlantılar
+
+- [METUANS'ı aç](https://metuans.com)
+- [Kaynak kodunu incele](https://github.com/Kangurubu/metuans)
+- [Herkese açık MCP uç noktasını kullan](https://metuans.com/mcp)
