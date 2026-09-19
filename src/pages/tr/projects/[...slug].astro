@@ -8,12 +8,13 @@ import {
   getLocalizedProjects,
   getProjectSlug,
 } from "../../../utils/project-localization";
+import { comparePinnedThenNewest } from "../../../utils/content-sort";
 
 export async function getStaticPaths() {
   const projects = getLocalizedProjects(
     await getCollection("projects", ({ data }) => !data.draft),
     "tr",
-  ).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+  ).sort(comparePinnedThenNewest);
 
   return projects.map((project, i) => ({
     params: { slug: getProjectSlug(project) },

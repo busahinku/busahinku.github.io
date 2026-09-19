@@ -23,6 +23,7 @@ const blog = defineCollection({
 			category: z.enum(CATEGORIES).default('other'),
 			author: z.string().default('Burak Sahin Kucuk'),
 			featured: z.boolean().default(false),
+			pinned: z.boolean().default(false),
 			draft: z.boolean().default(false),
 		}),
 });
@@ -40,6 +41,7 @@ const projects = defineCollection({
 			category: z.enum(PROJECT_CATEGORIES).default('other'),
 			author: z.string().default('Burak Sahin Kucuk'),
 			featured: z.boolean().default(false),
+			pinned: z.boolean().default(false),
 			draft: z.boolean().default(false),
 			// Project-specific fields
 			github: z.string().url().optional(),
@@ -64,6 +66,7 @@ const courses = defineCollection({
 			category: z.enum(COURSE_CATEGORIES).default('other'),
 			author: z.string().default('Burak Sahin Kucuk'),
 			featured: z.boolean().default(false),
+			pinned: z.boolean().default(false),
 			draft: z.boolean().default(false),
 		}),
 });

@@ -88,27 +88,18 @@
 /* Font Faces (all self-hosted; no external font CDNs) */
 @font-face {
   font-family: "Inter";
-  src: url("/fonts/Inter-Regular.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Inter";
-  src: url("/fonts/Inter-Medium.woff2") format("woff2");
-  font-weight: 500;
+  src: url("/fonts/Inter-tr.woff2") format("woff2");
+  font-weight: 400 500;
   font-style: normal;
   font-display: swap;
 }
 
 /* Merriweather: site-wide serif, a sturdy screen-reading newspaper serif.
-   Subset to Latin + Turkish and stripped of its kerning table, which alone
-   was 240KB of per-master deltas across the wght/opsz design space. Both
-   axes and the 300-700 weight range survive; only the kern pairs are gone. */
+   Subset to Latin + Turkish. Both variable axes and the 300-700 weight range
+   survive; hinting and the oversized variable kerning data are omitted. */
 @font-face {
   font-family: "Merriweather";
-  src: url("/fonts/Merriweather-normal.woff2") format("woff2");
+  src: url("/fonts/Merriweather-normal-tr.woff2") format("woff2");
   font-weight: 300 700;
   font-style: normal;
   font-display: swap;
@@ -116,7 +107,7 @@
 
 @font-face {
   font-family: "Merriweather";
-  src: url("/fonts/Merriweather-italic.woff2") format("woff2");
+  src: url("/fonts/Merriweather-italic-tr.woff2") format("woff2");
   font-weight: 300 700;
   font-style: italic;
   font-display: swap;

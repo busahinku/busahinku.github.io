@@ -9,18 +9,19 @@ import {
   getLocalizedProjects,
   getProjectSlug,
 } from "../utils/project-localization";
+import { comparePinnedThenNewest } from "../utils/content-sort";
 
 const lang: Lang = "en";
 
 const latestPosts = (await getCollection("blog", ({ data }) => !data.draft))
-  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .sort(comparePinnedThenNewest)
   .slice(0, 4);
 
 const latestProjects = getLocalizedProjects(
   await getCollection("projects", ({ data }) => !data.draft),
   lang,
 )
-  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .sort(comparePinnedThenNewest)
   .slice(0, 4);
 
 const links = [

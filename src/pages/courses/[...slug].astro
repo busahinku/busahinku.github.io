@@ -3,11 +3,12 @@ import { type CollectionEntry, getCollection, render } from "astro:content";
 import BlogPostEnhanced from "../../layouts/BlogPostEnhanced.astro";
 import { useTranslations, type Lang } from "../../i18n/translations";
 import type { PostNavLink } from "../../components/blog/PostNav.astro";
+import { comparePinnedThenNewest } from "../../utils/content-sort";
 
 export async function getStaticPaths() {
   const courses = (
     await getCollection("courses", ({ data }) => !data.draft)
-  ).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+  ).sort(comparePinnedThenNewest);
 
   return courses.map((course, i) => ({
     params: { slug: course.id },
