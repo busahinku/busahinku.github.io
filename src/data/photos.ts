@@ -20,8 +20,8 @@ export interface Photo {
 export const photos: Photo[] = [
   {
     src: p1,
-    alt: 'Rolling hills fading into haze under a wide pale sky',
-    caption: { en: 'The road out of town', tr: 'Şehirden çıkan yol' },
+    alt: 'Night view of the 8th dormitory building at METU, with a tree in the foreground.',
+    caption: { en: 'The window of the 406', tr: '406\'nın penceresi' },
     place: 'Ankara',
     taken: '2026-04',
   }
