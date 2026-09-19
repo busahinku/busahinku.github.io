@@ -8,6 +8,7 @@ import {
   getLocalizedProjects,
   getProjectSlug,
 } from "../../utils/project-localization";
+import { comparePinnedThenNewest } from "../../utils/content-sort";
 
 const lang: Lang = "en";
 const t = useTranslations(lang);
@@ -15,7 +16,7 @@ const t = useTranslations(lang);
 const projects = getLocalizedProjects(
   await getCollection("projects", ({ data }) => !data.draft),
   lang,
-).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+).sort(comparePinnedThenNewest);
 
 const items = projects.map((project) => ({
   href: `/projects/${getProjectSlug(project)}/`,

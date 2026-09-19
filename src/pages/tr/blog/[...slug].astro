@@ -12,11 +12,12 @@ import Callout from "../../../components/blog/Callout.astro";
 import Cite from "../../../components/blog/Cite.astro";
 import Reference from "../../../components/blog/Reference.astro";
 import { Image } from "astro:assets";
+import { comparePinnedThenNewest } from "../../../utils/content-sort";
 
 export async function getStaticPaths() {
   const posts = (
     await getCollection("blog", ({ data }) => !data.draft)
-  ).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+  ).sort(comparePinnedThenNewest);
 
   return posts.map((post, i) => ({
     params: { slug: post.id },
@@ -67,6 +68,7 @@ const components = {
   slug={post.id}
   prevPost={prevPost}
   nextPost={nextPost}
+  heroAspect="16:10"
 >
   <Content components={components} />
 </BlogPostEnhanced>

@@ -4,12 +4,13 @@ import Layout from "../../layouts/Layout.astro";
 import ArchiveList from "../../components/ArchiveList.astro";
 import { useTranslations, type Lang } from "../../i18n/translations";
 import { calculateReadingTime } from "../../utils/readingTime";
+import { comparePinnedThenNewest } from "../../utils/content-sort";
 
 const lang: Lang = "en";
 const t = useTranslations(lang);
 
 const courses = (await getCollection("courses", ({ data }) => !data.draft)).sort(
-  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+  comparePinnedThenNewest,
 );
 
 const items = courses.map((course) => ({

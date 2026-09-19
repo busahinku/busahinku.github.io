@@ -28,6 +28,8 @@ Project and course detail heroes use that same 16:10 contract, so the archive ca
 
 English is the canonical project language at `/projects/<slug>/`. A Turkish translation is a separate content entry with `lang: "tr"` and `translationKey: "<slug>"`; it replaces the English fallback only under `/tr/`. A project cover named `src/assets/projects/<slug>/cover.png` (or jpg/jpeg/webp/avif) is discovered automatically when frontmatter does not provide `heroImage`.
 
+Any blog post, project or course can be held at the top of its archive with `pinned: true` in frontmatter. Pinned entries still sort newest-first among themselves; everything else follows below, also newest-first. Keep the English and Turkish versions of a translated entry's `pinned` value in sync.
+
 `/photos` is the one page with no chrome: no visible heading, no intro, no captions under the pictures, just `PhotoWall.astro` at near-full width (`bleed` on `Layout`) with 0.5rem gutters. The `h1` is there but `sr-only`, for the document outline and screen readers. The wall is CSS multi-column, not a grid, so every photograph keeps the exact shape it was taken in and the columns flow around it; never give it a fixed `aspect-ratio` or `object-fit: cover`, that is the projects grid's job and the opposite of what this page is for. Captions and place/date live in `src/data/photos.ts` and surface only in the detail view.
 
 Shared building blocks: `ArchiveList.astro` (blog/projects/courses listings), `MiscPage.astro` + `MiscArchive.astro` (misc pages, data in `src/data/misc.ts`), `ContactPage.astro`.
