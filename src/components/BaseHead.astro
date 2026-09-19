@@ -13,8 +13,17 @@ interface Props {
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
+// Public brand assets otherwise keep the same URL forever, so browsers,
+// Cloudflare and social preview crawlers can continue serving an old image.
+// Bump this value whenever the favicon/app icons/default OG image change.
+const BRAND_ASSET_VERSION = "20260920";
+
 // Default OG image - replace /og-image.jpg in public/ folder with your own
-const { title, description, image = "/og-image.jpg" } = Astro.props;
+const {
+  title,
+  description,
+  image = `/og-image.jpg?v=${BRAND_ASSET_VERSION}`,
+} = Astro.props;
 
 // The 404 page is served for any unmatched URL, so the path it is built
 // from is not a real address: it gets no alternates and no indexing.
@@ -124,10 +133,17 @@ const csp = [
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <meta name="theme-color" content="#ffffff" />
-<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-<link rel="icon" href="/favicon.ico" />
-<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-<link rel="manifest" href="/site.webmanifest" />
+<link
+  rel="icon"
+  type="image/svg+xml"
+  href={`/favicon.svg?v=${BRAND_ASSET_VERSION}`}
+/>
+<link rel="icon" href={`/favicon.ico?v=${BRAND_ASSET_VERSION}`} />
+<link
+  rel="apple-touch-icon"
+  href={`/apple-touch-icon.png?v=${BRAND_ASSET_VERSION}`}
+/>
+<link rel="manifest" href={`/site.webmanifest?v=${BRAND_ASSET_VERSION}`} />
 <link rel="sitemap" href="/sitemap-index.xml" />
 <link
   rel="alternate"
@@ -195,25 +211,14 @@ const csp = [
 <!-- Structured data -->
 <script type="application/ld+json" set:html={personSchema} />
 
-<!-- View transitions (SPA-feel navigation). The swap itself takes ~18ms
-     with prefetch on; the default cross-fade adds a quarter second of
-     animation on top, which is the part that reads as slow. Cut it to a
-     near-instant fade and drop it entirely for reduced-motion. -->
+<!-- Client-side navigation keeps prefetched page changes fast. The visual
+     cross-fade is disabled: even a short animation can make an already
+     completed navigation feel as though it is still waiting. -->
 <ClientRouter />
 
 <style is:global>
-  /* Duration only. Declaring @view-transition { navigation: auto } here
-     turns on the browser's own cross-document transitions, which race
-     Astro's same-document ones and throw InvalidStateError on every nav. */
   ::view-transition-old(root),
   ::view-transition-new(root) {
-    animation-duration: 90ms;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    ::view-transition-old(root),
-    ::view-transition-new(root) {
-      animation: none;
-    }
+    animation: none;
   }
 </style>
