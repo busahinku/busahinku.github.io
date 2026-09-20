@@ -47,7 +47,7 @@ const formatTaken = (value?: string) => {
     photos.length === 0 ? (
       <p class="wall-empty">{copy.empty}</p>
     ) : (
-      <div class="wall-columns">
+      <div class:list={["wall-columns", { "wall-columns--single": photos.length === 1 }]}>
         {photos.map((photo, index) => {
           const caption = photo.caption
             ? tr
@@ -211,6 +211,13 @@ const formatTaken = (value?: string) => {
   .wall-columns {
     columns: 3;
     column-gap: 0.5rem;
+  }
+
+  /* Do not leave a lone portrait stranded in the first of three columns. */
+  .wall-columns.wall-columns--single {
+    columns: 1;
+    width: min(100%, 34rem);
+    margin-inline: auto;
   }
 
   .shot {
