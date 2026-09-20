@@ -14,10 +14,12 @@ export default defineConfig({
   site: 'https://busahin.com',
   integrations: [mdx(), sitemap()],
   output: 'static',
-  // Prefetch pages before the user clicks so navigation feels instant
+  // Prefetch the page a visitor is actually reaching for. Using `viewport`
+  // here fetched every visible header/footer link at once, competing with the
+  // current page's fonts and images on slower connections.
   prefetch: {
     prefetchAll: true,
-    defaultStrategy: 'viewport',
+    defaultStrategy: 'hover',
   },
   markdown: {
     remarkPlugins: [remarkMath, remarkMark],
