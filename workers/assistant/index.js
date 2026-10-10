@@ -158,7 +158,7 @@ async function ask(request, env, cors) {
   try {
     stream = await env.AI.run(MODEL, {
       stream: true,
-      max_tokens: 450,
+      max_tokens: 700,
       temperature: 0.3,
       chat_template_kwargs: { enable_thinking: false },
       messages: [
