@@ -18,11 +18,19 @@ export function wrangler(args) {
   return execFileSync("npx", ["--yes", "wrangler@4.146.0", ...args], { stdio: ["ignore", "pipe", "pipe"] });
 }
 
+// R2 storage is free up to 10 GB. Every key is overwritten in place, so the
+// manifest's total is what the bucket holds; refuse anything that would pass 9 GB.
+const STORAGE_CAP = 9 * 1024 ** 3;
+
 export function upload(key, file, contentType, cacheControl = SHORT) {
   const data = fs.readFileSync(file);
   const entry = { bytes: data.length, v: createHash("sha256").update(data).digest("hex").slice(0, 10) };
   const manifest = JSON.parse(fs.readFileSync(MANIFEST, "utf8"));
   if (manifest[key]?.v === entry.v) return manifest[key];
+  const stored = Object.entries(manifest).reduce((sum, [k, e]) => sum + (k === key ? 0 : e.bytes), 0);
+  if (stored + entry.bytes > STORAGE_CAP) {
+    throw new Error(`Refusing to upload ${key}: R2 would hold ${((stored + entry.bytes) / 1024 ** 3).toFixed(2)} GB, over the 9 GB cap that keeps it free.`);
+  }
   try {
     wrangler(["r2", "object", "put", `${BUCKET}/${key}`, `--file=${file}`, `--content-type=${contentType}`, `--cache-control=${cacheControl}`, "--remote"]);
   } catch (err) {

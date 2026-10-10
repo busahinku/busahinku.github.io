@@ -6,13 +6,14 @@ import { defineConfig } from 'astro/config';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { remarkMark, rehypeFigure, rehypeTableWrap } from './src/lib/markdown-plugins.mjs';
+import { assistantIndex } from './src/lib/assistant-index.mjs';
 
 import tailwindcss from '@tailwindcss/vite';
 
 // https://astro.build/config
 export default defineConfig({
   site: 'https://busahin.com',
-  integrations: [mdx(), sitemap()],
+  integrations: [mdx(), sitemap(), assistantIndex()],
   output: 'static',
   // Prefetch the page a visitor is actually reaching for. Using `viewport`
   // here fetched every visible header/footer link at once, competing with the

@@ -1,0 +1,21 @@
+# Deploy: npx wrangler@4.146.0 deploy --config workers/assistant/wrangler.toml
+name = "busahin-assistant"
+main = "index.js"
+compatibility_date = "2026-09-01"
+workers_dev = false
+preview_urls = false
+routes = [{ pattern = "busahin.com/api/*", zone_name = "busahin.com" }]
+
+[ai]
+binding = "AI"
+
+# Six questions a minute per visitor, forty a minute for the whole site.
+[[ratelimits]]
+name = "PER_VISITOR"
+namespace_id = "4971"
+simple = { limit = 6, period = 60 }
+
+[[ratelimits]]
+name = "SITE_WIDE"
+namespace_id = "4972"
+simple = { limit = 40, period = 60 }

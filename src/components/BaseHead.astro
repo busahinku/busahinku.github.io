@@ -68,7 +68,8 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
   "font-src 'self'",
-  "connect-src 'self' https://*.googleapis.com wss://*.firebaseio.com",
+  // busahin.com explicitly so the dev server can reach the live assistant
+  "connect-src 'self' https://busahin.com https://*.googleapis.com wss://*.firebaseio.com",
   "frame-src https://open.spotify.com https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com https://*.firebaseapp.com https://accounts.google.com",
   "object-src 'none'",
   "base-uri 'self'",
