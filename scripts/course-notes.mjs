@@ -1,13 +1,15 @@
 // Course notes pipeline. One source, two outputs:
 //   src/content/courses/<slug>.mdx  is the web page (Astro renders it)
-//                                   and becomes public/courses/<slug>/notes.pdf here.
+//                                   and becomes the typeset notes.pdf here.
+// Both PDFs go to R2 (scripts/r2.mjs), not the repo.
 //
 //   npm run notes -- pages <slug> <export.pdf>
-//     Publishes a compressed copy of the handwritten export and renders only the
+//     Uploads a compressed copy of the handwritten export and renders only the
 //     pages that are new or changed since the last build, so transcription never
 //     re-reads a page it has already done.
 //   npm run notes -- build <slug>
-//     Compiles figures and the LaTeX notes, then records the pages as done.
+//     Compiles figures and the LaTeX notes, uploads the PDF, then records the
+//     pages as done.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
@@ -19,11 +21,11 @@ import remarkParse from "remark-parse";
 import remarkMdx from "remark-mdx";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { upload } from "./r2.mjs";
 
 const [cmd, slug, exportPdf] = process.argv.slice(2);
 const mdxPath = `src/content/courses/${slug}.mdx`;
 const pagesPath = `src/content/courses/${slug}.pages`;
-const publicDir = `public/courses/${slug}`;
 const assetDir = `src/assets/courses/${slug}`;
 const cache = `node_modules/.cache/course-notes/${slug}`;
 
@@ -38,17 +40,16 @@ async function pages() {
   if (!exportPdf || !fs.existsSync(exportPdf)) die("usage: npm run notes -- pages <slug> <export.pdf>");
   fs.rmSync(`${cache}/pages`, { recursive: true, force: true });
   fs.mkdirSync(`${cache}/pages`, { recursive: true });
-  fs.mkdirSync(publicDir, { recursive: true });
-
   // Readers get the compressed copy. Hashes always come from the raw export:
   // recompressing a compressed file shifts pixels and would flag every page.
-  const served = `${publicDir}/handwritten.pdf`;
+  const served = `${cache}/handwritten.pdf`;
   try {
     run("gs", ["-q", "-dNOPAUSE", "-dBATCH", "-sDEVICE=pdfwrite", "-dPDFSETTINGS=/ebook", `-sOutputFile=${served}`, exportPdf]);
     if (fs.statSync(served).size >= fs.statSync(exportPdf).size) fs.copyFileSync(exportPdf, served);
   } catch {
     fs.copyFileSync(exportPdf, served);
   }
+  upload(`courses/${slug}/handwritten.pdf`, served, "application/pdf");
 
   // A tiny grayscale render per page is enough to notice any added stroke.
   run("pdftoppm", ["-r", 40, "-gray", exportPdf, `${cache}/pages/h`]);
@@ -86,7 +87,6 @@ function build() {
   const meta = yaml.load(front);
   const tex = path.resolve(cache, "tex");
   fs.mkdirSync(tex, { recursive: true });
-  fs.mkdirSync(publicDir, { recursive: true });
 
   // Figures: one TikZ source gives the PDF the notes include and the SVG the page shows.
   for (const f of fs.existsSync(assetDir) ? fs.readdirSync(assetDir) : []) {
@@ -106,20 +106,25 @@ function build() {
     term: term(new Date(meta.pubDate)),
     updated: date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" }),
     url: `https://busahin.com/courses/${slug}/`,
+    // Same course, same cover art: the random walks are seeded from the slug.
+    seed: [...slug].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 99991, 7),
     body: toLatex(body),
   };
   const template = fs.readFileSync("scripts/course-notes.tex", "utf8");
   fs.writeFileSync(`${tex}/notes.tex`, template.replace(/<<(\w+)>>/g, (_, k) => fill[k]));
   latex(["-lualatex", "notes.tex"], `${tex}/notes.log`, tex);
-  fs.copyFileSync(`${tex}/notes.pdf`, `${publicDir}/notes.pdf`);
+  const { bytes } = upload(`courses/${slug}/notes.pdf`, `${tex}/notes.pdf`, "application/pdf");
 
   if (fs.existsSync(`${cache}/pending`)) fs.renameSync(`${cache}/pending`, pagesPath);
-  console.log(`${publicDir}/notes.pdf (${Math.round(fs.statSync(`${publicDir}/notes.pdf`).size / 1024)} KB)`);
+  console.log(`${tex}/notes.pdf (${Math.round(bytes / 1024)} KB), uploaded`);
 }
 
 function latex(args, log, cwd) {
   try {
-    run("latexmk", ["-interaction=nonstopmode", "-halt-on-error", "-quiet", ...args], { cwd });
+    // kaobook is vendored in scripts/kaobook, and an optional scripts/cover-logo.pdf
+    // is found the same way.
+    const env = { ...process.env, TEXINPUTS: `${path.resolve("scripts")}//:` };
+    run("latexmk", ["-interaction=nonstopmode", "-halt-on-error", "-quiet", "-bibtex-", ...args], { cwd, env });
   } catch {
     // Print the first TeX error with a little context instead of the whole log.
     const lines = fs.existsSync(log) ? fs.readFileSync(log, "utf8").split("\n") : [];
@@ -184,7 +189,7 @@ function esc(s) {
 function text(value) {
   return value
     .split(/==([^=]+)==/g)
-    .map((part, i) => (i % 2 ? `\\highLight{${esc(part)}}` : esc(part)))
+    .map((part, i) => (i % 2 ? `\\notesmark{${esc(part)}}` : esc(part)))
     .join("");
 }
 
@@ -203,7 +208,7 @@ function node(n) {
     case "emphasis":
       return `\\emph{${inline(n.children)}}`;
     case "delete":
-      return `\\strikeThrough{${inline(n.children)}}`;
+      return `\\notesstrike{${inline(n.children)}}`;
     case "inlineCode":
       return `\\texttt{${esc(n.value)}}`;
     case "inlineMath":
@@ -258,7 +263,8 @@ function heading(n) {
   let title = inline(kids);
   // Math in a heading cannot go into the PDF bookmarks, so give them plain text.
   if (title.includes("$")) title = `\\texorpdfstring{${title}}{${esc(plain({ children: kids }).trim())}}`;
-  if (n.depth <= 2) return `${week ? `\\setcounter{chapter}{${week - 1}}\n` : ""}\\chapter{${title}}`;
+  // Each template decides what opening a week looks like.
+  if (n.depth <= 2) return week ? `\\notesweek{${week}}{${title}}` : `\\chapter{${title}}`;
   const cmd = ["section", "subsection", "subsubsection"][n.depth - 3] ?? "paragraph";
   return `\\${cmd}{${title}}`;
 }

@@ -34,9 +34,15 @@ Any blog post, project or course can be held at the top of its archive with `pin
 
 Shared building blocks: `ArchiveList.astro` (blog/projects/courses listings), `MiscPage.astro` + `MiscArchive.astro` (misc pages, data in `src/data/misc.ts`), `ContactPage.astro`.
 
+## Large files live in R2
+
+Nothing heavy goes in git. PDFs and photo originals are uploaded to the R2 bucket `busahin-files`, served at `https://files.busahin.com`, through `scripts/r2.mjs` (wrangler, already logged in on this Mac). Each upload is recorded in `src/data/files.json` with its size and a content hash, and the site links files with `remoteFile(key)` from `src/utils/files.ts`, which puts the hash in the URL so a changed file never comes back stale from a cache. A file that is not in the manifest simply is not linked.
+
+Photos: `npm run photo -- <original.jpg>` uploads the original for the detail view (a JPEG is rewritten losslessly by jpegtran: same pixels and colour profile, no EXIF or GPS) and writes a 2400px working copy to `src/assets/photos`, which is what the wall and Astro's WebP renditions are made from. It prints the `photos.ts` entry; `original:` is the R2 key the viewer swaps in once it has loaded.
+
 ## Course notes
 
-A course is one `src/content/courses/<slug>.mdx`. `scripts/course-notes.mjs` (`npm run notes`) turns that same file into the typeset PDF through `scripts/course-notes.tex`, so the page and the PDF cannot drift apart; never hand-edit generated LaTeX. Handwritten exports go in through `npm run notes -- pages`, which serves a compressed copy and renders only pages whose fingerprint in `<slug>.pages` changed. `CourseFiles.astro` links both PDFs at the top of the page. The whole workflow, including transcription rules, is the `/course-notes` skill. Course figures are TikZ sources in `src/assets/courses/<slug>/` compiled to PDF and SVG; SVG figures are inverted in the dark theme, so draw them as dark ink on a transparent ground.
+A course is one `src/content/courses/<slug>.mdx`. `scripts/course-notes.mjs` (`npm run notes`) turns that same file into the typeset PDF through `scripts/course-notes.tex`, so the page and the PDF cannot drift apart; never hand-edit generated LaTeX. The template is built on kaobook, vendored unmodified in `scripts/kaobook` because TeX Live does not ship it. Handwritten exports go in through `npm run notes -- pages`, which uploads a compressed copy and renders only pages whose fingerprint in `<slug>.pages` changed. `CourseFiles.astro` links both PDFs at the top of the page. The whole workflow, including transcription rules, is the `/course-notes` skill. Course figures are TikZ sources in `src/assets/courses/<slug>/` compiled to PDF and SVG; SVG figures are inverted in the dark theme, so draw them as dark ink on a transparent ground.
 
 ## Content
 

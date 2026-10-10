@@ -1,7 +1,6 @@
 ---
-import fs from "node:fs";
-import path from "node:path";
 import { useTranslations, type Lang } from "../i18n/translations";
+import { remoteFile } from "../utils/files";
 
 interface Props {
   slug: string;
@@ -11,19 +10,19 @@ interface Props {
 const { slug, lang } = Astro.props;
 const t = useTranslations(lang);
 
-// Both PDFs come from `npm run notes` (see .claude/skills/course-notes). They
-// are looked up at build time, so a course without them shows nothing here.
+// Both PDFs are uploaded to R2 by `npm run notes` (see .claude/skills/course-notes);
+// a course without them simply shows nothing here.
+const number = (n: number) =>
+  n.toLocaleString(lang === "tr" ? "tr-TR" : "en-US", { maximumFractionDigits: 1 });
 const files = [
   { file: "handwritten.pdf", label: t("courses.handwritten") },
   { file: "notes.pdf", label: t("courses.typeset") },
 ].flatMap(({ file, label }) => {
-  const disk = path.join(process.cwd(), "public", "courses", slug, file);
-  if (!fs.existsSync(disk)) return [];
-  const kb = fs.statSync(disk).size / 1024;
-  const number = (n: number) =>
-    n.toLocaleString(lang === "tr" ? "tr-TR" : "en-US", { maximumFractionDigits: 1 });
+  const remote = remoteFile(`courses/${slug}/${file}`);
+  if (!remote) return [];
+  const kb = remote.bytes / 1024;
   const size = kb < 1024 ? `${number(Math.round(kb))} KB` : `${number(kb / 1024)} MB`;
-  return [{ href: `/courses/${slug}/${file}`, label, size }];
+  return [{ href: remote.url, label, size }];
 });
 ---
 
@@ -32,13 +31,11 @@ const files = [
     <ul class="course-files">
       {files.map((f) => (
         <li>
-          {/* A PDF is not a page: skip the router and the hover prefetch. */}
           <a
             class="file-row"
             href={f.href}
             target="_blank"
             rel="noopener"
-            data-astro-prefetch="false"
           >
             <span class="file-title">{f.label}</span>
             <span class="file-leader" aria-hidden="true" />

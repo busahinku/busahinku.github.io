@@ -10,22 +10,21 @@ model: sonnet
 One file per course drives everything:
 
 - `src/content/courses/<slug>.mdx` is the web page (`/courses/<slug>/` and `/tr/courses/<slug>/`).
-- `npm run notes -- build <slug>` turns that same file into `public/courses/<slug>/notes.pdf`.
-- The handwritten export is served as `public/courses/<slug>/handwritten.pdf`.
-- Both PDFs are linked at the top of the course page automatically (`CourseFiles.astro`).
+- `npm run notes -- build <slug>` turns that same file into the typeset `notes.pdf`.
+- Both PDFs go to R2 (`https://files.busahin.com/courses/<slug>/`), never into the repo, and are linked at the top of the course page automatically (`CourseFiles.astro` reads `src/data/files.json`).
 
 The slug is the lowercase course code: `stat497`.
 
 ## Steps
 
 1. Get the slug and the export path from the arguments. If either is missing, ask. If `src/content/courses/<slug>.mdx` does not exist, create it with the frontmatter below.
-2. Run `npm run notes -- pages <slug> "<export.pdf>"`. It publishes a compressed copy of the export and prints which pages are new or changed, with an image path for each. If it prints "nothing new to transcribe", skip to step 4.
+2. Run `npm run notes -- pages <slug> "<export.pdf>"`. It uploads a compressed copy of the export and prints which pages are new or changed, with an image path for each. If it prints "nothing new to transcribe", skip to step 4.
 3. Read **only the listed images**, never the PDF itself, at most 6 per batch. Write each batch into the MDX before reading the next one.
    - New pages go at the end, usually as a new `## Week N` section.
    - A changed page: find the passage it covers and edit only that.
    - "removed" pages: ask the user before deleting anything from the MDX.
 4. Run `npm run notes -- build <slug>`. If it prints a LaTeX error, fix the line it points to (nearly always a math typo) and run it again. A successful build is what records the pages as done, so never skip it.
-5. Set `updatedDate:` to today, then run `npx astro build`.
+5. Set `updatedDate:` to today, then run `npx astro build`. Commit the MDX, `<slug>.pages`, `src/data/files.json` and any figures; there are no PDFs to commit.
 6. Report in a few lines: which pages were transcribed, anything unreadable (quote it as you read it), and any mistake you corrected in the notes.
 
 ## Transcribing

@@ -2,6 +2,7 @@
 import { Image, getImage } from "astro:assets";
 import { X, ChevronLeft, ChevronRight } from "@lucide/astro";
 import { photos } from "../data/photos";
+import { remoteFile } from "../utils/files";
 import type { Lang } from "../i18n/translations";
 
 interface Props {
@@ -18,7 +19,8 @@ const copy = {
   empty: tr ? "Henüz fotoğraf yok." : "No photographs yet.",
 };
 
-// Full-size renditions for the detail view, never the untouched originals.
+// The detail view opens on a 2000px rendition at once, then swaps in the
+// full-quality original from R2 (scripts/photo.mjs) when it has loaded.
 const full = await Promise.all(
   photos.map((photo) =>
     getImage({
@@ -64,6 +66,7 @@ const formatTaken = (value?: string) => {
                 data-shot
                 data-index={index}
                 data-full={full[index].src}
+                data-original={photo.original && remoteFile(photo.original)?.url}
                 data-caption={caption}
                 data-meta={meta}
                 aria-label={`${copy.open}: ${caption || photo.alt}`}
@@ -135,6 +138,15 @@ const formatTaken = (value?: string) => {
         const img = shot.querySelector("img");
         image.src = shot.dataset.full || img?.src || "";
         image.alt = img?.alt || "";
+        const original = shot.dataset.original;
+        if (original) {
+          const hires = new Image();
+          // only if the reader is still on this photo when it arrives
+          hires.onload = () => {
+            if (shots[index] === shot) image.src = original;
+          };
+          hires.src = original;
+        }
         title.textContent = shot.dataset.caption || "";
         meta.textContent = shot.dataset.meta || "";
         count.textContent = `${index + 1} / ${shots.length}`;

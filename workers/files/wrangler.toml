@@ -1,0 +1,11 @@
+# Deploy: npx wrangler@4.146.0 deploy --config workers/files/wrangler.toml
+name = "busahin-files"
+main = "index.js"
+compatibility_date = "2026-09-01"
+workers_dev = false
+preview_urls = false
+routes = [{ pattern = "files.busahin.com", custom_domain = true }]
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "busahin-files"

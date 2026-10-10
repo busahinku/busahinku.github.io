@@ -1,106 +1,120 @@
-% Template for the typeset course notes. scripts/course-notes.mjs fills the
+% Typeset course notes on the kaobook class (github.com/fmarotta/kaobook,
+% LPPL 1.3c), vendored in scripts/kaobook. scripts/course-notes.mjs fills the
 % <<placeholders>> from src/content/courses/<slug>.mdx and compiles with LuaLaTeX.
-% Edit the .mdx for content; edit this file for how every course PDF looks.
-\documentclass[a4paper,11pt,oneside,parskip=half-,numbers=noenddot,headsepline]{scrreprt}
+% kao.sty sets Liberation Mono, which TeX Live does not ship. Answer that one
+% call with Libertinus Mono instead of editing the vendored class.
+\RequirePackage{fontspec}
+\let\notessetmonofont\setmonofont
+\renewcommand*{\setmonofont}[2][]{\notessetmonofont{Libertinus Mono}[Scale=.89]}
+\documentclass[paper=a4, fontsize=10pt, twoside=false, secnumdepth=1]{kaobook}
+\let\setmonofont\notessetmonofont
 
-\usepackage[a4paper,textwidth=145mm,top=30mm,bottom=32mm,headsep=9mm]{geometry}
-\usepackage{amsmath}
-\usepackage{unicode-math}
-\setmainfont{LibertinusSerif}[Extension=.otf, UprightFont=*-Regular, ItalicFont=*-Italic,
-  BoldFont=*-Semibold, BoldItalicFont=*-SemiboldItalic]
-\setsansfont{LibertinusSans}[Extension=.otf, UprightFont=*-Regular, ItalicFont=*-Italic, BoldFont=*-Bold]
-\setmonofont{LibertinusMono}[Extension=.otf, UprightFont=*-Regular, Scale=MatchLowercase]
-\setmathfont{LibertinusMath-Regular.otf}
-\linespread{1.06}
-\usepackage{microtype}
-\usepackage{xcolor}
-\usepackage{graphicx}
-\usepackage{booktabs,tabularx,array}
-\usepackage{enumitem}
-\usepackage{luacolor,lua-ul}
-\usepackage[most]{tcolorbox}
-\usepackage[automark]{scrlayer-scrpage}
-\usepackage[hyperfootnotes=false]{hyperref}
-
+\usepackage[english]{babel}
+\usepackage[english=american]{csquotes}
 \definecolor{accent}{HTML}{1D4E89}
+\definecolor{defbg}{HTML}{EAF0F7}
+\definecolor{examplebg}{HTML}{F3F4F6}
+\definecolor{keybg}{HTML}{FBF3E4}
+\definecolor{cautionbg}{HTML}{F9E9E7}
 \definecolor{caution}{HTML}{9B2C2C}
+\definecolor{coverink}{HTML}{0F2742}
 \definecolor{quiet}{HTML}{6B7280}
-\definecolor{hair}{HTML}{C9CED6}
-\LuaULSetHighLightColor{accent!10}
-\hypersetup{colorlinks, linkcolor=black, urlcolor=accent, pdftitle={<<title>>}, pdfauthor={<<author>>}}
-
-% Headings: serif, set in the text face, numbered to sections only.
-\setkomafont{disposition}{\normalfont\bfseries}
-\setkomafont{chapter}{\LARGE}
-\setkomafont{section}{\Large}
-\setkomafont{subsection}{\large}
-\setkomafont{subsubsection}{\normalsize\itshape}
-\setcounter{secnumdepth}{\sectionnumdepth}
-\setcounter{tocdepth}{\sectionnumdepth}
-\renewcommand*{\chapterformat}{\textcolor{accent}{Week~\thechapter}\quad}
-\renewcommand*{\sectionformat}{\textcolor{accent}{\thesection}\enskip}
-\renewcommand*{\chaptermarkformat}{Week~\thechapter:\ }
-\RedeclareSectionCommand[beforeskip=0pt, afterskip=2.2\baselineskip]{chapter}
-\RedeclareSectionCommand[tocnumwidth=3.6em]{chapter}
-\renewcommand*{\addchaptertocentry}[2]{\addtocentrydefault{chapter}{Week~#1}{#2}}
-
-% Running heads: course on the left, current week on the right.
-\clearpairofpagestyles
-\ihead{<<code>>}
-\ohead{\leftmark}
-\cfoot*{\pagemark}
-\setkomafont{pageheadfoot}{\normalfont\small\color{quiet}}
-\setkomafont{pagenumber}{\normalfont\small}
-\KOMAoptions{headsepline=.3pt}
-\addtokomafont{headsepline}{\color{hair}}
-
-\setlist{topsep=.2\baselineskip, itemsep=.15\baselineskip, parsep=0pt, leftmargin=1.6em}
+\usepackage[framed, definitionbackground=defbg, examplebackground=examplebg]{kaotheorems}
+\usepackage{kaorefs}
+\usepackage{booktabs,tabularx,array}
+\usepackage{luacolor,lua-ul}
+\usepackage{tikz}
+\usetikzlibrary{fadings}
+% 46 faint sample paths and one realised path (#1) across the cover. Called
+% twice with the same seed, so the paths line up across the band's edge.
+\newcommand*{\notespaths}[1]{%
+  \foreach \i in {1,...,46}{%
+    \pgfmathsetmacro{\shade}{25+50*rnd}%
+    \draw[accent!\shade!white, opacity=.4, line width=.45pt, line join=round]
+      (-.2,{10.2+1.2*rand}) \foreach \x in {1,...,215}{ -- ++(.1,{.22*rand}) };}%
+  \draw[#1, line width=1.5pt, line join=round]
+    (-.2,10.2) \foreach \x in {1,...,215}{ -- ++(.1,{.22*rand}) };}
+\LuaULSetHighLightColor{keybg}
+\newcommand*{\notesmark}[1]{\highLight{#1}}
+\newcommand*{\notesstrike}[1]{\strikeThrough{#1}}
 \newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\hypersetup{colorlinks, linkcolor=accent, urlcolor=accent}
 
-% Notes blocks: a hairline on the left and a run-in label, the way a printed
-% textbook marks them. Definitions and examples are numbered within the week.
-% A title replaces the label; the converter gives it its full stop.
-\newcommand*{\notestitle}[1]{\if\relax\detokenize{#1}\relax\else\ (#1)\fi}
+% Weeks are chapters. The margin carries "Week" over the big numeral and,
+% below the heading, that week's own contents.
+% A week opens with "Week" over the big numeral in the margin and, under the
+% heading, that week's own contents. kaobook resets the chapter style at
+% \mainmatter, so the numeral format is applied per chapter here.
+\renewcommand*{\chaptermarkformat}{Week~\thechapter\enskip}
+\newcommand*{\notesweek}[2]{%
+  \setcounter{chapter}{\numexpr#1-1\relax}%
+  \renewcommand*{\chapterformat}{\mbox{\parbox[b]{\marginparwidth}{\raggedright
+    {\large\itshape Week}\\[-1pt]\scalebox{2.85}{\thechapter}}}}%
+  \setchapterpreamble[u]{\margintoc}%
+  \chapter{#2}}
+\unsettoc{toc}{totoc}
+
+% Definitions and examples count within the week: Definition 1.1, 1.2, ...
+\counterwithout{definition}{section}\counterwithin{definition}{chapter}
+\counterwithout{example}{section}\counterwithin{example}{chapter}
+
+% Blocks the theorem package does not have, in the same framed style.
 \newcommand*{\notesname}[2]{\if\relax\detokenize{#1}\relax#2\else#1\fi}
-\tcbset{notes/.style={blanker, breakable, parbox=false, left=11pt, right=0pt,
-  top=1pt, bottom=1pt, borderline west={.9pt}{0pt}{#1},
-  before skip=.9\baselineskip, after skip=.9\baselineskip}}
-\newtcolorbox[auto counter, number within=chapter]{definition}[1][]{notes=accent,
-  before upper={\textbf{Definition~\thetcbcounter\notestitle{#1}.}\enspace}}
-\newtcolorbox[auto counter, number within=chapter]{example}[1][]{notes=hair,
-  before upper={\textbf{Example~\thetcbcounter\notestitle{#1}.}\enspace}}
-\newtcolorbox{keyidea}[1][]{notes=accent,
+\newtcolorbox{keyidea}[1][]{tcbkao, colback=keybg,
   before upper={\textbf{\notesname{#1}{Key idea.}}\enspace}}
-\newtcolorbox{caution}[1][]{notes=caution,
-  before upper={\textbf{\notesname{#1}{Caution.}}\enspace}}
-\newtcolorbox{aside}[1][]{notes=hair, fontupper=\small,
-  before upper={\textbf{\notesname{#1}{Note.}}\enspace}}
-\newtcolorbox{selfcheck}[1]{notes=hair,
+\newtcolorbox{caution}[1][]{tcbkao, colback=cautionbg,
+  before upper={\textbf{\textcolor{caution}{\notesname{#1}{Caution.}}}\enspace}}
+\newtcolorbox{selfcheck}[1]{tcbkao, colback=examplebg,
   before upper={\textbf{Check.}\enspace #1\par\smallskip\textit{Answer.}\enspace}}
-\setkomafont{caption}{\small}
-\setkomafont{captionlabel}{\bfseries}
-\setcapindent{0pt}
-\renewcommand*{\captionformat}{.\enskip}
-\newcommand*{\notesbreak}{\par\medskip\noindent\hfil\textcolor{hair}{\rule{.25\linewidth}{.4pt}}\hfil\par\medskip}
+% Side notes, like the sticky notes on the handwritten page, go in the margin.
+\NewDocumentEnvironment{aside}{o +b}
+  {\marginnote{\vspace{.5\baselineskip}\raggedright\hyphenpenalty=10000\IfValueT{#1}{\textbf{#1}\enspace}#2}}{}
+\newcommand*{\notesbreak}{\par\medskip\noindent\hfil\rule{.25\linewidth}{.4pt}\hfil\par\medskip}
 
 \begin{document}
 
+\title[<<title>>]{<<name>>}
+\author[<<author>>]{<<author>>}
+
+% Cover. The bottom of the page is a tilted band of random-walk sample paths,
+% one realised path picked out; above the band the same paths run on and fade
+% into the paper. The walks are seeded from the course, so a course keeps its
+% cover. Drop a logo at scripts/cover-logo.pdf and it sits above the university.
 \begin{titlepage}
-  \raggedright
-  \vspace*{.2\textheight}
-  {\Large\color{accent}<<code>>\par}
-  \vspace{.5\baselineskip}
-  {\fontsize{30}{36}\selectfont <<name>>\par}
-  \vspace{1.2\baselineskip}
-  {\large Lecture notes, <<term>>\par}
-  \vfill
-  {\large <<author>>\par}
-  \vspace{.4\baselineskip}
-  {\small\color{quiet}Typeset from my handwritten notes. Last updated <<updated>>.\par
-  The web version and the original pages live at \url{<<url>>}.\par}
+  \begin{tikzpicture}[remember picture, overlay]
+    \begin{scope}[shift={(current page.south west)}]
+      \def\band{(0,0) -- (0,8.4) -- (21,10.2) -- (21,0) -- cycle}
+      \def\above{(0,8.4) -- (21,10.2) -- (21,16) -- (0,16) -- cycle}
+      \fill[coverink] \band;
+      \begin{scope}
+        \clip \above;
+        \pgfmathsetseed{<<seed>>}\notespaths{accent}
+        \fill[white, path fading=south] (0,8.4) rectangle (21,16.1);
+      \end{scope}
+      \begin{scope}
+        \clip \band;
+        \pgfmathsetseed{<<seed>>}\notespaths{white}
+      \end{scope}
+    \end{scope}
+
+    \node[anchor=north, align=center] at ([yshift=-3cm]current page.north) {%
+      \IfFileExists{cover-logo.pdf}{\includegraphics[height=2.2cm]{cover-logo.pdf}\\[5mm]}{}%
+      {\small\bfseries Middle East Technical University}};
+    \node[align=flush center, text width=16cm] at ([yshift=-10.6cm]current page.north) {%
+      {\small\bfseries <<code>>, lecture notes}\\[4mm]
+      {\fontsize{34}{41}\selectfont\itshape <<name>>\par}\vspace{4mm}
+      {\large <<term>>}};
+    \node[align=center] at ([yshift=-14.6cm]current page.north) {%
+      {\small\bfseries Notes by}\\[1.5mm]{\large <<author>>}};
+    \node[align=center, text=white] at ([yshift=3cm]current page.south) {%
+      Ankara \textbar{} Last updated <<updated>>\\[2mm]
+      {\footnotesize\hypersetup{urlcolor=white!70!coverink}\url{<<url>>}}};
+  \end{tikzpicture}
 \end{titlepage}
 
+\frontmatter
 \tableofcontents
+\mainmatter
 
 <<body>>
 
