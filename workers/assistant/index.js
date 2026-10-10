@@ -76,24 +76,27 @@ async function loadIndex() {
   return index;
 }
 
+// Sections that share the question's words, best first. The visitor's own
+// page breaks ties but never qualifies a section on its own. The about page
+// always rides along as context, so "who is Burak" works in any wording, and
+// becomes the source only when nothing else matched.
 function retrieve(chunks, question, page) {
   const words = terms(question);
   const scored = chunks
     .map((c) => {
-      let score = c.url.split("#")[0] === page ? 2 : 0;
-      for (const w of words) score += c.ft.includes(w) ? 3 : c.fx.includes(w) ? 1 : 0;
-      return { c, score };
+      let hits = 0;
+      for (const w of words) hits += c.ft.includes(w) ? 3 : c.fx.includes(w) ? 1 : 0;
+      return { c, score: hits && hits + (c.url.split("#")[0] === page ? 2 : 0) };
     })
     // Two hits is enough: the notes are English, so a Turkish question often
     // shares only its technical terms with them.
     .filter((s) => s.score >= 2)
     .sort((a, b) => b.score - a.score);
   const best = scored[0]?.score ?? 0;
-  const picked = scored.filter((s) => s.score >= best * 0.5).slice(0, 4).map((s) => s.c);
-  // Who Burak is should always be answerable, whatever the wording.
+  const matched = scored.filter((s) => s.score >= best * 0.5).slice(0, 4).map((s) => s.c);
   const about = chunks.find((c) => c.url.startsWith("/about/"));
-  if (about && !picked.includes(about)) picked.push(about);
-  return picked;
+  const context = about && !matched.includes(about) ? [...matched, about] : matched;
+  return { matched, context };
 }
 
 const json = (body, status, cors) =>
@@ -124,14 +127,15 @@ async function ask(request, env, cors) {
     .map((m) => ({ role: m.role, content: clean(m.content, 600) }))
     .filter((m) => m.content && !(m.role === "user" && BLOCKED.test(m.content)));
 
-  let chunks;
+  let found;
   try {
-    chunks = retrieve(await loadIndex(), [question, ...history.filter((m) => m.role === "user").map((m) => m.content)].join(" "), page);
+    found = retrieve(await loadIndex(), [question, ...history.filter((m) => m.role === "user").map((m) => m.content)].join(" "), page);
   } catch {
     return json({ error: "unavailable" }, 503, cors);
   }
-  const excerpts = chunks.map((c, i) => `[${i + 1}] ${c.title} (${c.url})\n${c.text}`).join("\n\n").slice(0, 7000);
-  const sources = [...new Map(chunks.filter((c) => !c.url.startsWith("/about/") || chunks.length === 1).map((c) => [c.url.split("#")[0], { title: c.title, url: c.url }])).values()].slice(0, 3);
+  const excerpts = found.context.map((c, i) => `[${i + 1}] ${c.title} (${c.url})\n${c.text}`).join("\n\n").slice(0, 7000);
+  const cited = found.matched.length ? found.matched : found.context;
+  const sources = [...new Map(cited.map((c) => [c.url.split("#")[0], { title: c.title, url: c.url }])).values()].slice(0, 3);
 
   let stream;
   try {

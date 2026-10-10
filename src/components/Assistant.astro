@@ -439,6 +439,11 @@ const copy = {
     font: 380 16px/1.3 var(--font-serif);
   }
 
+  /* the surface shows focus as a whole; global.css would also ring the field */
+  .ask-bar input:focus {
+    box-shadow: none;
+  }
+
   .ask-bar input::placeholder {
     color: var(--text-muted);
   }

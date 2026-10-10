@@ -42,7 +42,11 @@ const index = JSON.parse(fs.readFileSync("dist/assistant-index.json", "utf8")).c
   url, title, text, ft: fold(title), fx: fold(text),
 }));
 const hits = retrieve(index, "What is a stochastic process?", "/");
-assert.ok(retrieve(index, "Stokastik süreç nedir, fixed omega ne demek?", "/").some((c) => c.url.startsWith("/courses/stat497/")), "Turkish question should find the notes");
-assert.ok(hits.some((c) => c.url.startsWith("/courses/stat497/")), "course notes should come back for a course question");
-assert.ok(hits.some((c) => c.url.startsWith("/about/")), "the about page is always included");
+assert.ok(hits.matched.some((c) => c.url.startsWith("/courses/stat497/")), "course notes should come back for a course question");
+assert.ok(hits.context.some((c) => c.url.startsWith("/about/")), "the about page always rides along as context");
+assert.ok(retrieve(index, "Stokastik süreç nedir, fixed omega ne demek?", "/").matched.some((c) => c.url.startsWith("/courses/stat497/")), "Turkish question should find the notes");
+// Being on a page must not pull in its sections when nothing matches.
+const who = retrieve(index, "Burak kimdir?", "/courses/stat497/");
+assert.equal(who.matched.length, 0, "no section matches 'kimdir'");
+assert.ok(who.context.length === 1 && who.context[0].url.startsWith("/about/"), "falls back to the about page alone");
 console.log("assistant checks passed");
