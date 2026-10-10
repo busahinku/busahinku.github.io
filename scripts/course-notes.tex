@@ -15,33 +15,25 @@
 \definecolor{defbg}{HTML}{EAF0F7}
 \definecolor{examplebg}{HTML}{F3F4F6}
 \definecolor{keybg}{HTML}{FBF3E4}
+\definecolor{keyrule}{HTML}{C9963F}
 \definecolor{cautionbg}{HTML}{F9E9E7}
 \definecolor{caution}{HTML}{9B2C2C}
 \definecolor{coverink}{HTML}{0F2742}
+\definecolor{covergold}{HTML}{E3B261}
 \definecolor{quiet}{HTML}{6B7280}
 \usepackage[framed, definitionbackground=defbg, examplebackground=examplebg]{kaotheorems}
 \usepackage{kaorefs}
 \usepackage{booktabs,tabularx,array}
 \usepackage{luacolor,lua-ul}
 \usepackage{tikz}
-\usetikzlibrary{fadings}
-% 46 faint sample paths and one realised path (#1) across the cover. Called
-% twice with the same seed, so the paths line up across the band's edge.
-\newcommand*{\notespaths}[1]{%
-  \foreach \i in {1,...,46}{%
-    \pgfmathsetmacro{\shade}{25+50*rnd}%
-    \draw[accent!\shade!white, opacity=.4, line width=.45pt, line join=round]
-      (-.2,{10.2+1.2*rand}) \foreach \x in {1,...,215}{ -- ++(.1,{.22*rand}) };}%
-  \draw[#1, line width=1.5pt, line join=round]
-    (-.2,10.2) \foreach \x in {1,...,215}{ -- ++(.1,{.22*rand}) };}
 \LuaULSetHighLightColor{keybg}
 \newcommand*{\notesmark}[1]{\highLight{#1}}
 \newcommand*{\notesstrike}[1]{\strikeThrough{#1}}
 \newcolumntype{L}{>{\raggedright\arraybackslash}X}
 \hypersetup{colorlinks, linkcolor=accent, urlcolor=accent}
+% Bold terms in the notes are indexed by the converter; the index closes the book.
+\makeindex[columns=2, title=Index, intoc]
 
-% Weeks are chapters. The margin carries "Week" over the big numeral and,
-% below the heading, that week's own contents.
 % A week opens with "Week" over the big numeral in the margin and, under the
 % heading, that week's own contents. kaobook resets the chapter style at
 % \mainmatter, so the numeral format is applied per chapter here.
@@ -64,58 +56,101 @@
   before upper={\textbf{\notesname{#1}{Key idea.}}\enspace}}
 \newtcolorbox{caution}[1][]{tcbkao, colback=cautionbg,
   before upper={\textbf{\textcolor{caution}{\notesname{#1}{Caution.}}}\enspace}}
-\newtcolorbox{selfcheck}[1]{tcbkao, colback=examplebg,
-  before upper={\textbf{Check.}\enspace #1\par\smallskip\textit{Answer.}\enspace}}
 % Side notes, like the sticky notes on the handwritten page, go in the margin.
 \NewDocumentEnvironment{aside}{o +b}
   {\marginnote{\vspace{.5\baselineskip}\raggedright\hyphenpenalty=10000\IfValueT{#1}{\textbf{#1}\enspace}#2}}{}
 \newcommand*{\notesbreak}{\par\medskip\noindent\hfil\rule{.25\linewidth}{.4pt}\hfil\par\medskip}
+
+% The week's key ideas again, gathered by the converter before its exercises.
+\newtcolorbox{notesrecap}{tcbkao, colback=keybg, borderline west={2pt}{0pt}{keyrule},
+  before upper={\textbf{Key points of the week}\par\smallskip}}
+
+% Exercises are numbered within the week and answered at the back of the book;
+% each links to its answer and each answer links back.
+\newcounter{notesexercise}[chapter]
+\renewcommand*{\thenotesexercise}{\thechapter.\arabic{notesexercise}}
+\newtcolorbox{notesexercise}[1]{tcbkao, colback=examplebg,
+  before upper={\refstepcounter{notesexercise}\label{#1}\textbf{Exercise~\thenotesexercise.}\enspace},
+  after upper={\par\smallskip\hfill{\small\hyperref[#1-answer]{\color{quiet}Answer on page~\pageref*{#1-answer}}}}}
+\newcommand{\notesanswers}[1]{%
+  \chapter*{Answers to the exercises}\addcontentsline{toc}{chapter}{Answers to the exercises}#1}
+\newcommand{\notesanswer}[2]{%
+  \par\noindent\textbf{\hyperref[#1]{Exercise~\ref*{#1}}}\label{#1-answer}\enspace#2\par\medskip}
+
+% A small chip in a block's own colour, for the reading guide.
+\newcommand*{\notesswatch}[2]{\tcbox[on line, colback=#1, colframe=#1, boxrule=0pt, sharp corners,
+  boxsep=0pt, left=4pt, right=4pt, top=2pt, bottom=2pt]{\small #2}}
 
 \begin{document}
 
 \title[<<title>>]{<<name>>}
 \author[<<author>>]{<<author>>}
 
-% Cover. The bottom of the page is a tilted band of random-walk sample paths,
-% one realised path picked out; above the band the same paths run on and fade
-% into the paper. The walks are seeded from the course, so a course keeps its
-% cover. Drop a logo at scripts/cover-logo.pdf and it sits above the university.
+% Cover. Ink-blue, with the dot grid of the notebook the notes are written in.
+% Faint sample paths of a random walk and one realised path in gold: week 1 in
+% a picture. The walks are seeded from the course, so a course keeps its cover.
 \begin{titlepage}
   \begin{tikzpicture}[remember picture, overlay]
+    \fill[coverink] (current page.south west) rectangle (current page.north east);
     \begin{scope}[shift={(current page.south west)}]
-      \def\band{(0,0) -- (0,8.4) -- (21,10.2) -- (21,0) -- cycle}
-      \def\above{(0,8.4) -- (21,10.2) -- (21,16) -- (0,16) -- cycle}
-      \fill[coverink] \band;
-      \begin{scope}
-        \clip \above;
-        \pgfmathsetseed{<<seed>>}\notespaths{accent}
-        \fill[white, path fading=south] (0,8.4) rectangle (21,16.1);
-      \end{scope}
-      \begin{scope}
-        \clip \band;
-        \pgfmathsetseed{<<seed>>}\notespaths{white}
-      \end{scope}
+      \foreach \x in {1,...,20} \foreach \y in {1,...,29} \fill[white, opacity=.07] (\x,\y) circle (.6pt);
+      \pgfmathsetseed{<<seed>>}
+      \foreach \i in {1,...,9}{
+        \draw[white, opacity=.13, line width=.5pt, line join=round]
+          (1.5,8.5) \foreach \s in {1,...,300}{ -- ++(.06,{.16*rand}) };}
+      \draw[covergold, line width=1.3pt, line join=round]
+        (1.5,8.5) \foreach \s in {1,...,300}{ -- ++(.06,{.16*rand}) };
+      \fill[covergold] (1.5,8.5) circle (2pt);
     \end{scope}
-
-    \node[anchor=north, align=center] at ([yshift=-3cm]current page.north) {%
-      \IfFileExists{cover-logo.pdf}{\includegraphics[height=2.2cm]{cover-logo.pdf}\\[5mm]}{}%
-      {\small\bfseries Middle East Technical University}};
-    \node[align=flush center, text width=16cm] at ([yshift=-10.6cm]current page.north) {%
-      {\small\bfseries <<code>>, lecture notes}\\[4mm]
-      {\fontsize{34}{41}\selectfont\itshape <<name>>\par}\vspace{4mm}
-      {\large <<term>>}};
-    \node[align=center] at ([yshift=-14.6cm]current page.north) {%
-      {\small\bfseries Notes by}\\[1.5mm]{\large <<author>>}};
-    \node[align=center, text=white] at ([yshift=3cm]current page.south) {%
-      Ankara \textbar{} Last updated <<updated>>\\[2mm]
-      {\footnotesize\hypersetup{urlcolor=white!70!coverink}\url{<<url>>}}};
+    % A narrow measure keeps a long title to balanced lines.
+    \node[anchor=north west, align=flush left, text width=14cm, text=white]
+        at ([xshift=2cm, yshift=-2.6cm]current page.north west) {%
+      {\large\color{covergold}<<code>>}\\[1.2cm]
+      {\fontsize{54}{58}\selectfont\hyphenpenalty=10000 <<name>>\par}\vspace{.7cm}
+      {\Large\color{white!70!coverink}Lecture notes, <<term>>}};
+    \node[anchor=south west, align=flush left, text width=12cm, text=white!75!coverink]
+        at ([xshift=2cm, yshift=2.2cm]current page.south west) {%
+      {\large\color{white}<<author>>}\\[1mm]Middle East Technical University, Ankara};
+    \node[anchor=south east, text=white!55!coverink]
+        at ([xshift=-2cm, yshift=2.2cm]current page.south east) {%
+      \small\hypersetup{urlcolor=white!55!coverink}\href{<<url>>}{<<site>>}};
   \end{tikzpicture}
 \end{titlepage}
 
 \frontmatter
+
+\chapter*{How to read these notes}
+These are my notes from <<code>>, typeset from the pages I write in class and
+updated as the term goes on. Each week is a chapter, and the margin at the
+start of a week lists what it covers.
+
+\medskip
+{\raggedright % chips cannot stretch, so let the line end where it ends
+\notesswatch{defbg}{Definitions} are numbered within the week.
+\notesswatch{examplebg}{Examples and exercises} are grey.
+\notesswatch{keybg}{Key ideas} are amber, and
+\notesswatch{cautionbg}{\color{caution}points to be careful about} are red.
+Asides from the margin of my notebook stay in the margin.\par}
+
+\medskip
+Every week closes with its key points and a few exercises. The answers are at
+the back, followed by an index of the terms in bold.
+
+\vfill
+{\small\color{quiet}
+Last updated <<updated>>. The web version, the handwritten originals and an
+assistant that answers questions about these notes are at \href{<<url>>}{<<site>>}.\par
+\medskip
+Typeset with Lua\LaTeX{} and the kaobook class, set in Libertinus.\par}
+
 \tableofcontents
+<<lists>>
 \mainmatter
 
 <<body>>
+
+\backmatter
+<<answers>>
+\printindex
 
 \end{document}

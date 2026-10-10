@@ -51,6 +51,13 @@ The PDF converter understands exactly this markup. Anything else is dropped from
 - `<ConceptCheck question="...">answer</ConceptCheck>`.
 - Callout titles and questions are plain text. No `$` math in them.
 
+The PDF builds more from this markup, so use it as intended:
+
+- `tip` callouts are repeated in the week's "Key points" box before its exercises. Use `tip` only for things worth remembering.
+- `ConceptCheck` questions become numbered exercises; their answers go to "Answers to the exercises" at the back.
+- **Bold** marks a term being introduced and puts it in the index. Do not bold for emphasis; use *italic* for that.
+- `definition` callouts are listed on the "Definitions" page after the contents.
+
 From handwriting to markup: highlighter becomes `==...==`, wavy or straight underlines on a term become `*italic*` where the term is introduced, Turkish glosses stay in brackets and italics (`(*olası yörünge*)`), "(.ppt)" style source notes are dropped.
 
 Site copy rules apply here too: no em dashes, and no uppercase letter-spaced labels.

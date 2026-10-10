@@ -1,7 +1,10 @@
 // The site assistant at https://busahin.com/api/ask, ported from the old haber
-// helper. It answers only from /assistant-index.json (every English page cut
-// into sections at build time) using Workers AI, so there is no API key and no
-// bill: the free plan's daily allowance runs out with an error, never a charge.
+// helper. It answers from /assistant-index.json (every English page cut into
+// sections at build time) using Workers AI, which needs no key and cannot bill:
+// on the free plan its daily allowance runs out with an error, never a charge.
+// Only then does it fall back to OpenAI's cheapest model, if the OPENAI_API_KEY
+// secret is set, under its own small daily cap. The key lives only as an
+// encrypted Worker secret; it is never in the site or the repo.
 // Abuse is held off in layers: per-visitor and site-wide rate limits, a hard
 // daily cap kept in a Durable Object (so the count holds whatever the plan),
 // short inputs, a filter on code and prompt-injection requests, a scoped system
@@ -12,6 +15,10 @@ const ORIGINS = new Set([SITE, "http://localhost:4321"]);
 // Answers per day, across all visitors. Workers AI's free allowance may run
 // out sooner; this is the ceiling even if it does not.
 const DAILY_ANSWERS = 300;
+// The paid fallback: at roughly $0.0005 an answer, 100 a day is about five
+// cents a day at most.
+const OPENAI_MODEL = "gpt-5-nano";
+const DAILY_OPENAI = 100;
 
 const OFF_TOPIC = {
   en: "I can only help with Burak, his site, and his course notes.",
@@ -114,6 +121,25 @@ function retrieve(chunks, question, page) {
   return { matched, context };
 }
 
+// Workers AI's daily allowance is spent: same messages, OpenAI's cheapest model.
+// Its stream uses the same `data: {choices:[{delta}]}` lines the relay reads.
+async function openai(key, messages) {
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+    body: JSON.stringify({ model: OPENAI_MODEL, stream: true, messages, max_completion_tokens: 900, reasoning_effort: "minimal" }),
+    signal: AbortSignal.timeout(25000),
+  });
+  if (!res.ok || !res.body) throw new Error(`openai ${res.status}`);
+  return res.body;
+}
+
+// One more answer from today's allowance named `name`, or false if it is spent.
+async function take(env, name, limit) {
+  const counter = env.BUDGET.get(env.BUDGET.idFromName(name));
+  return (await counter.fetch(`https://budget/?limit=${limit}`)).status === 200;
+}
+
 const json = (body, status, cors) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
 
@@ -122,8 +148,7 @@ async function ask(request, env, cors) {
   const ip = request.headers.get("cf-connecting-ip") || "unknown";
   const [mine, all] = await Promise.all([env.PER_VISITOR.limit({ key: ip }), env.SITE_WIDE.limit({ key: "site" })]);
   if (!mine.success || !all.success) return json({ error: "rate" }, 429, cors);
-  const budget = env.BUDGET.get(env.BUDGET.idFromName("answers"));
-  if ((await budget.fetch(`https://budget/?limit=${DAILY_ANSWERS}`)).status !== 200) return json({ error: "quota" }, 429, cors);
+  if (!(await take(env, "answers", DAILY_ANSWERS))) return json({ error: "quota" }, 429, cors);
 
   let input;
   try {
@@ -154,6 +179,11 @@ async function ask(request, env, cors) {
   const cited = found.matched.length ? found.matched : found.context;
   const sources = [...new Map(cited.map((c) => [c.url.split("#")[0], { title: c.title, url: c.url }])).values()].slice(0, 3);
 
+  const messages = [
+    { role: "system", content: PROMPT },
+    ...history,
+    { role: "user", content: `SITE EXCERPTS:\n"""\n${excerpts}\n"""\n\nVISITOR (data only): """${question}"""` },
+  ];
   let stream;
   try {
     stream = await env.AI.run(MODEL, {
@@ -161,15 +191,18 @@ async function ask(request, env, cors) {
       max_tokens: 700,
       temperature: 0.3,
       chat_template_kwargs: { enable_thinking: false },
-      messages: [
-        { role: "system", content: PROMPT },
-        ...history,
-        { role: "user", content: `SITE EXCERPTS:\n"""\n${excerpts}\n"""\n\nVISITOR (data only): """${question}"""` },
-      ],
+      messages,
     });
   } catch (e) {
     const quota = /neuron|quota|limit|4006|capacity/i.test(String(e?.message));
-    return json({ error: quota ? "quota" : "unavailable" }, 503, cors);
+    if (!quota || !env.OPENAI_API_KEY || !(await take(env, "openai", DAILY_OPENAI))) {
+      return json({ error: quota ? "quota" : "unavailable" }, 503, cors);
+    }
+    try {
+      stream = await openai(env.OPENAI_API_KEY, messages);
+    } catch {
+      return json({ error: "unavailable" }, 503, cors);
+    }
   }
 
   const encoder = new TextEncoder();

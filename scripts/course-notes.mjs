@@ -106,10 +106,17 @@ function build() {
     term: term(new Date(meta.pubDate)),
     updated: date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" }),
     url: `https://busahin.com/courses/${slug}/`,
+    site: `busahin.com/courses/${slug}`,
     // Same course, same cover art: the random walks are seeded from the slug.
     seed: [...slug].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 99991, 7),
     body: toLatex(body),
   };
+  fill.lists = fill.body.includes("\\begin{definition}")
+    ? "\\listoftheorems[ignoreall, show={definition}, title={Definitions}]"
+    : "";
+  fill.answers = answers.length
+    ? `\\notesanswers{\n${answers.map((a) => `\\notesanswer{${a.id}}{${a.answer}}`).join("\n")}\n}`
+    : "";
   const template = fs.readFileSync("scripts/course-notes.tex", "utf8");
   fs.writeFileSync(`${tex}/notes.tex`, template.replace(/<<(\w+)>>/g, (_, k) => fill[k]));
   // Stamp the PDF with the notes' own date, not the build time, so an unchanged
@@ -166,11 +173,18 @@ const CALLOUT_ENV = {
 };
 
 let footnotes = new Map();
+// Gathered while converting: each week's key ideas (repeated in a recap before
+// its exercises) and every exercise answer (printed at the back of the book).
+let recap = [];
+let answers = [];
 
 function toLatex(source) {
   const tree = unified().use(remarkParse).use(remarkMdx).use(remarkGfm).use(remarkMath).parse(source);
   footnotes = new Map(tree.children.filter((n) => n.type === "footnoteDefinition").map((n) => [n.identifier, n]));
-  return blocks(tree.children);
+  recap = [];
+  answers = [];
+  const body = blocks(tree.children);
+  return [body, flushRecap()].filter(Boolean).join("\n\n");
 }
 
 function blocks(nodes) {
@@ -213,8 +227,12 @@ function node(n) {
   switch (n.type) {
     case "text":
       return text(n.value);
-    case "strong":
-      return `\\textbf{${inline(n.children)}}`;
+    case "strong": {
+      // A short bold phrase is a term being introduced: it goes in the index.
+      const term = plain(n).trim();
+      const indexed = /^[\p{L}\p{N}' -]{2,40}$/u.test(term) && term.split(/\s+/).length <= 4;
+      return `\\textbf{${inline(n.children)}}${indexed ? `\\index{${term.toLowerCase()}}` : ""}`;
+    }
     case "emphasis":
       return `\\emph{${inline(n.children)}}`;
     case "delete":
@@ -273,10 +291,20 @@ function heading(n) {
   let title = inline(kids);
   // Math in a heading cannot go into the PDF bookmarks, so give them plain text.
   if (title.includes("$")) title = `\\texorpdfstring{${title}}{${esc(plain({ children: kids }).trim())}}`;
+  // The week's key points come before its exercises, or before the next week.
+  const before = n.depth <= 2 || /^(check yourself|exercises)/i.test(plain(n)) ? flushRecap() : "";
+  const pre = before ? `${before}\n\n` : "";
   // Each template decides what opening a week looks like.
-  if (n.depth <= 2) return week ? `\\notesweek{${week}}{${title}}` : `\\chapter{${title}}`;
+  if (n.depth <= 2) return pre + (week ? `\\notesweek{${week}}{${title}}` : `\\chapter{${title}}`);
   const cmd = ["section", "subsection", "subsubsection"][n.depth - 3] ?? "paragraph";
-  return `\\${cmd}{${title}}`;
+  return `${pre}\\${cmd}{${title}}`;
+}
+
+function flushRecap() {
+  if (!recap.length) return "";
+  const out = `\\begin{notesrecap}\n\\begin{itemize}\n${recap.map((r) => `\\item ${r}`).join("\n")}\n\\end{itemize}\n\\end{notesrecap}`;
+  recap = [];
+  return out;
 }
 
 function list(n) {
@@ -325,10 +353,14 @@ function component(n) {
     // elsewhere the title is the label, so it needs the full stop the label had.
     const numbered = env === "definition" || env === "example";
     const title = a.title && (numbered ? a.title : a.title.replace(/[^.?!:]$/, "$&."));
-    return `\\begin{${env}}${title ? `[{${text(title)}}]` : ""}\n${blocks(n.children)}\n\\end{${env}}`;
+    const content = blocks(n.children);
+    if (env === "keyidea") recap.push(content);
+    return `\\begin{${env}}${title ? `[{${text(title)}}]` : ""}\n${content}\n\\end{${env}}`;
   }
   if (n.name === "ConceptCheck") {
-    return `\\begin{selfcheck}{${text(a.question ?? "")}}\n${blocks(n.children)}\n\\end{selfcheck}`;
+    const id = `exercise-${answers.length + 1}`;
+    answers.push({ id, answer: blocks(n.children) });
+    return `\\begin{notesexercise}{${id}}\n${text(a.question ?? "")}\n\\end{notesexercise}`;
   }
   console.warn(`left out of the PDF: <${n.name}>`);
   return "";
