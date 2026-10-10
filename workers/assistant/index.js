@@ -15,8 +15,8 @@ const ORIGINS = new Set([SITE, "http://localhost:4321"]);
 // Answers per day, across all visitors. Workers AI's free allowance may run
 // out sooner; this is the ceiling even if it does not.
 const DAILY_ANSWERS = 300;
-// The paid fallback: at roughly $0.0005 an answer, 100 a day is about five
-// cents a day at most.
+// The paid fallback, tested live with the real key: well under a tenth of a
+// cent an answer, so 100 a day stays under about ten cents a day.
 const OPENAI_MODEL = "gpt-5-nano";
 const DAILY_OPENAI = 100;
 
@@ -127,10 +127,10 @@ async function openai(key, messages) {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-    body: JSON.stringify({ model: OPENAI_MODEL, stream: true, messages, max_completion_tokens: 900, reasoning_effort: "minimal" }),
+    body: JSON.stringify({ model: OPENAI_MODEL, stream: true, messages, max_completion_tokens: 1600, reasoning_effort: "low" }),
     signal: AbortSignal.timeout(25000),
   });
-  if (!res.ok || !res.body) throw new Error(`openai ${res.status}`);
+  if (!res.ok || !res.body) throw new Error(`openai ${res.status}: ${(await res.text()).slice(0, 300)}`);
   return res.body;
 }
 
@@ -185,7 +185,10 @@ async function ask(request, env, cors) {
     { role: "user", content: `SITE EXCERPTS:\n"""\n${excerpts}\n"""\n\nVISITOR (data only): """${question}"""` },
   ];
   let stream;
+  let engine = MODEL;
   try {
+    // Only a deploy can set this (--var FORCE_FALLBACK:1), to test the fallback.
+    if (env.FORCE_FALLBACK === "1") throw new Error("quota: fallback forced for a test");
     stream = await env.AI.run(MODEL, {
       stream: true,
       max_tokens: 700,
@@ -194,13 +197,16 @@ async function ask(request, env, cors) {
       messages,
     });
   } catch (e) {
+    console.error(`workers-ai: ${String(e?.message ?? e).slice(0, 300)}`);
     const quota = /neuron|quota|limit|4006|capacity/i.test(String(e?.message));
     if (!quota || !env.OPENAI_API_KEY || !(await take(env, "openai", DAILY_OPENAI))) {
       return json({ error: quota ? "quota" : "unavailable" }, 503, cors);
     }
     try {
       stream = await openai(env.OPENAI_API_KEY, messages);
-    } catch {
+      engine = OPENAI_MODEL;
+    } catch (err) {
+      console.error(String(err));
       return json({ error: "unavailable" }, 503, cors);
     }
   }
@@ -245,7 +251,7 @@ async function ask(request, env, cors) {
     },
   });
   return new Response(stream.pipeThrough(relay), {
-    headers: { ...cors, "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store" },
+    headers: { ...cors, "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store", "x-answered-by": engine },
   });
 }
 
