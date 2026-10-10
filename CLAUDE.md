@@ -38,6 +38,8 @@ Shared building blocks: `ArchiveList.astro` (blog/projects/courses listings), `M
 
 Nothing heavy goes in git. PDFs and photo originals are uploaded to the R2 bucket `busahin-files`, served at `https://files.busahin.com`, through `scripts/r2.mjs` (wrangler, already logged in on this Mac). Each upload is recorded in `src/data/files.json` with its size and a content hash, and the site links files with `remoteFile(key)` from `src/utils/files.ts`, which puts the hash in the URL so a changed file never comes back stale from a cache. A file that is not in the manifest simply is not linked.
 
+The bucket has no public URL of its own (r2.dev is off). Its only public door is the Worker in `workers/files` on `files.busahin.com`: it caches at the edge, ignores query strings other than `?v=`, and allows only GET and HEAD. On the Workers free plan it stops at 100,000 requests a day with error 1027, which caps R2 reads far below the 10 million free per month, so traffic can never turn into a bill. Keep it that way: never connect a custom domain or r2.dev directly to the bucket. Deploy changes with `npx wrangler@4.146.0 deploy --config workers/files/wrangler.toml`.
+
 Photos: `npm run photo -- <original.jpg>` uploads the original for the detail view (a JPEG is rewritten losslessly by jpegtran: same pixels and colour profile, no EXIF or GPS) and writes a 2400px working copy to `src/assets/photos`, which is what the wall and Astro's WebP renditions are made from. It prints the `photos.ts` entry; `original:` is the R2 key the viewer swaps in once it has loaded.
 
 ## Course notes
