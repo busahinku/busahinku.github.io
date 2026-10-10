@@ -189,6 +189,9 @@ const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
 
         <!-- Comments section -->
         <CommentSection slug={slug} lang={lang} />
+
+        <!-- inside the article so it stops above the footer -->
+        <Assistant lang={lang} />
       </article>
 
       <!-- Right: Empty spacer for symmetry -->
@@ -196,7 +199,6 @@ const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
     </div>
 
     <Footer lang={lang} />
-    <Assistant lang={lang} />
   </body>
 </html>
 

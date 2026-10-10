@@ -1,5 +1,5 @@
 ---
-import { ArrowUpRight, FileText, NotebookPen } from "@lucide/astro";
+import { Download } from "@lucide/astro";
 import { useTranslations, type Lang } from "../i18n/translations";
 import { remoteFile } from "../utils/files";
 
@@ -12,36 +12,35 @@ const { slug, lang } = Astro.props;
 const t = useTranslations(lang);
 
 // Both PDFs are uploaded to R2 by `npm run notes` (see .claude/skills/course-notes);
-// a course without them simply shows nothing here.
-const number = (n: number) =>
-  n.toLocaleString(lang === "tr" ? "tr-TR" : "en-US", { maximumFractionDigits: 1 });
+// a course without them simply shows nothing here. Same button language as the
+// "Source code / Live demo" links on project pages: the typeset copy is primary.
 const files = [
-  { file: "notes.pdf", label: t("courses.typeset"), sub: t("courses.typesetSub"), Icon: FileText },
-  { file: "handwritten.pdf", label: t("courses.handwritten"), sub: t("courses.handwrittenSub"), Icon: NotebookPen },
+  { file: "notes.pdf", label: t("courses.typeset"), primary: true },
+  { file: "handwritten.pdf", label: t("courses.handwritten"), primary: false },
 ].flatMap(({ file, ...rest }) => {
   const remote = remoteFile(`courses/${slug}/${file}`);
   if (!remote) return [];
   const kb = remote.bytes / 1024;
-  const size = kb < 1024 ? `${number(Math.round(kb))} KB` : `${number(kb / 1024)} MB`;
-  const meta = ["PDF", remote.pages && `${remote.pages} ${t("courses.pages")}`, size].filter(Boolean).join(" · ");
-  return [{ href: remote.url, meta, ...rest }];
+  const size = kb < 1024 ? `${Math.round(kb)} KB` : `${(kb / 1024).toFixed(1)} MB`;
+  return [{ href: remote.url, pages: remote.pages, size, ...rest }];
 });
 ---
 
 {
   files.length > 0 && (
     <div class="course-files">
-      {files.map(({ href, label, sub, meta, Icon }) => (
-        <a class="file-card" href={href} target="_blank" rel="noopener">
-          <span class="file-icon" aria-hidden="true">
-            <Icon size={20} />
-          </span>
-          <span class="file-text">
-            <span class="file-title">{label}</span>
-            <span class="file-sub">{sub}</span>
-            <span class="file-meta">{meta}</span>
-          </span>
-          <ArrowUpRight size={18} class="file-go" aria-hidden="true" />
+      {files.map(({ href, label, pages, size, primary }) => (
+        <a
+          class:list={["file-button", { primary }]}
+          href={href}
+          target="_blank"
+          rel="noopener"
+          title={`PDF, ${size}`}
+          aria-label={[label, "PDF", pages && `${pages} ${t("courses.pages")}`, size].filter(Boolean).join(", ")}
+        >
+          <Download size={16} aria-hidden="true" />
+          {label}
+          {pages && <span class="file-pages">{`${pages} ${t("courses.pages")}`}</span>}
         </a>
       ))}
     </div>
@@ -50,106 +49,62 @@ const files = [
 
 <style>
   .course-files {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem;
-    margin-top: 1.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+    margin-top: 1.5rem;
   }
 
-  .file-card {
-    position: relative;
-    display: flex;
-    align-items: flex-start;
-    gap: 0.875rem;
-    padding: 1rem 2.5rem 1rem 1rem;
+  .file-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.5rem;
+    padding: 0.5rem 1rem;
     border: 1px solid var(--border);
-    border-radius: 0.875rem;
+    border-radius: 0.375rem;
     background: var(--bg-secondary);
-    color: inherit;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
     text-decoration: none;
     transition:
       border-color 0.2s ease,
-      background-color 0.2s ease,
-      transform 0.2s ease;
-  }
-
-  .file-card:hover {
-    border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
-    background: color-mix(in srgb, var(--accent) 4%, var(--bg-secondary));
-  }
-
-  .file-card:active {
-    transform: scale(0.985);
-  }
-
-  /* concentric with the card: its radius minus the padding */
-  .file-icon {
-    flex: none;
-    display: grid;
-    place-items: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 0.625rem;
-    background: var(--bg-primary);
-    border: 1px solid var(--border);
-    color: var(--accent);
-  }
-
-  .file-text {
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-    min-width: 0;
-  }
-
-  .file-title {
-    font-size: 0.9375rem;
-    font-weight: 600;
-    line-height: 1.3;
-    color: var(--text-primary);
-  }
-
-  .file-sub {
-    font-size: 0.8125rem;
-    line-height: 1.4;
-    color: var(--text-secondary);
-  }
-
-  .file-meta {
-    margin-top: 0.25rem;
-    font-size: 0.75rem;
-    font-variant-numeric: tabular-nums;
-    color: var(--text-muted);
-  }
-
-  .file-card :global(.file-go) {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    color: var(--text-muted);
-    transition:
       color 0.2s ease,
-      transform 0.2s ease;
+      transform 0.16s ease-out;
   }
 
-  .file-card:hover :global(.file-go) {
-    color: var(--accent);
-    transform: translate(2px, -2px);
+  .file-button.primary {
+    background: var(--text-primary);
+    border-color: var(--text-primary);
+    color: var(--bg-primary);
   }
 
-  @media (max-width: 520px) {
-    .course-files {
-      grid-template-columns: 1fr;
+  .file-pages {
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.6;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .file-button:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .file-button.primary:hover {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: var(--bg-primary);
     }
   }
 
-  /* E-ink drops the accent, so hover needs a line, not a tint. */
-  :global([data-theme="eink"]) .file-card {
-    background: #ffffff;
-    border-color: #000000;
+  .file-button:active {
+    transform: scale(0.97);
   }
 
-  :global([data-theme="eink"]) .file-card:hover .file-title {
+  /* E-ink: the filled button keeps its fill; hover is an underline. */
+  :global([data-theme="eink"]) .file-button:hover {
     text-decoration: underline;
   }
 </style>

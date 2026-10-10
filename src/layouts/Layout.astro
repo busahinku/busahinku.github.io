@@ -45,10 +45,10 @@ const isHomePage = Astro.url.pathname === "/" || Astro.url.pathname === "/tr/";
             : "container"}
     >
       <slot />
+      {/* inside main so it stops above the footer; /photos has no chrome at all */}
+      {!bleed && <Assistant lang={lang} />}
     </main>
     <Footer lang={lang} />
-    {/* /photos is the one page with no chrome, so no assistant either */}
-    {!bleed && <Assistant lang={lang} />}
   </body>
 </html>
 

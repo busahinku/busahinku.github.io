@@ -77,8 +77,6 @@ const copy = {
     </form>
   </div>
 </div>
-<!-- room at the end of the page, so the bar never sits on the footer -->
-<div class="ask-spacer" aria-hidden="true"></div>
 
 <script>
   // Production calls its own origin; the dev server calls the live Worker.
@@ -268,14 +266,16 @@ const copy = {
 </script>
 
 <style>
+  /* Sticky, not fixed: it rides the bottom of the screen while there is
+     content below, and comes to rest at the end of the page's content, so it
+     can never cover the footer. It must stay a child of main or the article. */
   .ask {
     --ask-ease: cubic-bezier(0.32, 0.72, 0, 1);
-    position: fixed;
+    position: sticky;
     z-index: 90;
-    left: 50%;
     bottom: max(16px, env(safe-area-inset-bottom));
-    width: min(640px, calc(100vw - 24px));
-    transform: translateX(-50%);
+    width: min(640px, 100%);
+    margin: 2.5rem auto 0;
     font-family: var(--font-serif);
   }
 
@@ -553,11 +553,6 @@ const copy = {
     transform: none;
   }
 
-  .ask-spacer {
-    height: 88px;
-    flex: none;
-  }
-
   /* on narrow screens the bar reaches the corner, so lift the back-to-top button */
   @media (max-width: 820px) {
     :global(.back-to-top) {
@@ -600,8 +595,7 @@ const copy = {
   }
 
   @media print {
-    .ask,
-    .ask-spacer {
+    .ask {
       display: none;
     }
   }
