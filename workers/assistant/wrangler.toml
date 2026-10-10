@@ -19,3 +19,12 @@ simple = { limit = 6, period = 60 }
 name = "SITE_WIDE"
 namespace_id = "4972"
 simple = { limit = 40, period = 60 }
+
+# A hard daily ceiling on answers (see DAILY_ANSWERS), counted in one place.
+[[durable_objects.bindings]]
+name = "BUDGET"
+class_name = "DailyBudget"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["DailyBudget"]

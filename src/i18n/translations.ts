@@ -149,6 +149,9 @@ export const translations = {
     'courses.category.other': 'Other',
     'courses.handwritten': 'Handwritten notes',
     'courses.typeset': 'Typeset notes',
+    'courses.handwrittenSub': 'Scanned from my notebook',
+    'courses.typesetSub': 'Clean copy, set in LaTeX',
+    'courses.pages': 'pages',
 
     // Misc
     'misc.title': 'Misc',
@@ -310,6 +313,9 @@ export const translations = {
     'courses.category.other': 'Diğer',
     'courses.handwritten': 'El yazısı notlar',
     'courses.typeset': 'LaTeX notları',
+    'courses.handwrittenSub': 'Defterimin taranmış hali',
+    'courses.typesetSub': 'LaTeX ile dizilmiş temiz kopya',
+    'courses.pages': 'sayfa',
 
     // Misc
     'misc.title': 'Diğer',

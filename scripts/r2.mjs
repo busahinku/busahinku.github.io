@@ -22,11 +22,12 @@ export function wrangler(args) {
 // manifest's total is what the bucket holds; refuse anything that would pass 9 GB.
 const STORAGE_CAP = 9 * 1024 ** 3;
 
-export function upload(key, file, contentType, cacheControl = SHORT) {
+// `extra` is stored with the entry for the site to show (a PDF's page count).
+export function upload(key, file, contentType, cacheControl = SHORT, extra = {}) {
   const data = fs.readFileSync(file);
-  const entry = { bytes: data.length, v: createHash("sha256").update(data).digest("hex").slice(0, 10) };
+  const entry = { bytes: data.length, v: createHash("sha256").update(data).digest("hex").slice(0, 10), ...extra };
   const manifest = JSON.parse(fs.readFileSync(MANIFEST, "utf8"));
-  if (manifest[key]?.v === entry.v) return manifest[key];
+  if (manifest[key]?.v === entry.v) return save(manifest, key, entry);
   const stored = Object.entries(manifest).reduce((sum, [k, e]) => sum + (k === key ? 0 : e.bytes), 0);
   if (stored + entry.bytes > STORAGE_CAP) {
     throw new Error(`Refusing to upload ${key}: R2 would hold ${((stored + entry.bytes) / 1024 ** 3).toFixed(2)} GB, over the 9 GB cap that keeps it free.`);
@@ -36,6 +37,10 @@ export function upload(key, file, contentType, cacheControl = SHORT) {
   } catch (err) {
     throw new Error(`R2 upload of ${key} failed. Is wrangler logged in (npx wrangler login)?\n${err.stderr ?? err.message}`);
   }
+  return save(manifest, key, entry);
+}
+
+function save(manifest, key, entry) {
   manifest[key] = entry;
   const sorted = Object.fromEntries(Object.entries(manifest).sort(([a], [b]) => a.localeCompare(b)));
   fs.writeFileSync(MANIFEST, JSON.stringify(sorted, null, 2) + "\n");

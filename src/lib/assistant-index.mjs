@@ -40,6 +40,7 @@ function sections(url, html) {
   if (!main) return [];
 
   const out = [];
+  let week = ""; // the h2 a section sits under, so "Week 3" finds all of week 3
   let heading = "";
   let anchor = "";
   let buffer = "";
@@ -67,7 +68,9 @@ function sections(url, html) {
     }
     if ((node.tagName === "h2" || node.tagName === "h3") && node.properties?.id) {
       flush();
-      heading = textOf(node).replace(/#$/, "").trim();
+      const text = textOf(node).replace(/#$/, "").trim();
+      if (node.tagName === "h2") week = text;
+      heading = node.tagName === "h3" && week ? `${week}: ${text}` : text;
       anchor = node.properties.id;
       return;
     }

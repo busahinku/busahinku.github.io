@@ -44,12 +44,12 @@ async function pages() {
   // recompressing a compressed file shifts pixels and would flag every page.
   const served = `${cache}/handwritten.pdf`;
   try {
-    run("gs", ["-q", "-dNOPAUSE", "-dBATCH", "-sDEVICE=pdfwrite", "-dPDFSETTINGS=/ebook", `-sOutputFile=${served}`, exportPdf]);
+    run("gs", ["-q", "-dNOPAUSE", "-dBATCH", "-sDEVICE=pdfwrite", "-dPDFSETTINGS=/ebook", "-dOmitInfoDate", "-dOmitID", "-dOmitXMP", `-sOutputFile=${served}`, exportPdf]);
     if (fs.statSync(served).size >= fs.statSync(exportPdf).size) fs.copyFileSync(exportPdf, served);
   } catch {
     fs.copyFileSync(exportPdf, served);
   }
-  upload(`courses/${slug}/handwritten.pdf`, served, "application/pdf");
+  upload(`courses/${slug}/handwritten.pdf`, served, "application/pdf", undefined, { pages: pageCount(served) });
 
   // A tiny grayscale render per page is enough to notice any added stroke.
   run("pdftoppm", ["-r", 40, "-gray", exportPdf, `${cache}/pages/h`]);
@@ -112,11 +112,21 @@ function build() {
   };
   const template = fs.readFileSync("scripts/course-notes.tex", "utf8");
   fs.writeFileSync(`${tex}/notes.tex`, template.replace(/<<(\w+)>>/g, (_, k) => fill[k]));
+  // Stamp the PDF with the notes' own date, not the build time, so an unchanged
+  // course builds to the same bytes and is not uploaded again.
+  process.env.SOURCE_DATE_EPOCH = String(Math.floor(date.getTime() / 1000));
+  process.env.FORCE_SOURCE_DATE = "1";
   latex(["-lualatex", "notes.tex"], `${tex}/notes.log`, tex);
-  const { bytes } = upload(`courses/${slug}/notes.pdf`, `${tex}/notes.pdf`, "application/pdf");
+  const { bytes } = upload(`courses/${slug}/notes.pdf`, `${tex}/notes.pdf`, "application/pdf", undefined, {
+    pages: pageCount(`${tex}/notes.pdf`),
+  });
 
   if (fs.existsSync(`${cache}/pending`)) fs.renameSync(`${cache}/pending`, pagesPath);
   console.log(`${tex}/notes.pdf (${Math.round(bytes / 1024)} KB), uploaded`);
+}
+
+function pageCount(pdf) {
+  return Number(/Pages:\s+(\d+)/.exec(run("pdfinfo", [pdf]).toString())?.[1]) || undefined;
 }
 
 function latex(args, log, cwd) {

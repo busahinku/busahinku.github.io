@@ -45,6 +45,11 @@ const hits = retrieve(index, "What is a stochastic process?", "/");
 assert.ok(hits.matched.some((c) => c.url.startsWith("/courses/stat497/")), "course notes should come back for a course question");
 assert.ok(hits.context.some((c) => c.url.startsWith("/about/")), "the about page always rides along as context");
 assert.ok(retrieve(index, "Stokastik süreç nedir, fixed omega ne demek?", "/").matched.some((c) => c.url.startsWith("/courses/stat497/")), "Turkish question should find the notes");
+// "Week 1" pulls in the whole week, in either language.
+for (const q of ["Summarize Week 1", "1. haftayı özetle", "Quiz me on week 1"]) {
+  const r = retrieve(index, q, "/courses/stat497/");
+  assert.ok(r.matched.length >= 4 && r.matched.every((c) => /Week 1:/.test(c.title)), `whole week for: ${q}`);
+}
 // Being on a page must not pull in its sections when nothing matches.
 const who = retrieve(index, "Burak kimdir?", "/courses/stat497/");
 assert.equal(who.matched.length, 0, "no section matches 'kimdir'");

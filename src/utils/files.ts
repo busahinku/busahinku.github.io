@@ -6,10 +6,11 @@ export const FILES_ORIGIN = "https://files.busahin.com";
 interface Entry {
   bytes: number;
   v: string;
+  pages?: number;
 }
 
 /** A file uploaded with scripts/r2.mjs, or undefined if it never was. */
 export function remoteFile(key: string) {
   const entry = (manifest as Record<string, Entry>)[key];
-  return entry && { url: `${FILES_ORIGIN}/${key}?v=${entry.v}`, bytes: entry.bytes };
+  return entry && { url: `${FILES_ORIGIN}/${key}?v=${entry.v}`, bytes: entry.bytes, pages: entry.pages };
 }

@@ -19,6 +19,9 @@ const copy = {
     hide: "Hide answers",
     thinking: "Writing an answer",
     empty: "I couldn't find that on the site.",
+    // {n} is the latest week on the course page
+    course: ["Summarize Week {n}", "Quiz me on Week {n}", "What does this course cover?"],
+    site: ["Who is Burak?", "What has he built?", "Which courses have notes here?"],
     errors: {
       rate: "That was a lot of questions at once. Try again in a minute.",
       quota: "The assistant has used up today's answers. It will be back tomorrow.",
@@ -35,6 +38,8 @@ const copy = {
     hide: "Yanıtları gizle",
     thinking: "Yanıt yazılıyor",
     empty: "Bunu sitede bulamadım.",
+    course: ["{n}. haftayı özetle", "{n}. haftadan bana soru sor", "Bu ders neleri kapsıyor?"],
+    site: ["Burak kimdir?", "Neler geliştirdi?", "Hangi derslerin notları var?"],
     errors: {
       rate: "Arka arkaya çok soru geldi. Bir dakika sonra yeniden deneyin.",
       quota: "Asistan bugünkü yanıt hakkını doldurdu. Yarın yeniden açılacak.",
@@ -52,6 +57,7 @@ const copy = {
     <div class="ask-flow">
       <div class="ask-flow-inner">
         <button class="ask-close" type="button" aria-label={copy.hide}><X size={16} /></button>
+        <div class="ask-suggest"></div>
         <div class="ask-log" role="log" aria-live="polite"></div>
       </div>
     </div>
@@ -91,12 +97,37 @@ const copy = {
     const input = ask.querySelector<HTMLInputElement>("input")!;
     const send = ask.querySelector<HTMLButtonElement>(".ask-send")!;
     const log = ask.querySelector<HTMLElement>(".ask-log")!;
+    const suggest = ask.querySelector<HTMLElement>(".ask-suggest")!;
     const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const history: { role: string; content: string }[] = [];
     let busy = false;
 
+    // Starter questions until the first one is asked. On a course page they
+    // follow its latest week; the bar persists across pages, so they are
+    // rebuilt on every focus.
+    const showSuggestions = () => {
+      suggest.replaceChildren();
+      if (log.childElementCount) return;
+      const weeks = [...document.querySelectorAll(".article-content h2")]
+        .map((h) => /^Week (\d+)/.exec(h.textContent?.trim() || "")?.[1])
+        .filter(Boolean);
+      const list: string[] = weeks.length
+        ? copy.course.map((q: string) => q.replace("{n}", weeks[weeks.length - 1]!))
+        : copy.site;
+      for (const q of list) {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.textContent = q;
+        chip.addEventListener("click", () => {
+          input.value = q;
+          ask.querySelector("form")!.requestSubmit();
+        });
+        suggest.append(chip);
+      }
+    };
     const open = () => {
-      if (log.childElementCount) ask.classList.add("open");
+      showSuggestions();
+      if (log.childElementCount || suggest.childElementCount) ask.classList.add("open");
     };
     const close = () => ask.classList.remove("open");
     const toBottom = () => (log.scrollTop = log.scrollHeight);
@@ -175,6 +206,7 @@ const copy = {
       busy = true;
       send.disabled = true;
       input.value = "";
+      suggest.replaceChildren();
       bubble("visitor", question);
       const box = bubble("answer");
       box.innerHTML = `<span class="ask-dots" role="img" aria-label="${copy.thinking}"><i></i><i></i><i></i></span>`;
@@ -326,6 +358,49 @@ const copy = {
   .ask-close:hover {
     color: var(--text-primary);
     background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+  }
+
+  .ask-log:empty {
+    display: none;
+  }
+
+  .ask-suggest {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 20px 52px 4px 22px;
+  }
+
+  .ask-suggest:empty {
+    display: none;
+  }
+
+  .ask-suggest :global(button) {
+    padding: 7px 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-secondary);
+    font: 400 13.5px/1.3 var(--font-serif);
+    cursor: pointer;
+    animation: ask-in 0.4s var(--ask-ease) both;
+    transition:
+      border-color 0.2s,
+      color 0.2s,
+      background-color 0.2s;
+  }
+
+  .ask-suggest :global(button:hover) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .ask-suggest :global(button:nth-child(2)) {
+    animation-delay: 0.04s;
+  }
+
+  .ask-suggest :global(button:nth-child(3)) {
+    animation-delay: 0.08s;
   }
 
   .ask-log :global(.ask-message) {
