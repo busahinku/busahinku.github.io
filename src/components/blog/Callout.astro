@@ -1,8 +1,8 @@
 ---
-import { Info, AlertTriangle, AlertCircle, Lightbulb, CheckCircle, XCircle } from '@lucide/astro';
+import { Info, AlertTriangle, AlertCircle, Lightbulb, CheckCircle, BookOpen, PenLine } from '@lucide/astro';
 
 interface Props {
-  type?: 'info' | 'warning' | 'danger' | 'tip' | 'success' | 'note';
+  type?: 'info' | 'warning' | 'danger' | 'tip' | 'success' | 'note' | 'definition' | 'example';
   title?: string;
 }
 
@@ -39,10 +39,23 @@ const config = {
     defaultTitle: 'Success',
     className: 'callout-success',
   },
+  // Course notes. These keep their label and add the title after it,
+  // the way the typeset PDF prints "Definition 1.1 (Stochastic process)".
+  definition: {
+    icon: BookOpen,
+    defaultTitle: 'Definition',
+    className: 'callout-definition',
+  },
+  example: {
+    icon: PenLine,
+    defaultTitle: 'Example',
+    className: 'callout-example',
+  },
 };
 
 const { icon: Icon, defaultTitle, className } = config[type];
-const displayTitle = title || defaultTitle;
+const labelled = type === 'definition' || type === 'example';
+const displayTitle = title ? (labelled ? `${defaultTitle}: ${title}` : title) : defaultTitle;
 ---
 
 <div class={`callout ${className}`}>
@@ -179,6 +192,26 @@ const displayTitle = title || defaultTitle;
   }
   :global([data-theme="paper"]) .callout-success {
     background-color: rgba(34, 197, 94, 0.08);
+  }
+
+  /* Definition: a framed panel with the theme accent, so it never reads
+     as one of the coloured status callouts above. */
+  .callout-definition {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border);
+  }
+  .callout-definition .callout-icon,
+  .callout-definition .callout-title {
+    color: var(--accent);
+  }
+
+  /* Example: worked material, set apart by the site's dashed rule. */
+  .callout-example {
+    border: 1px dashed var(--border);
+  }
+  .callout-example .callout-icon,
+  .callout-example .callout-title {
+    color: var(--text-secondary);
   }
 
   /* Mobile responsive */

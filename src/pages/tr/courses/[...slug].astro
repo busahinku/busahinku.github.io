@@ -1,6 +1,9 @@
 ---
 import { type CollectionEntry, getCollection, render } from "astro:content";
 import BlogPostEnhanced from "../../../layouts/BlogPostEnhanced.astro";
+import CourseFiles from "../../../components/CourseFiles.astro";
+import Callout from "../../../components/blog/Callout.astro";
+import ConceptCheck from "../../../components/blog/ConceptCheck.astro";
 import { useTranslations, type Lang } from "../../../i18n/translations";
 import type { PostNavLink } from "../../../components/blog/PostNav.astro";
 import { comparePinnedThenNewest } from "../../../utils/content-sort";
@@ -40,6 +43,8 @@ const lang: Lang = "tr";
 const t = useTranslations(lang);
 const { course, prevPost, nextPost } = Astro.props;
 const { Content, headings } = await render(course);
+// The components the notes PDF also understands (scripts/course-notes.mjs).
+const components = { Callout, ConceptCheck };
 ---
 
 <BlogPostEnhanced
@@ -53,5 +58,6 @@ const { Content, headings } = await render(course);
   nextPost={nextPost}
   heroAspect="16:10"
 >
-  <Content />
+  <CourseFiles slot="header" slug={course.id} lang={lang} />
+  <Content components={components} />
 </BlogPostEnhanced>

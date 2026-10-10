@@ -34,6 +34,10 @@ Any blog post, project or course can be held at the top of its archive with `pin
 
 Shared building blocks: `ArchiveList.astro` (blog/projects/courses listings), `MiscPage.astro` + `MiscArchive.astro` (misc pages, data in `src/data/misc.ts`), `ContactPage.astro`.
 
+## Course notes
+
+A course is one `src/content/courses/<slug>.mdx`. `scripts/course-notes.mjs` (`npm run notes`) turns that same file into the typeset PDF through `scripts/course-notes.tex`, so the page and the PDF cannot drift apart; never hand-edit generated LaTeX. Handwritten exports go in through `npm run notes -- pages`, which serves a compressed copy and renders only pages whose fingerprint in `<slug>.pages` changed. `CourseFiles.astro` links both PDFs at the top of the page. The whole workflow, including transcription rules, is the `/course-notes` skill. Course figures are TikZ sources in `src/assets/courses/<slug>/` compiled to PDF and SVG; SVG figures are inverted in the dark theme, so draw them as dark ink on a transparent ground.
+
 ## Content
 
 `src/content/{blog,projects,courses}` with Zod schemas in `src/content.config.ts`. `draft: true` hides an entry from listings, slug pages, and RSS (all queries filter drafts; keep it that way). The old template placeholder posts are drafted, not deleted.

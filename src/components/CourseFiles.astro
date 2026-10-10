@@ -1,0 +1,103 @@
+---
+import fs from "node:fs";
+import path from "node:path";
+import { useTranslations, type Lang } from "../i18n/translations";
+
+interface Props {
+  slug: string;
+  lang: Lang;
+}
+
+const { slug, lang } = Astro.props;
+const t = useTranslations(lang);
+
+// Both PDFs come from `npm run notes` (see .claude/skills/course-notes). They
+// are looked up at build time, so a course without them shows nothing here.
+const files = [
+  { file: "handwritten.pdf", label: t("courses.handwritten") },
+  { file: "notes.pdf", label: t("courses.typeset") },
+].flatMap(({ file, label }) => {
+  const disk = path.join(process.cwd(), "public", "courses", slug, file);
+  if (!fs.existsSync(disk)) return [];
+  const kb = fs.statSync(disk).size / 1024;
+  const number = (n: number) =>
+    n.toLocaleString(lang === "tr" ? "tr-TR" : "en-US", { maximumFractionDigits: 1 });
+  const size = kb < 1024 ? `${number(Math.round(kb))} KB` : `${number(kb / 1024)} MB`;
+  return [{ href: `/courses/${slug}/${file}`, label, size }];
+});
+---
+
+{
+  files.length > 0 && (
+    <ul class="course-files">
+      {files.map((f) => (
+        <li>
+          {/* A PDF is not a page: skip the router and the hover prefetch. */}
+          <a
+            class="file-row"
+            href={f.href}
+            target="_blank"
+            rel="noopener"
+            data-astro-prefetch="false"
+          >
+            <span class="file-title">{f.label}</span>
+            <span class="file-leader" aria-hidden="true" />
+            <span class="file-meta">PDF, {f.size}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+<style>
+  .course-files {
+    list-style: none;
+    margin: 1.5rem 0 0;
+    padding: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .course-files > li + li {
+    border-top: 1px dashed color-mix(in srgb, var(--border) 70%, transparent);
+  }
+
+  .file-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .file-title {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    transition: color 0.2s ease;
+  }
+
+  .file-row:hover .file-title {
+    color: var(--accent);
+  }
+
+  .file-leader {
+    flex: 1;
+    min-width: 2rem;
+    border-bottom: 1px dotted var(--border);
+    transform: translateY(-4px);
+  }
+
+  .file-meta {
+    flex-shrink: 0;
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+  }
+
+  /* E-ink drops the accent, so the hover cue has to be a line. */
+  :global([data-theme="eink"]) .file-row:hover .file-title {
+    text-decoration: underline;
+  }
+</style>

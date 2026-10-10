@@ -944,9 +944,11 @@ html[data-blog-font="sans"] .article-content {
     color-mix(in srgb, var(--border) 70%, transparent);
   padding: 0.6rem 0.75rem;
   color: var(--text-secondary);
-  /* without this a cell would wrap and let the table shrink to the column
-     instead of overflowing into the wrapper's scroll */
-  white-space: nowrap;
+  /* Sentence-length cells (common in course notes) wrap instead of running
+     off the edge. The floor keeps a table from collapsing into one word per
+     line: past it, the table overflows into the wrapper's scroll as before. */
+  min-width: 6rem;
+  text-wrap: pretty;
 }
 
 /* the wrapper draws the outer boundary, so the edge cells drop theirs */
@@ -1045,6 +1047,19 @@ html[data-blog-font="sans"] .article-content {
   font-size: 0.875rem;
   color: var(--text-muted);
   font-style: italic;
+}
+
+/* SVG figures are drawn at print size for the typeset notes. Scaling them to
+   the full media column would blow the labels up, so they stop at the text
+   measure plus a little. */
+.article-content > figure:has(> img[src*=".svg"]) {
+  max-width: min(100%, 36rem);
+}
+
+/* They are dark ink on a transparent ground, so the dark theme flips them
+   (keeping each hue) instead of shipping a second copy. */
+[data-theme="dark"] .article-content img[src*=".svg"] {
+  filter: invert(1) hue-rotate(180deg);
 }
 
 /* ===========================

@@ -1,0 +1,107 @@
+% Template for the typeset course notes. scripts/course-notes.mjs fills the
+% <<placeholders>> from src/content/courses/<slug>.mdx and compiles with LuaLaTeX.
+% Edit the .mdx for content; edit this file for how every course PDF looks.
+\documentclass[a4paper,11pt,oneside,parskip=half-,numbers=noenddot,headsepline]{scrreprt}
+
+\usepackage[a4paper,textwidth=145mm,top=30mm,bottom=32mm,headsep=9mm]{geometry}
+\usepackage{amsmath}
+\usepackage{unicode-math}
+\setmainfont{LibertinusSerif}[Extension=.otf, UprightFont=*-Regular, ItalicFont=*-Italic,
+  BoldFont=*-Semibold, BoldItalicFont=*-SemiboldItalic]
+\setsansfont{LibertinusSans}[Extension=.otf, UprightFont=*-Regular, ItalicFont=*-Italic, BoldFont=*-Bold]
+\setmonofont{LibertinusMono}[Extension=.otf, UprightFont=*-Regular, Scale=MatchLowercase]
+\setmathfont{LibertinusMath-Regular.otf}
+\linespread{1.06}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{booktabs,tabularx,array}
+\usepackage{enumitem}
+\usepackage{luacolor,lua-ul}
+\usepackage[most]{tcolorbox}
+\usepackage[automark]{scrlayer-scrpage}
+\usepackage[hyperfootnotes=false]{hyperref}
+
+\definecolor{accent}{HTML}{1D4E89}
+\definecolor{caution}{HTML}{9B2C2C}
+\definecolor{quiet}{HTML}{6B7280}
+\definecolor{hair}{HTML}{C9CED6}
+\LuaULSetHighLightColor{accent!10}
+\hypersetup{colorlinks, linkcolor=black, urlcolor=accent, pdftitle={<<title>>}, pdfauthor={<<author>>}}
+
+% Headings: serif, set in the text face, numbered to sections only.
+\setkomafont{disposition}{\normalfont\bfseries}
+\setkomafont{chapter}{\LARGE}
+\setkomafont{section}{\Large}
+\setkomafont{subsection}{\large}
+\setkomafont{subsubsection}{\normalsize\itshape}
+\setcounter{secnumdepth}{\sectionnumdepth}
+\setcounter{tocdepth}{\sectionnumdepth}
+\renewcommand*{\chapterformat}{\textcolor{accent}{Week~\thechapter}\quad}
+\renewcommand*{\sectionformat}{\textcolor{accent}{\thesection}\enskip}
+\renewcommand*{\chaptermarkformat}{Week~\thechapter:\ }
+\RedeclareSectionCommand[beforeskip=0pt, afterskip=2.2\baselineskip]{chapter}
+\RedeclareSectionCommand[tocnumwidth=3.6em]{chapter}
+\renewcommand*{\addchaptertocentry}[2]{\addtocentrydefault{chapter}{Week~#1}{#2}}
+
+% Running heads: course on the left, current week on the right.
+\clearpairofpagestyles
+\ihead{<<code>>}
+\ohead{\leftmark}
+\cfoot*{\pagemark}
+\setkomafont{pageheadfoot}{\normalfont\small\color{quiet}}
+\setkomafont{pagenumber}{\normalfont\small}
+\KOMAoptions{headsepline=.3pt}
+\addtokomafont{headsepline}{\color{hair}}
+
+\setlist{topsep=.2\baselineskip, itemsep=.15\baselineskip, parsep=0pt, leftmargin=1.6em}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+
+% Notes blocks: a hairline on the left and a run-in label, the way a printed
+% textbook marks them. Definitions and examples are numbered within the week.
+% A title replaces the label; the converter gives it its full stop.
+\newcommand*{\notestitle}[1]{\if\relax\detokenize{#1}\relax\else\ (#1)\fi}
+\newcommand*{\notesname}[2]{\if\relax\detokenize{#1}\relax#2\else#1\fi}
+\tcbset{notes/.style={blanker, breakable, parbox=false, left=11pt, right=0pt,
+  top=1pt, bottom=1pt, borderline west={.9pt}{0pt}{#1},
+  before skip=.9\baselineskip, after skip=.9\baselineskip}}
+\newtcolorbox[auto counter, number within=chapter]{definition}[1][]{notes=accent,
+  before upper={\textbf{Definition~\thetcbcounter\notestitle{#1}.}\enspace}}
+\newtcolorbox[auto counter, number within=chapter]{example}[1][]{notes=hair,
+  before upper={\textbf{Example~\thetcbcounter\notestitle{#1}.}\enspace}}
+\newtcolorbox{keyidea}[1][]{notes=accent,
+  before upper={\textbf{\notesname{#1}{Key idea.}}\enspace}}
+\newtcolorbox{caution}[1][]{notes=caution,
+  before upper={\textbf{\notesname{#1}{Caution.}}\enspace}}
+\newtcolorbox{aside}[1][]{notes=hair, fontupper=\small,
+  before upper={\textbf{\notesname{#1}{Note.}}\enspace}}
+\newtcolorbox{selfcheck}[1]{notes=hair,
+  before upper={\textbf{Check.}\enspace #1\par\smallskip\textit{Answer.}\enspace}}
+\setkomafont{caption}{\small}
+\setkomafont{captionlabel}{\bfseries}
+\setcapindent{0pt}
+\renewcommand*{\captionformat}{.\enskip}
+\newcommand*{\notesbreak}{\par\medskip\noindent\hfil\textcolor{hair}{\rule{.25\linewidth}{.4pt}}\hfil\par\medskip}
+
+\begin{document}
+
+\begin{titlepage}
+  \raggedright
+  \vspace*{.2\textheight}
+  {\Large\color{accent}<<code>>\par}
+  \vspace{.5\baselineskip}
+  {\fontsize{30}{36}\selectfont <<name>>\par}
+  \vspace{1.2\baselineskip}
+  {\large Lecture notes, <<term>>\par}
+  \vfill
+  {\large <<author>>\par}
+  \vspace{.4\baselineskip}
+  {\small\color{quiet}Typeset from my handwritten notes. Last updated <<updated>>.\par
+  The web version and the original pages live at \url{<<url>>}.\par}
+\end{titlepage}
+
+\tableofcontents
+
+<<body>>
+
+\end{document}

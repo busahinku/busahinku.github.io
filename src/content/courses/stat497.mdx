@@ -1,0 +1,142 @@
+---
+title: "STAT497: Applications of Time Series"
+description: My notes for the time series course at METU. I write them by hand in class and typeset them here every week.
+pubDate: 2026-10-10
+category: statistics
+tags:
+  - time-series
+  - stochastic-processes
+---
+
+## Week 1: Introduction
+
+### What are time series data?
+
+Time series data are collected **sequentially over time**. Meteorological data taken daily or hourly are a typical example: temperatures, precipitation levels, and so on.
+
+The major goals:
+
+1. To model the *stochastic phenomenon* that produces these data. A stochastic phenomenon is a real-world process whose outcomes involve randomness.
+2. To predict or forecast the future values of the time series.
+
+<Callout type="note" title="Forecasting or prediction?">
+**Forecasting** is a data-driven process that estimates future events from historical time series data. **Prediction** is broader: a general estimate of unknown outcomes, which may or may not rely on time or on past data.
+</Callout>
+
+<Callout type="tip" title="Key aspect">
+Observations measured across time are typically **dependent** random variables, not independent ones.
+</Callout>
+
+### Stochastic processes
+
+<Callout type="definition" title="Stochastic process">
+A stochastic process is a collection of random variables indexed by time (or by another index):
+
+$$
+\left\{ Y_t \right\}_{t=-\infty}^{\infty}
+$$
+</Callout>
+
+For example, consider the daily temperature in Ankara:
+
+- $Y_1$, the temperature on Monday, is a random variable.
+- $Y_2$, the temperature on Tuesday, is a random variable.
+- $Y_3$, the temperature on Wednesday, is a random variable.
+
+Together, these random variables form a stochastic process. The theory of stochastic processes gives us a formal way to look at time series data.
+
+We write the process as $Y(\omega, t)$, a function of two arguments:
+
+- $\omega$ is the **outcome**. It belongs to the sample space $\Omega$: one possible outcome out of all of them.
+- $t$ is **time**. It belongs to the index set (Monday, Tuesday, Wednesday, ...).
+
+Here is a small version with three possible weather scenarios. Each column is one way the week could turn out.
+
+| Time      | Scenario $\omega_1$ | Scenario $\omega_2$ | Scenario $\omega_3$ |
+| :-------- | :-----------------: | :-----------------: | :-----------------: |
+| Monday    | 20°                 | 18°                 | 22°                 |
+| Tuesday   | 22°                 | 19°                 | 23°                 |
+| Wednesday | 21°                 | 17°                 | 25°                 |
+
+#### Fixed $t$: a random variable
+
+Suppose we fix $t = \text{Tuesday}$. Then $Y(\omega, \text{Tuesday})$ collects all possible temperatures on Tuesday: 22, 19 and 23. ==This is a random variable==, because its value depends on which scenario $\omega$ occurs.
+
+Even if there were only one outcome, $\omega_1$, it would still be a random variable, with $P(Y_{\text{Tuesday}} = 22) = 1$. A random variable like this is called **degenerate**.
+
+#### Fixed $\omega$: a realization
+
+Suppose we fix $\omega = \omega_1$. Then $Y(\omega_1, t)$ follows one particular scenario through time: $20 \to 22 \to 21$. This is called a **realization**, a **sample function** or a **sample path**. It represents one possible trajectory of the stochastic process (*olası yörünge*).
+
+|                     | Fixed $t$                       | Fixed $\omega$                         |
+| :------------------ | :------------------------------ | :------------------------------------- |
+| What changes?       | $\omega$ (the outcome)          | $t$ (time)                             |
+| What do we obtain?  | A random variable               | A sample path (realization)            |
+| What do we examine? | The possible values at one time | The values across time in one scenario |
+
+$$
+\begin{aligned}
+\text{fixed time} &\;\Rightarrow\; \text{random variable} \\
+\text{fixed outcome} &\;\Rightarrow\; \text{sample path (realization)}
+\end{aligned}
+$$
+
+![Three possible sample paths of the daily temperature. Fixing the time at Tuesday leaves a random variable with one value per scenario; fixing the outcome at scenario 1 leaves a sample path. A real time series dataset contains one observed path, not all possible ones.](../../assets/courses/stat497/sample-paths.svg)
+
+### Continuous time vs. discrete time
+
+In practice we cannot measure a physical quantity at every possible instant. That does not mean the underlying process cannot be modeled in continuous time.
+
+The distinction is about **which time points belong to the index set $T$**, not how frequently we can physically measure something.
+
+#### Discrete time
+
+A discrete-time stochastic process is defined at separate time points:
+
+$$
+T = \{0, 1, 2, \dots\}
+$$
+
+For example, suppose we measure the temperature every hour.
+
+| Time  | Temperature |
+| :---- | :---------: |
+| 12:00 | 22°         |
+| 13:00 | 23°         |
+| 14:00 | 24°         |
+
+Our observed sequence is $X_0 = 22$, $X_1 = 23$, $X_2 = 24$. We have values only at the specified times.
+
+<Callout type="warning" title="Keep in mind">
+We don't necessarily need to know the temperature at 12:30 from these observations.
+</Callout>
+
+#### Continuous time
+
+A continuous-time stochastic process is indexed by every real-valued time point in an interval:
+
+$$
+T = [0, \infty)
+$$
+
+For example $X(0)$, $X(0.1)$, $X(0.01)$, $X(\sqrt{2})$, $X(\pi)$, and so on. Mathematically, the process has a random variable associated with every real-valued time point. ==We don't need to measure every one of them.==
+
+#### How can a continuous-time process exist if we cannot measure it continuously?
+
+Imagine a thermometer that works every 10 minutes. At 12:00 it reads 22°, at 12:10 it reads 23°. Did your room have a temperature at 12:05? Yes. What about at 12:05:30.00001? Also yes.
+
+Therefore we can describe the room temperature with a continuous-time model $\{X(t) : t \ge 0\}$, even though the thermometer gives us only discrete measurements $X(0), X(10), X(20), \dots$ Here time is measured in minutes.
+
+<Callout type="tip" title="In short">
+A continuous-time process $\neq$ continuous observations.
+</Callout>
+
+### Check yourself
+
+<ConceptCheck question="In the temperature table, fix the time at Wednesday. What do you get, and which values can it take?">
+A random variable. Depending on which scenario occurs, it takes the value 21, 17 or 25.
+</ConceptCheck>
+
+<ConceptCheck question="A sensor logs the temperature every 10 minutes. Does that make the process discrete-time?">
+Not necessarily. Discrete or continuous time is a question of which time points belong to the index set, not of how often we measure. The room has a temperature at every instant, so a continuous-time model still fits.
+</ConceptCheck>

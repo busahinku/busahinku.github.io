@@ -147,6 +147,8 @@ export const translations = {
     'courses.category.computer-engineering': 'Computer Engineering',
     'courses.category.programming': 'Programming',
     'courses.category.other': 'Other',
+    'courses.handwritten': 'Handwritten notes',
+    'courses.typeset': 'Typeset notes',
 
     // Misc
     'misc.title': 'Misc',
@@ -306,6 +308,8 @@ export const translations = {
     'courses.category.computer-engineering': 'Bilgisayar Mühendisliği',
     'courses.category.programming': 'Programlama',
     'courses.category.other': 'Diğer',
+    'courses.handwritten': 'El yazısı notlar',
+    'courses.typeset': 'LaTeX notları',
 
     // Misc
     'misc.title': 'Diğer',

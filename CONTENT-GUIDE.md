@@ -69,7 +69,9 @@ Project `category` must be one of: `web`, `mobile`, `desktop`, `api`, `library`,
 
 ### Courses (`src/content/courses/`)
 
-Same fields as blog. Course `category` must be one of: `statistics`,
+Course pages are made from handwritten notes by the `/course-notes` skill
+(`.claude/skills/course-notes/SKILL.md`), which also lists the subset of this
+guide the typeset PDF supports. Same fields as blog. Course `category` must be one of: `statistics`,
 `mathematics`, `electrics-electronics`, `computer-engineering`, `programming`,
 `other`.
 
@@ -196,7 +198,8 @@ A colored box that pulls a note out of the flow.
 ```
 
 - `type`: one of `info`, `note`, `tip`, `success`, `warning`, `danger`. Each has
-  its own color and icon.
+  its own color and icon. Course notes add `definition` and `example`, which keep
+  their label and append the title ("Definition: Stochastic process").
 - `title`: optional. If omitted, a sensible default title is used.
 
 ### PhotoGallery
