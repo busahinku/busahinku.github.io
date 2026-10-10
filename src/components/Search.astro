@@ -105,8 +105,9 @@ const copy = {
         title.textContent = sub && sub.title !== r.meta.title ? `${r.meta.title} · ${sub.title}` : r.meta.title || r.url;
         const excerpt = document.createElement("span");
         excerpt.className = "search-excerpt";
-        // Pagefind escapes the page text and only adds <mark> around matches.
-        excerpt.innerHTML = sub?.excerpt ?? r.excerpt;
+        // Only Pagefind's <mark> highlights are markup; escape anything else,
+        // so a page that quotes HTML can never inject it here.
+        excerpt.innerHTML = (sub?.excerpt ?? r.excerpt).replace(/<(?!\/?mark>)/g, "&lt;");
         a.append(title, excerpt);
         a.addEventListener("click", () => dialog.close());
         const li = document.createElement("li");
@@ -189,6 +190,12 @@ const copy = {
     gap: 0.625rem;
     padding: 0 0.625rem 0 1rem;
     border-bottom: 1px solid var(--border);
+  }
+
+  /* The field drops its own ring; the bar carries the focus instead. */
+  .search-bar:focus-within {
+    border-bottom-color: var(--accent);
+    box-shadow: inset 0 -1px 0 var(--accent);
   }
 
   .search-bar :global(.search-icon) {
