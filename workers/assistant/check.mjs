@@ -22,9 +22,18 @@ for (const q of [
   "what did he build for STAT311?",
 ]) assert.ok(!BLOCKED.test(q), `should allow: ${q}`);
 
-for (const a of ["```python", "def f(x):", "<div class=", "import numpy as np", "SELECT * FROM users"])
+for (const a of ["```python", "def f(x):", "<div class=\"x\">", "import numpy as np", "from sklearn import tree", "SELECT * FROM users", "function add(a, b) {", "const f = (x) => {", "class Model:", "console.log(x)", "x = 1;\ny = 2;"])
   assert.ok(CODE_LIKE.test(a), `should cut: ${a}`);
-for (const a of ["A stochastic process is a collection of random variables.", "Burak studies statistics at METU; he also builds things.", "Fixing t gives a random variable Y(ω, t)."])
+for (const a of [
+  "A stochastic process is a collection of random variables.",
+  "Burak studies statistics at METU; he also builds things.",
+  "Fixing t gives a random variable Y(ω, t).",
+  "where ω represents a specific outcome from a sample space",
+  "It is a function of two arguments, a function f(x) of time.",
+  "ARIMA is a class of models; we import the idea from regression.",
+  "If a < b and b > c, then the process is stationary.",
+  "Select the outcome from the sample space, then update the estimate.",
+])
   assert.ok(!CODE_LIKE.test(a), `should not cut: ${a}`);
 
 assert.deepEqual(terms("Stokastik süreçler nedir?"), ["stokas", "surecl"]);
