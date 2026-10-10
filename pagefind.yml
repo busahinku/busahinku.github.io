@@ -1,0 +1,6 @@
+# Site search index (npm run build runs Pagefind after Astro).
+# Pages opt in with data-pagefind-body; these parts of them are left out.
+site: dist
+exclude_selectors:
+  - ".katex-mathml"    # KaTeX's hidden MathML copy; the visible math stays
+  - ".heading-anchor"  # the "#" link beside headings

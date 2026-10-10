@@ -2,6 +2,7 @@
 import { type CollectionEntry, getCollection, render } from "astro:content";
 import BlogPostEnhanced from "../../../layouts/BlogPostEnhanced.astro";
 import CourseFiles from "../../../components/CourseFiles.astro";
+import StudyTools from "../../../components/StudyTools.astro";
 import Callout from "../../../components/blog/Callout.astro";
 import ConceptCheck from "../../../components/blog/ConceptCheck.astro";
 import { useTranslations, type Lang } from "../../../i18n/translations";
@@ -52,6 +53,7 @@ const components = { Callout, ConceptCheck };
   headings={headings}
   lang={lang}
   slug={course.id}
+  ogImage={`/og/courses/${course.id}.png`}
   backUrl="/tr/courses"
   backLabel={t("nav.courses")}
   prevPost={prevPost}
@@ -59,5 +61,6 @@ const components = { Callout, ConceptCheck };
   heroAspect="16:10"
 >
   <CourseFiles slot="header" slug={course.id} lang={lang} />
+  <StudyTools slot="header" slug={course.id} lang={lang} />
   <Content components={components} />
 </BlogPostEnhanced>

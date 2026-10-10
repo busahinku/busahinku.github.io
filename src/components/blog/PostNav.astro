@@ -19,7 +19,7 @@ const nextLabel = lang === "tr" ? "Sonraki" : "Next";
 
 {
   (prev || next) && (
-    <nav class="post-nav" aria-label={lang === "tr" ? "Yazı gezinme" : "Post navigation"}>
+    <nav class="post-nav" data-pagefind-ignore aria-label={lang === "tr" ? "Yazı gezinme" : "Post navigation"}>
       {prev ? (
         <a class="post-nav-link prev" href={prev.href}>
           <span class="post-nav-label">← {prevLabel}</span>

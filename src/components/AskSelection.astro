@@ -1,0 +1,118 @@
+---
+import { MessageCircleQuestion } from "@lucide/astro";
+import type { Lang } from "../i18n/translations";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+
+// Select a passage in an article and a small button appears under it; pressing
+// it sends the passage to the site assistant as a question.
+const copy = {
+  en: { label: "Ask about this", question: 'Explain this part of the page: "{text}"' },
+  tr: { label: "Bunu sor", question: 'Sayfadaki şu kısmı açıklar mısın: "{text}"' },
+}[lang];
+---
+
+<button type="button" class="ask-selection" data-ask-selection data-question={copy.question} hidden>
+  <MessageCircleQuestion size={15} aria-hidden="true" />
+  {copy.label}
+</button>
+
+<script>
+  function initAskSelection() {
+    const button = document.querySelector<HTMLButtonElement>("[data-ask-selection]");
+    if (!button || button.dataset.ready) return;
+    button.dataset.ready = "true";
+    let text = "";
+
+    const hide = () => {
+      button.hidden = true;
+      text = "";
+    };
+    // KaTeX renders each formula twice (hidden MathML plus visible HTML), so
+    // plain selection text repeats it. Send each formula once, as its TeX.
+    const readable = (range: Range) => {
+      const copy = range.cloneContents();
+      copy.querySelectorAll(".katex").forEach((math) => {
+        const tex = math.querySelector("annotation")?.textContent;
+        math.replaceWith(tex ? `$${tex}$` : math.querySelector(".katex-html")?.textContent ?? "");
+      });
+      copy.querySelectorAll(".katex-mathml").forEach((el) => el.remove());
+      return (copy.textContent ?? "").replace(/\s+/g, " ").trim();
+    };
+
+    const place = () => {
+      const selection = document.getSelection();
+      const article = document.querySelector(".article-content");
+      if (!selection || selection.isCollapsed || !article) return hide();
+      const range = selection.getRangeAt(0);
+      if (!article.contains(range.commonAncestorContainer)) return hide();
+      const chosen = readable(range);
+      if (chosen.length < 3) return hide();
+      const rects = range.getClientRects();
+      const last = rects[rects.length - 1];
+      if (!last) return hide();
+      text = chosen.length > 300 ? `${chosen.slice(0, 297)}…` : chosen;
+      button.hidden = false;
+      // Under the end of the selection, kept on screen.
+      const left = Math.min(Math.max(8, last.right - button.offsetWidth), innerWidth - button.offsetWidth - 8);
+      button.style.left = `${left + scrollX}px`;
+      button.style.top = `${last.bottom + scrollY + 8}px`;
+    };
+
+    // Wait for the selection to settle (mouse up, touch end, shift+arrows).
+    let timer = 0;
+    document.addEventListener("selectionchange", () => {
+      clearTimeout(timer);
+      timer = window.setTimeout(place, 250);
+    });
+    // Keep the selection alive while the button is pressed.
+    button.addEventListener("pointerdown", (e) => e.preventDefault());
+    button.addEventListener("click", () => {
+      if (button.hidden || !text) return;
+      document.dispatchEvent(new CustomEvent("ask:question", { detail: button.dataset.question!.replace("{text}", text) }));
+      document.getSelection()?.removeAllRanges();
+      hide();
+    });
+  }
+
+  initAskSelection();
+  document.addEventListener("astro:after-swap", initAskSelection);
+</script>
+
+<style>
+  .ask-selection {
+    position: absolute;
+    z-index: 95;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 2.25rem;
+    padding: 0.375rem 0.75rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    font: 500 0.8125rem/1 var(--font-serif);
+    box-shadow: 0 8px 24px -8px rgb(0 0 0 / 0.35);
+    cursor: pointer;
+    transition: transform 0.16s ease-out;
+  }
+
+  .ask-selection[hidden] {
+    display: none;
+  }
+
+  .ask-selection:active {
+    transform: scale(0.97);
+  }
+
+  @media print {
+    .ask-selection {
+      display: none;
+    }
+  }
+</style>

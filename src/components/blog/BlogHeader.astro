@@ -1,6 +1,6 @@
 ---
 import { useTranslations, type Lang } from "../../i18n/translations";
-import { ArrowLeft, List } from "@lucide/astro";
+import { ArrowLeft, List, Search } from "@lucide/astro";
 import ThemeToggle from "../ThemeToggle.astro";
 import TextArrangementToggle from "./TextArrangementToggle.astro";
 
@@ -29,6 +29,15 @@ const finalBackLabel = backLabel || t("nav.blog");
     </a>
 
     <div class="blog-header-controls">
+      <button
+        type="button"
+        class="toc-sheet-trigger search-trigger"
+        data-search-open
+        aria-label={t("search.open")}
+        title={`${t("search.open")} (/)`}
+      >
+        <Search size={16} />
+      </button>
       <TextArrangementToggle lang={lang} />
       <ThemeToggle lang={lang} />
       {

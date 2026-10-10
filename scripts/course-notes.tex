@@ -77,6 +77,16 @@
 \newcommand{\notesanswer}[2]{%
   \par\noindent\textbf{\hyperref[#1]{Exercise~\ref*{#1}}}\label{#1-answer}\enspace#2\par\medskip}
 
+% The summary sheet at the back: each week's definitions and key points,
+% compact enough to print as a revision page.
+\newcommand{\notessummary}[1]{%
+  \chapter*{Summary sheet}\addcontentsline{toc}{chapter}{Summary sheet}%
+  {\small\renewcommand{\index}[1]{}#1\par}}% terms are indexed where they are taught
+\newcommand*{\notessummaryweek}[1]{\par\medskip\noindent{\normalsize\bfseries\color{accent}#1}\par\smallskip}
+\newcommand{\notessummarydef}[2]{%
+  \begin{tcolorbox}[tcbkao, colback=defbg, before skip=4pt, after skip=4pt, top=3pt, bottom=2pt]
+  \textbf{#1.}\enspace #2\end{tcolorbox}}
+
 % A small chip in a block's own colour, for the reading guide.
 \newcommand*{\notesswatch}[2]{\tcbox[on line, colback=#1, colframe=#1, boxrule=0pt, sharp corners,
   boxsep=0pt, left=4pt, right=4pt, top=2pt, bottom=2pt]{\small #2}}
@@ -133,8 +143,9 @@ start of a week lists what it covers.
 Asides from the margin of my notebook stay in the margin.\par}
 
 \medskip
-Every week closes with its key points and a few exercises. The answers are at
-the back, followed by an index of the terms in bold.
+Every week closes with its key points and a few exercises. At the back are a
+summary sheet with every definition and key point, the answers to the
+exercises, and an index of the terms in bold.
 
 \section*{Thanks}
 These notes are made entirely with free software, and they would look nothing
@@ -160,6 +171,7 @@ assistant that answers questions about these notes are at \href{<<url>>}{<<site>
 <<body>>
 
 \backmatter
+<<summary>>
 <<answers>>
 \printindex
 

@@ -4,11 +4,12 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && pagefind --site dist",
     "preview": "astro preview",
     "astro": "astro",
     "notes": "node scripts/course-notes.mjs",
-    "photo": "node scripts/photo.mjs"
+    "photo": "node scripts/photo.mjs",
+    "backup": "node scripts/backup.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.3.13",
@@ -27,6 +28,8 @@
   "devDependencies": {
     "hast-util-from-html": "^2.0.3",
     "js-yaml": "^4.3.2",
+    "opentype.js": "^1.3.4",
+    "pagefind": "^1.5.2",
     "remark-gfm": "^4.0.1",
     "remark-mdx": "^3.1.1",
     "remark-parse": "^11.0.0",

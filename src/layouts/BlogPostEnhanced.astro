@@ -5,6 +5,8 @@ import type { MarkdownHeading } from "astro";
 import BaseHead from "../components/BaseHead.astro";
 import Footer from "../components/Footer.astro";
 import Assistant from "../components/Assistant.astro";
+import Search from "../components/Search.astro";
+import AskSelection from "../components/AskSelection.astro";
 import FormattedDate from "../components/FormattedDate.astro";
 import BlogHeader from "../components/blog/BlogHeader.astro";
 import TableOfContents from "../components/blog/TableOfContents.astro";
@@ -34,6 +36,8 @@ interface Props {
   nextPost?: PostNavLink;
   /** Entry covers are authored at 16:10 so archive and detail compositions match. */
   heroAspect?: "default" | "16:10";
+  /** This page's share card, from src/pages/og. */
+  ogImage?: string;
 }
 
 const {
@@ -48,6 +52,7 @@ const {
   prevPost,
   nextPost,
   heroAspect = "default",
+  ogImage,
 } = Astro.props;
 const { title, description, pubDate, updatedDate, heroImage } = post;
 const t = useTranslations(lang);
@@ -59,7 +64,7 @@ const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
 
 <html lang={lang}>
   <head>
-    <BaseHead title={title} description={description} />
+    <BaseHead title={title} description={description} image={ogImage} />
   </head>
 
   <body>
@@ -83,7 +88,8 @@ const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
       <TableOfContents headings={headings} lang={lang} />
 
       <!-- Center: Article Content -->
-      <article class="article-container" id="main-content">
+      <!-- Search (Pagefind) indexes the article; the data-pagefind-ignore parts are chrome. -->
+      <article class="article-container" id="main-content" data-pagefind-body>
         {
           heroImage && (
             <div
@@ -103,7 +109,7 @@ const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
         }
 
         <header class="article-header">
-          <div class="article-meta">
+          <div class="article-meta" data-pagefind-ignore>
             <span>
               {t("blog.publishedOn")}
               <FormattedDate date={pubDate} />
@@ -116,7 +122,7 @@ const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
               )
             }
           </div>
-          <h1 class="article-title">{title}</h1>
+          <h1 class="article-title" data-pagefind-meta="title">{title}</h1>
           {description && <p class="article-description">{description}</p>}
           <slot name="header" />
           {
@@ -174,7 +180,7 @@ const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
         </div>
 
         <!-- Post engagement section -->
-        <div class="post-engagement">
+        <div class="post-engagement" data-pagefind-ignore>
           <div class="engagement-stats">
             <ViewCounter slug={slug} />
             <LikeButton slug={slug} />
@@ -199,6 +205,8 @@ const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
     </div>
 
     <Footer lang={lang} />
+    <Search lang={lang} />
+    <AskSelection lang={lang} />
   </body>
 </html>
 

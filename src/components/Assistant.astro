@@ -52,7 +52,7 @@ const copy = {
 }[lang];
 ---
 
-<div class="ask" data-ask data-lang={lang} data-copy={JSON.stringify(copy)} transition:persist={`ask-${lang}`}>
+<div class="ask" data-ask data-pagefind-ignore data-lang={lang} data-copy={JSON.stringify(copy)} transition:persist={`ask-${lang}`}>
   <div class="ask-surface">
     <div class="ask-flow">
       <div class="ask-flow-inner">
@@ -258,6 +258,21 @@ const copy = {
         toBottom();
         send.disabled = input.value.trim().length < 3;
       }
+    });
+  }
+
+  // Other parts of the page can ask a question for the reader: they dispatch
+  // `ask:question` with the text (see AskSelection.astro).
+  if (!(window as any).__askQuestion) {
+    (window as any).__askQuestion = true;
+    document.addEventListener("ask:question", (e) => {
+      const ask = document.querySelector<HTMLElement>("[data-ask]");
+      const input = ask?.querySelector<HTMLInputElement>("input");
+      const text = (e as CustomEvent<string>).detail;
+      if (!ask || !input || typeof text !== "string") return;
+      input.value = text.slice(0, 400);
+      input.dispatchEvent(new Event("input"));
+      ask.querySelector("form")?.requestSubmit();
     });
   }
 

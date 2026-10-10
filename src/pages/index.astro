@@ -17,6 +17,15 @@ const latestPosts = (await getCollection("blog", ({ data }) => !data.draft))
   .sort(comparePinnedThenNewest)
   .slice(0, 4);
 
+// Course notes, with the latest week as the detail that changes.
+const latestCourses = (await getCollection("courses", ({ data }) => !data.draft))
+  .sort(comparePinnedThenNewest)
+  .slice(0, 4)
+  .map((course) => ({
+    course,
+    week: [...(course.body ?? "").matchAll(/^## Week (\d+)/gm)].at(-1)?.[1],
+  }));
+
 const latestProjects = getLocalizedProjects(
   await getCollection("projects", ({ data }) => !data.draft),
   lang,
@@ -80,6 +89,30 @@ const links = [
                   <span class="toc-meta">
                     {project.data.pubDate.getFullYear()}
                   </span>
+                </a>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )
+    }
+
+    {
+      latestCourses.length > 0 && (
+        <section class="index-section">
+          <div class="section-head">
+            <h2>Notes</h2>
+            <a class="all-link" href="/courses">
+              all
+            </a>
+          </div>
+          <ol class="toc-list">
+            {latestCourses.map(({ course, week }) => (
+              <li>
+                <a class="toc-row" href={`/courses/${course.id}/`}>
+                  <span class="toc-title">{course.data.title}</span>
+                  <span class="toc-leader" aria-hidden="true" />
+                  <span class="toc-meta">{week ? `Week ${week}` : ""}</span>
                 </a>
               </li>
             ))}

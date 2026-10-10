@@ -28,7 +28,7 @@ const files = [
 
 {
   files.length > 0 && (
-    <div class="course-files">
+    <div class="course-files" data-pagefind-ignore>
       {files.map(({ href, label, pages, size, primary }) => (
         <a
           class:list={["file-button", { primary }]}

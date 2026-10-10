@@ -441,6 +441,11 @@ html[data-blog-width="wide"] {
   background-color: var(--bg-tertiary);
 }
 
+/* Search shares the trigger's look but shows at every width. */
+.blog-header-controls .search-trigger {
+  display: flex;
+}
+
 .toc-sheet {
   display: none;
   position: fixed;

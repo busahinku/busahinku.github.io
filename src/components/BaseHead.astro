@@ -58,13 +58,17 @@ const personSchema = JSON.stringify({
 /*
  * Content-Security-Policy (meta form; GitHub Pages cannot send headers).
  * Allowlist covers: self-hosted assets, Firebase (Firestore + Auth),
- * Google sign-in, Spotify / YouTube / Vimeo embeds.
+ * Google sign-in, Spotify / YouTube / Vimeo embeds, Cloudflare Web Analytics,
+ * the R2 files domain and the site assistant.
  * frame-ancestors and X-Frame-Options cannot be set from <meta>;
  * add those via a Cloudflare Transform Rule if desired.
  */
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com",
+  // static.cloudflareinsights.com: Cloudflare Web Analytics, which Cloudflare
+  // injects at the edge and which reports back to this origin ('self').
+  // 'wasm-unsafe-eval': site search (Pagefind) runs as WebAssembly.
+  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://apis.google.com https://www.gstatic.com https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
   "font-src 'self'",

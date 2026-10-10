@@ -326,6 +326,7 @@ More writing, a list, and a source if you have one.[^1]
 [^1]: The reference for the claim above.
 ```
 
-A complete, rendered example of every feature lives in
-`src/content/blog/enhanced-blog-features-test.mdx` and at
-`/blog/enhanced-blog-features-test/` on the site. When in doubt, copy from there.
+A complete example of every feature lives in
+`src/content/blog/enhanced-blog-features-test.mdx`. It is a draft, so it is not
+on the live site; `npm run dev` with `draft: false` set locally shows it
+rendered. When in doubt, copy from there.

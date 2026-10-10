@@ -114,6 +114,18 @@ function build() {
   fill.lists = fill.body.includes("\\begin{definition}")
     ? "\\listoftheorems[ignoreall, show={definition}, title={Definitions}]"
     : "";
+  fill.summary = summary.some((w) => w.defs.length || w.keys.length)
+    ? `\\notessummary{\n${summary
+        .filter((w) => w.defs.length || w.keys.length)
+        .map((w) =>
+          [
+            `\\notessummaryweek{${w.title}}`,
+            ...w.defs.map((d) => `\\notessummarydef{${d.title}}{${d.content}}`),
+            w.keys.length ? `\\begin{itemize}\n${w.keys.map((k) => `\\item ${k}`).join("\n")}\n\\end{itemize}` : "",
+          ].join("\n"),
+        )
+        .join("\n\n")}\n}`
+    : "";
   fill.answers = answers.length
     ? `\\notesanswers{\n${answers.map((a) => `\\notesanswer{${a.id}}{${a.answer}}`).join("\n")}\n}`
     : "";
@@ -177,12 +189,15 @@ let footnotes = new Map();
 // its exercises) and every exercise answer (printed at the back of the book).
 let recap = [];
 let answers = [];
+// Every week's definitions and key points again, for the summary sheet.
+let summary = [];
 
 function toLatex(source) {
   const tree = unified().use(remarkParse).use(remarkMdx).use(remarkGfm).use(remarkMath).parse(source);
   footnotes = new Map(tree.children.filter((n) => n.type === "footnoteDefinition").map((n) => [n.identifier, n]));
   recap = [];
   answers = [];
+  summary = [];
   const body = blocks(tree.children);
   return [body, flushRecap()].filter(Boolean).join("\n\n");
 }
@@ -295,7 +310,10 @@ function heading(n) {
   const before = n.depth <= 2 || /^(check yourself|exercises)/i.test(plain(n)) ? flushRecap() : "";
   const pre = before ? `${before}\n\n` : "";
   // Each template decides what opening a week looks like.
-  if (n.depth <= 2) return pre + (week ? `\\notesweek{${week}}{${title}}` : `\\chapter{${title}}`);
+  if (n.depth <= 2) {
+    summary.push({ title: week ? `Week~${week}: ${title}` : title, defs: [], keys: [] });
+    return pre + (week ? `\\notesweek{${week}}{${title}}` : `\\chapter{${title}}`);
+  }
   const cmd = ["section", "subsection", "subsubsection"][n.depth - 3] ?? "paragraph";
   return `${pre}\\${cmd}{${title}}`;
 }
@@ -354,7 +372,11 @@ function component(n) {
     const numbered = env === "definition" || env === "example";
     const title = a.title && (numbered ? a.title : a.title.replace(/[^.?!:]$/, "$&."));
     const content = blocks(n.children);
-    if (env === "keyidea") recap.push(content);
+    if (env === "keyidea") {
+      recap.push(content);
+      summary.at(-1)?.keys.push(content);
+    }
+    if (env === "definition") summary.at(-1)?.defs.push({ title: text(a.title ?? ""), content });
     return `\\begin{${env}}${title ? `[{${text(title)}}]` : ""}\n${content}\n\\end{${env}}`;
   }
   if (n.name === "ConceptCheck") {

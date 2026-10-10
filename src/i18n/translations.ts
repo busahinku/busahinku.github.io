@@ -150,6 +150,7 @@ export const translations = {
     'courses.handwritten': 'Handwritten notes',
     'courses.typeset': 'Typeset notes',
     'courses.pages': 'pages',
+    'search.open': 'Search',
 
     // Misc
     'misc.title': 'Misc',
@@ -312,6 +313,7 @@ export const translations = {
     'courses.handwritten': 'El yazısı notlar',
     'courses.typeset': 'LaTeX notları',
     'courses.pages': 'sayfa',
+    'search.open': 'Ara',
 
     // Misc
     'misc.title': 'Diğer',

@@ -9,7 +9,7 @@ interface Props {
 const { slug, lang = 'en' } = Astro.props;
 ---
 
-<section class="comment-section" data-slug={slug} data-lang={lang}>
+<section class="comment-section" data-slug={slug} data-lang={lang} data-pagefind-ignore>
   <h2 class="comments-title">
     <span class="comments-title-text" data-i18n="comments"></span>
     <span class="comments-count">(0)</span>

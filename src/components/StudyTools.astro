@@ -1,0 +1,456 @@
+---
+import { Layers, ListChecks, X } from "@lucide/astro";
+import type { Lang } from "../i18n/translations";
+
+interface Props {
+  slug: string;
+  lang: Lang;
+}
+
+const { slug, lang } = Astro.props;
+
+// Two ways to study a course page, both built from the page itself in the
+// browser, so the notes stay the one source and nothing extra is shipped:
+// - Summary sheet: the page with only its headings, definitions, key ideas,
+//   cautions and formulas left showing (and printable).
+// - Flashcards: every definition (term, then meaning) and every "Check
+//   yourself" question (question, then answer). What you knew is remembered
+//   on this device only.
+const copy = {
+  en: {
+    summary: "Summary sheet",
+    cards: "Flashcards",
+    summaryNote: "Only definitions, key ideas, cautions and formulas are showing.",
+    print: "Print",
+    showAll: "Show all notes",
+    close: "Close flashcards",
+    definition: "Definition",
+    question: "Question",
+    reveal: "Show answer",
+    again: "Again",
+    knew: "I knew it",
+    done: "Round over. You knew {k} of {n}.",
+    restart: "Go again",
+    closeShort: "Close",
+    device: "Your progress is kept on this device.",
+  },
+  tr: {
+    summary: "Özet sayfası",
+    cards: "Bilgi kartları",
+    summaryNote: "Yalnızca tanımlar, anahtar fikirler, uyarılar ve formüller görünüyor.",
+    print: "Yazdır",
+    showAll: "Tüm notları göster",
+    close: "Kartları kapat",
+    definition: "Tanım",
+    question: "Soru",
+    reveal: "Cevabı göster",
+    again: "Tekrar",
+    knew: "Biliyordum",
+    done: "Tur bitti. {n} karttan {k} tanesini bildin.",
+    restart: "Yeniden başla",
+    closeShort: "Kapat",
+    device: "İlerlemen bu cihazda saklanır.",
+  },
+}[lang];
+---
+
+<div class="study" data-study data-slug={slug} data-copy={JSON.stringify(copy)} data-pagefind-ignore>
+  <button type="button" class="study-button" data-summary-toggle aria-pressed="false">
+    <ListChecks size={16} aria-hidden="true" />
+    {copy.summary}
+  </button>
+  <button type="button" class="study-button" data-cards-open hidden>
+    <Layers size={16} aria-hidden="true" />
+    {copy.cards}
+    <span class="study-count" data-cards-count></span>
+  </button>
+</div>
+
+<dialog class="cards" data-cards aria-label={copy.cards}>
+  <div class="cards-head">
+    <span class="cards-progress" data-cards-progress></span>
+    <button type="button" class="cards-close" data-cards-close aria-label={copy.close}>
+      <X size={18} />
+    </button>
+  </div>
+  <div class="cards-body" data-cards-body aria-live="polite"></div>
+  <div class="cards-actions" data-cards-actions></div>
+  <p class="cards-device">{copy.device}</p>
+</dialog>
+
+<script>
+  type Card = { id: string; kind: "definition" | "question"; front: string; back: Node };
+
+  function initStudy() {
+    const study = document.querySelector<HTMLElement>("[data-study]");
+    if (!study || study.dataset.ready) return;
+    study.dataset.ready = "true";
+    const copy = JSON.parse(study.dataset.copy || "{}");
+    const article = document.querySelector<HTMLElement>(".article-content");
+    if (!article) return;
+
+    // ---------- Summary sheet ----------
+    const toggle = study.querySelector<HTMLButtonElement>("[data-summary-toggle]")!;
+    let banner: HTMLElement | null = null;
+    const setSummary = (on: boolean) => {
+      toggle.setAttribute("aria-pressed", String(on));
+      article.toggleAttribute("data-summary", on);
+      if (on && !banner) {
+        banner = document.createElement("div");
+        banner.className = "summary-banner";
+        const text = document.createElement("p");
+        text.textContent = copy.summaryNote;
+        const print = document.createElement("button");
+        print.type = "button";
+        print.textContent = copy.print;
+        print.addEventListener("click", () => window.print());
+        const all = document.createElement("button");
+        all.type = "button";
+        all.textContent = copy.showAll;
+        all.addEventListener("click", () => setSummary(false));
+        banner.append(text, print, all);
+        article.prepend(banner);
+      } else if (!on && banner) {
+        banner.remove();
+        banner = null;
+      }
+    };
+    toggle.addEventListener("click", () => setSummary(toggle.getAttribute("aria-pressed") !== "true"));
+
+    // ---------- Flashcards ----------
+    const clean = (s: string | null | undefined) => (s || "").replace(/\s+/g, " ").trim();
+    const cards: Card[] = [];
+    article.querySelectorAll<HTMLElement>(".callout-definition").forEach((el) => {
+      const term = clean(el.querySelector(".callout-title")?.textContent).replace(/^(Definition|Tanım):\s*/, "");
+      const body = el.querySelector(".callout-content");
+      if (term && body) cards.push({ id: `d:${term}`, kind: "definition", front: term, back: body.cloneNode(true) });
+    });
+    article.querySelectorAll<HTMLElement>("[data-concept-check]").forEach((el) => {
+      const question = clean(el.querySelector("[data-question-text]")?.textContent);
+      const answer = el.querySelector(".concept-answer-content");
+      if (question && answer) cards.push({ id: `q:${question}`, kind: "question", front: question, back: answer.cloneNode(true) });
+    });
+
+    const openButton = study.querySelector<HTMLButtonElement>("[data-cards-open]")!;
+    const dialog = document.querySelector<HTMLDialogElement>("[data-cards]")!;
+    if (!cards.length || !dialog) return;
+    openButton.hidden = false;
+    study.querySelector("[data-cards-count]")!.textContent = String(cards.length);
+
+    const key = `flashcards:${study.dataset.slug}`;
+    const load = (): Record<string, string> => {
+      try {
+        return JSON.parse(localStorage.getItem(key) || "{}");
+      } catch {
+        return {};
+      }
+    };
+    const save = (state: Record<string, string>) => {
+      try {
+        localStorage.setItem(key, JSON.stringify(state));
+      } catch {}
+    };
+
+    const body = dialog.querySelector<HTMLElement>("[data-cards-body]")!;
+    const actions = dialog.querySelector<HTMLElement>("[data-cards-actions]")!;
+    const progress = dialog.querySelector<HTMLElement>("[data-cards-progress]")!;
+    let deck: Card[] = [];
+    let at = 0;
+    let knew = 0;
+
+    const button = (label: string, primary: boolean, onClick: () => void, hotkey?: string) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = primary ? "cards-btn primary" : "cards-btn";
+      b.textContent = label;
+      if (hotkey) b.dataset.hotkey = hotkey;
+      b.addEventListener("click", onClick);
+      return b;
+    };
+
+    const show = (revealed: boolean) => {
+      const card = deck[at];
+      progress.textContent = `${at + 1} / ${deck.length}`;
+      const label = document.createElement("span");
+      label.className = "cards-kind";
+      label.textContent = card.kind === "definition" ? copy.definition : copy.question;
+      const front = document.createElement("p");
+      front.className = "cards-front";
+      front.textContent = card.front;
+      body.replaceChildren(label, front);
+      if (revealed) {
+        const back = document.createElement("div");
+        back.className = "cards-back";
+        back.append(card.back.cloneNode(true));
+        body.append(back);
+        actions.replaceChildren(
+          button(copy.again, false, () => grade(false), "1"),
+          button(copy.knew, true, () => grade(true), "2"),
+        );
+      } else {
+        actions.replaceChildren(button(copy.reveal, true, () => show(true)));
+      }
+      (actions.querySelector(".primary") as HTMLElement | null)?.focus();
+    };
+
+    const grade = (known: boolean) => {
+      const state = load();
+      state[deck[at].id] = known ? "known" : "again";
+      save(state);
+      if (known) knew += 1;
+      at += 1;
+      if (at < deck.length) return show(false);
+      progress.textContent = "";
+      const done = document.createElement("p");
+      done.className = "cards-front";
+      done.textContent = copy.done.replace("{k}", String(knew)).replace("{n}", String(deck.length));
+      body.replaceChildren(done);
+      actions.replaceChildren(
+        button(copy.restart, true, start),
+        button(copy.closeShort, false, () => dialog.close()),
+      );
+      (actions.querySelector(".primary") as HTMLElement | null)?.focus();
+    };
+
+    // Cards you missed or have not seen come first, the ones you knew last.
+    function start() {
+      const state = load();
+      const rank = (c: Card) => (state[c.id] === "known" ? 2 : state[c.id] === "again" ? 0 : 1);
+      deck = [...cards].sort((a, b) => rank(a) - rank(b));
+      at = 0;
+      knew = 0;
+      show(false);
+    }
+
+    openButton.addEventListener("click", () => {
+      dialog.showModal();
+      start();
+    });
+    dialog.querySelector("[data-cards-close]")!.addEventListener("click", () => dialog.close());
+    dialog.addEventListener("click", (e) => {
+      if (e.target === dialog) dialog.close();
+    });
+    // The focused button answers Space and Enter natively; 1 and 2 grade,
+    // the way flashcard apps work.
+    dialog.addEventListener("keydown", (e) => {
+      const hit = actions.querySelector<HTMLButtonElement>(`[data-hotkey="${e.key}"]`);
+      if (hit) {
+        e.preventDefault();
+        hit.click();
+      }
+    });
+  }
+
+  initStudy();
+  document.addEventListener("astro:after-swap", initStudy);
+</script>
+
+<style>
+  .study {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .study-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 2.25rem;
+    padding: 0.375rem 0.625rem;
+    border: 1px solid transparent;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition:
+      color 0.2s ease,
+      border-color 0.2s ease,
+      background-color 0.2s ease;
+  }
+
+  .study-button[aria-pressed="true"] {
+    border-color: var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+  }
+
+  .study-count {
+    font-variant-numeric: tabular-nums;
+    opacity: 0.6;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .study-button:hover {
+      color: var(--accent);
+    }
+  }
+
+  .study-button:active {
+    transform: scale(0.97);
+  }
+
+  /* ---------- Summary mode ---------- */
+  :global(.article-content[data-summary] > *:not(h2, h3, .callout-definition, .callout-tip, .callout-warning, .katex-display, .summary-banner)),
+  :global(.article-content[data-summary] > h3[id^="check-yourself"]) {
+    display: none !important;
+  }
+
+  :global(.summary-banner) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin-bottom: 1.5rem !important;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--bg-secondary);
+    font-size: 0.875rem;
+  }
+
+  :global(.summary-banner p) {
+    flex: 1 1 16rem;
+    margin: 0 !important;
+    color: var(--text-secondary);
+  }
+
+  :global(.summary-banner button) {
+    min-height: 2.25rem;
+    padding: 0.375rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  @media print {
+    :global(.summary-banner),
+    .study {
+      display: none !important;
+    }
+  }
+
+  /* ---------- Flashcards ---------- */
+  /* the global reset strips the dialog's own centring, so restore it */
+  .cards {
+    width: min(520px, calc(100vw - 2rem));
+    margin: auto;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    box-shadow: 0 24px 64px -16px rgb(0 0 0 / 0.3);
+  }
+
+  .cards::backdrop {
+    background: rgb(0 0 0 / 0.32);
+  }
+
+  .cards-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.5rem 0 1.25rem;
+  }
+
+  .cards-progress {
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+  }
+
+  .cards-close {
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+
+  .cards-close:hover {
+    color: var(--text-primary);
+  }
+
+  .cards-body {
+    min-height: 12rem;
+    padding: 0.5rem 1.5rem 1rem;
+  }
+
+  .cards-body :global(.cards-kind) {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+  }
+
+  .cards-body :global(.cards-front) {
+    margin: 0.375rem 0 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.35;
+    text-wrap: balance;
+  }
+
+  .cards-body :global(.cards-back) {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--border);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  .cards-body :global(.cards-back p) {
+    margin: 0 0 0.5rem;
+  }
+
+  .cards-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 0 1.25rem;
+  }
+
+  .cards-actions :global(.cards-btn) {
+    min-height: 2.5rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: transform 0.16s ease-out;
+  }
+
+  .cards-actions :global(.cards-btn.primary) {
+    border-color: var(--text-primary);
+    background: var(--text-primary);
+    color: var(--bg-primary);
+  }
+
+  .cards-actions :global(.cards-btn:active) {
+    transform: scale(0.97);
+  }
+
+  .cards-device {
+    margin: 0.75rem 1.25rem 1rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  :global([data-theme="eink"]) .cards {
+    box-shadow: none;
+    border-color: #000000;
+  }
+</style>
