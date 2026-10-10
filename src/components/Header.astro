@@ -76,6 +76,16 @@ const pathname = Astro.url.pathname.replace(/\/$/, "") || "/";
     </div>
 
     <!-- Mobile Menu Button -->
+    <!-- Phones: search sits in the bar beside the menu, not inside it. -->
+    <button
+      type="button"
+      class="search-trigger search-trigger-phone"
+      data-search-open
+      aria-label={t("search.open")}
+    >
+      <Search size={20} />
+    </button>
+
     <button
       class="mobile-menu-btn"
       id="mobileMenuBtn"
@@ -112,10 +122,6 @@ const pathname = Astro.url.pathname.replace(/\/$/, "") || "/";
         })
       }
     </nav>
-    <button type="button" class="mobile-search" data-search-open>
-      <Search size={16} aria-hidden="true" />
-      {t("search.open")}
-    </button>
     <div class="mobile-controls">
       <ThemeToggle lang={lang} mobile />
       <LanguageSwitcher currentLang={lang} mobile />
@@ -383,25 +389,19 @@ const pathname = Astro.url.pathname.replace(/\/$/, "") || "/";
       background-color 0.2s ease;
   }
 
-  .search-trigger:hover {
-    color: var(--text-primary);
+  @media (hover: hover) and (pointer: fine) {
+    .search-trigger:hover {
+      color: var(--text-primary);
+      background-color: var(--bg-tertiary);
+    }
+  }
+
+  .search-trigger:active {
     background-color: var(--bg-tertiary);
   }
 
-  .mobile-search {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    width: 100%;
-    min-height: 2.75rem;
-    margin-bottom: 1rem;
-    border: 1px solid var(--border);
-    border-radius: 0.5rem;
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
-    font: inherit;
-    cursor: pointer;
+  .search-trigger-phone {
+    display: none;
   }
 
   .mobile-controls {
@@ -438,6 +438,15 @@ const pathname = Astro.url.pathname.replace(/\/$/, "") || "/";
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+
+    /* pushed right, next to the menu button, at the same touch size */
+    .search-trigger-phone {
+      display: flex;
+      width: 3rem;
+      height: 3rem;
+      margin-left: auto;
+      color: var(--text-primary);
     }
 
     .mobile-overlay {

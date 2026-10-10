@@ -436,8 +436,15 @@ html[data-blog-width="wide"] {
   transition: all 0.2s ease;
 }
 
-.toc-sheet-trigger:hover {
-  color: var(--text-primary);
+/* Mouse hover only: on a phone a tapped button would keep the shade. */
+@media (hover: hover) and (pointer: fine) {
+  .toc-sheet-trigger:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-tertiary);
+  }
+}
+
+.toc-sheet-trigger:active {
   background-color: var(--bg-tertiary);
 }
 

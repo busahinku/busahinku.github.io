@@ -1,5 +1,4 @@
 ---
-import { Search as SearchIcon } from "@lucide/astro";
 import type { Lang } from "../i18n/translations";
 
 interface Props {
@@ -10,46 +9,49 @@ const { lang } = Astro.props;
 
 // Site search. Pagefind indexes the built site (`npm run build`) and searches
 // it in the browser, so there is no server and nothing to pay for. Any button
-// with [data-search-open] opens this dialog, as do "/" and Cmd/Ctrl+K.
-// Results come from the page's own language index (Pagefind reads <html lang>).
+// with [data-search-open] opens it, as do "/" and Cmd/Ctrl+K.
+// It is a full page of its own rather than a floating palette: the query is set
+// like a page title and the results read like the site's other lists.
 const copy = {
   en: {
     label: "Search the site",
-    placeholder: "Search notes, writing and projects",
-    close: "Close search",
-    hint: "Course notes, posts and projects are all searchable.",
+    placeholder: "Search",
+    close: "Close",
+    hint: "Course notes, writing and projects.",
     none: "Nothing matches",
-    offline: "Search is built with the site, so it works on the published pages only.",
+    offline: "Search is built with the site, so it only works on the published pages.",
+    kinds: { courses: "Course notes", projects: "Project", blog: "Writing", about: "About", misc: "Miscellany" },
   },
   tr: {
     label: "Sitede ara",
-    placeholder: "Notlarda, yazılarda ve projelerde ara",
-    close: "Aramayı kapat",
-    hint: "Ders notları, yazılar ve projelerin hepsi aranabilir.",
+    placeholder: "Ara",
+    close: "Kapat",
+    hint: "Ders notları, yazılar ve projeler.",
     none: "Eşleşen bir şey yok:",
     offline: "Arama site ile birlikte oluşturulur, bu yüzden yalnızca yayındaki sayfalarda çalışır.",
+    kinds: { courses: "Ders notları", projects: "Proje", blog: "Yazı", about: "Hakkımda", misc: "Ivır zıvır" },
   },
 }[lang];
 ---
 
 <dialog class="search" data-search aria-label={copy.label} data-copy={JSON.stringify(copy)}>
-  <form class="search-bar" method="dialog">
-    <SearchIcon size={18} class="search-icon" aria-hidden="true" />
-    <input
-      type="search"
-      name="q"
-      placeholder={copy.placeholder}
-      aria-label={copy.label}
-      autocomplete="off"
-      spellcheck="false"
-      enterkeyhint="search"
-    />
-    <button class="search-close" type="submit" value="close" aria-label={copy.close}>
-      <kbd>Esc</kbd>
-    </button>
-  </form>
-  <div class="search-results" aria-live="polite">
-    <p class="search-note">{copy.hint}</p>
+  <div class="search-page">
+    <form class="search-head" method="dialog" role="search">
+      <input
+        class="search-input"
+        type="search"
+        name="q"
+        placeholder={copy.placeholder}
+        aria-label={copy.label}
+        autocomplete="off"
+        spellcheck="false"
+        enterkeyhint="search"
+      />
+      <button class="search-close" type="submit" value="close">{copy.close}</button>
+    </form>
+    <div class="search-results" aria-live="polite">
+      <p class="search-note">{copy.hint}</p>
+    </div>
   </div>
 </dialog>
 
@@ -84,6 +86,8 @@ const copy = {
       p.textContent = text;
       results.replaceChildren(p);
     };
+    // The kind of page, read from its path: /courses/..., /tr/projects/...
+    const kind = (url: string) => copy.kinds[url.replace(/^\/(tr\/)?/, "").split("/")[0]] ?? "";
 
     const render = async (query: string) => {
       const pf = await load();
@@ -99,16 +103,33 @@ const copy = {
         // Point at the section that matched when Pagefind found one.
         const sub = r.sub_results?.find((s) => s.url.includes("#")) ?? null;
         const a = document.createElement("a");
+        a.className = "search-row";
         a.href = sub?.url ?? r.url;
+        const line = document.createElement("span");
+        line.className = "search-line";
         const title = document.createElement("span");
         title.className = "search-title";
-        title.textContent = sub && sub.title !== r.meta.title ? `${r.meta.title} · ${sub.title}` : r.meta.title || r.url;
+        title.textContent = r.meta.title || r.url;
+        const leader = document.createElement("span");
+        leader.className = "search-leader";
+        leader.setAttribute("aria-hidden", "true");
+        const meta = document.createElement("span");
+        meta.className = "search-kind";
+        meta.textContent = kind(r.url);
+        line.append(title, leader, meta);
         const excerpt = document.createElement("span");
         excerpt.className = "search-excerpt";
+        if (sub && sub.title !== r.meta.title) {
+          const section = document.createElement("span");
+          section.className = "search-section";
+          // "What is X?" needs no colon after it.
+          section.textContent = /[?!.:]$/.test(sub.title) ? `${sub.title} ` : `${sub.title}: `;
+          excerpt.append(section);
+        }
         // Only Pagefind's <mark> highlights are markup; escape anything else,
         // so a page that quotes HTML can never inject it here.
-        excerpt.innerHTML = (sub?.excerpt ?? r.excerpt).replace(/<(?!\/?mark>)/g, "&lt;");
-        a.append(title, excerpt);
+        excerpt.insertAdjacentHTML("beforeend", (sub?.excerpt ?? r.excerpt).replace(/<(?!\/?mark>)/g, "&lt;"));
+        a.append(line, excerpt);
         a.addEventListener("click", () => dialog.close());
         const li = document.createElement("li");
         li.append(a);
@@ -118,7 +139,7 @@ const copy = {
     };
 
     input.addEventListener("input", () => render(input.value));
-    // Arrow keys walk between the input and the results.
+    // Arrow keys walk between the field and the results.
     dialog.addEventListener("keydown", (e) => {
       if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
       const items = [input, ...results.querySelectorAll<HTMLElement>("a")];
@@ -128,10 +149,6 @@ const copy = {
         e.preventDefault();
         next.focus();
       }
-    });
-    // A click on the backdrop (outside the panel) closes it.
-    dialog.addEventListener("click", (e) => {
-      if (e.target === dialog) dialog.close();
     });
   }
 
@@ -162,155 +179,179 @@ const copy = {
 </script>
 
 <style>
+  /* A page of its own: opaque, edge to edge, nothing showing through. */
   .search {
-    width: min(560px, calc(100vw - 2rem));
-    max-height: min(70vh, 640px);
-    margin: 12vh auto auto;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    margin: 0;
     padding: 0;
-    border: 1px solid var(--border);
-    border-radius: 14px;
+    border: 0;
     background: var(--bg-primary);
     color: var(--text-primary);
-    box-shadow: 0 24px 64px -16px rgb(0 0 0 / 0.3);
-    overflow: hidden;
-  }
-
-  .search[open] {
-    display: flex;
-    flex-direction: column;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .search::backdrop {
-    background: rgb(0 0 0 / 0.32);
+    background: var(--bg-primary);
   }
 
-  .search-bar {
+  .search-page {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: max(1.25rem, env(safe-area-inset-top)) 1rem 4rem;
+  }
+
+  @media (min-width: 769px) {
+    .search-page {
+      padding-top: 6rem;
+    }
+  }
+
+  /* The query is set like a page title, on a single rule. */
+  .search-head {
+    position: sticky;
+    top: 0;
     display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    padding: 0 0.625rem 0 1rem;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.5rem 0;
     border-bottom: 1px solid var(--border);
+    background: var(--bg-primary);
+    transition: border-color 0.2s ease;
   }
 
-  /* The field drops its own ring; the bar carries the focus instead. */
-  .search-bar:focus-within {
-    border-bottom-color: var(--accent);
-    box-shadow: inset 0 -1px 0 var(--accent);
+  .search-head:focus-within {
+    border-bottom-color: var(--text-primary);
   }
 
-  .search-bar :global(.search-icon) {
-    flex: none;
-    color: var(--text-muted);
-  }
-
-  .search-bar input {
+  .search-input {
     flex: 1;
     min-width: 0;
-    height: 3.25rem;
+    padding: 0;
     border: 0;
     outline: 0;
     background: transparent;
     color: var(--text-primary);
-    /* 16px keeps iOS from zooming in */
-    font: 400 16px/1.3 var(--font-serif);
+    /* --page-title never goes under 22px, so iOS does not zoom in */
+    font: 600 var(--page-title) / 1.2 var(--font-serif);
   }
 
-  .search-bar input:focus {
+  .search-input:focus {
     box-shadow: none;
   }
 
-  .search-bar input::-webkit-search-cancel-button {
+  .search-input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .search-input::-webkit-search-cancel-button {
     display: none;
   }
 
   .search-close {
     flex: none;
-    min-width: 2.75rem;
-    height: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0 0.25rem;
     border: 0;
     background: transparent;
     color: var(--text-muted);
+    font: inherit;
+    font-size: 0.875rem;
     cursor: pointer;
   }
 
-  .search-close kbd {
-    padding: 0.125rem 0.375rem;
-    border: 1px solid var(--border);
-    border-radius: 0.3rem;
-    font: 500 0.6875rem/1.2 var(--font-serif);
-  }
-
-  .search-results {
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-
   .search-results :global(.search-note) {
-    margin: 0;
-    padding: 1.25rem 1rem;
-    font-size: 0.875rem;
+    margin: 1.25rem 0 0;
+    font-size: 0.9375rem;
     color: var(--text-muted);
   }
 
+  /* Results read like the homepage lists: title, dotted leader, kind. */
   .search-results :global(.search-list) {
     list-style: none;
-    margin: 0;
-    padding: 0.375rem;
+    margin: 0.5rem 0 0;
+    padding: 0;
   }
 
-  .search-results :global(.search-list a) {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    padding: 0.625rem 0.75rem;
-    border-radius: 9px;
+  .search-results :global(.search-list li + li) {
+    border-top: 1px dashed color-mix(in srgb, var(--border) 70%, transparent);
+  }
+
+  .search-results :global(.search-row) {
+    display: block;
+    padding: 0.875rem 0;
     color: inherit;
     text-decoration: none;
   }
 
-  .search-results :global(.search-list a:hover),
-  .search-results :global(.search-list a:focus-visible) {
-    background: var(--bg-secondary);
-    outline: none;
-    box-shadow: inset 0 0 0 1px var(--border);
+  .search-results :global(.search-line) {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
   }
 
   .search-results :global(.search-title) {
-    font-size: 0.9375rem;
+    font-size: 1rem;
     font-weight: 500;
-    line-height: 1.35;
+    color: var(--text-primary);
+    transition: color 0.2s ease;
+  }
+
+  .search-results :global(.search-leader) {
+    flex: 1;
+    min-width: 1.5rem;
+    border-bottom: 1px dotted var(--border);
+    transform: translateY(-4px);
+  }
+
+  .search-results :global(.search-kind) {
+    flex: none;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
   }
 
   .search-results :global(.search-excerpt) {
-    font-size: 0.8125rem;
-    line-height: 1.5;
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
     color: var(--text-secondary);
   }
 
-  .search-results :global(mark) {
-    background: transparent;
-    color: var(--accent);
-    font-weight: 600;
+  .search-results :global(.search-section) {
+    font-style: italic;
   }
 
-  @media (hover: none) {
-    .search-close kbd {
+  /* A match is underlined, not painted, so it survives e-ink as well. */
+  .search-results :global(mark) {
+    background: transparent;
+    color: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .search-close:hover,
+    .search-results :global(.search-row:hover .search-title) {
+      color: var(--accent);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .search-results :global(.search-leader) {
       display: none;
     }
 
-    .search-close::before {
-      content: "✕";
-      font-size: 1rem;
+    .search-results :global(.search-title) {
+      flex: 1;
+      min-width: 0;
     }
-  }
-
-  /* E-ink: no shade, a hard frame; matches are underlined, not coloured. */
-  :global([data-theme="eink"]) .search {
-    box-shadow: none;
-    border-color: #000000;
-  }
-
-  :global([data-theme="eink"]) .search-results :global(mark) {
-    text-decoration: underline;
   }
 </style>

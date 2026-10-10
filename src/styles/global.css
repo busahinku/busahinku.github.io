@@ -330,6 +330,18 @@ input:focus, textarea:focus, select:focus {
   border-radius: 2px;
 }
 
+/* Phones paint a translucent flash over anything tapped; every control here
+   has its own pressed state instead. */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *,
