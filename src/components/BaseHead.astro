@@ -229,7 +229,32 @@ const csp = [
 <ClientRouter />
 
 <script>
+  import { prefetch } from "astro:prefetch";
   import { canAnimate, coverName } from "../lib/motion";
+
+  // Prefetch waits for a mouse to hover a link, and a phone has no hover, so
+  // there every tap waited on the network. On a touch screen, the header's
+  // pages are fetched once the browser is idle (a few small HTML files, cached
+  // for ten minutes), and any other link the moment a finger lands on it.
+  if (matchMedia("(hover: none)").matches) {
+    const warm = () => {
+      const run = () =>
+        document
+          .querySelectorAll<HTMLAnchorElement>("header a[href^='/']")
+          .forEach((a) => prefetch(a.href, { with: "fetch" }));
+      if ("requestIdleCallback" in window) requestIdleCallback(run, { timeout: 3000 });
+      else setTimeout(run, 1500);
+    };
+    document.addEventListener("astro:page-load", warm);
+    document.addEventListener(
+      "touchstart",
+      (e) => {
+        const a = (e.target as Element).closest?.<HTMLAnchorElement>("a[href^='/']");
+        if (a) prefetch(a.href, { with: "fetch", ignoreSlowConnection: true });
+      },
+      { passive: true },
+    );
+  }
 
   // A project's cover grows from its card into the page, and back. A copy of
   // the picture is flown over the live page instead of being morphed inside a

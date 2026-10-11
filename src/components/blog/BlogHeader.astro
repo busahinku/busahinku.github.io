@@ -16,7 +16,7 @@ const { lang = "en", backUrl, backLabel, showToc = false } = Astro.props;
 const t = useTranslations(lang);
 
 const basePath = lang === "en" ? "" : `/${lang}`;
-const defaultBlogPath = `${basePath}/blog`;
+const defaultBlogPath = `${basePath}/blog/`;
 const finalBackUrl = backUrl || defaultBlogPath;
 const finalBackLabel = backLabel || t("nav.blog");
 ---

@@ -16,12 +16,12 @@ const basePath = lang === "en" ? "" : `/${lang}`;
 
 const navItems = [
   { href: `${basePath}/`, label: t("nav.home"), key: "home" },
-  { href: `${basePath}/blog`, label: t("nav.blog"), key: "blog" },
-  { href: `${basePath}/projects`, label: t("nav.projects"), key: "projects" },
-  { href: `${basePath}/courses`, label: t("nav.courses"), key: "courses" },
-  { href: `${basePath}/about`, label: t("nav.about"), key: "about" },
-  { href: `${basePath}/misc`, label: t("nav.misc"), key: "misc" },
-  { href: `${basePath}/contact`, label: t("nav.contact"), key: "contact" },
+  { href: `${basePath}/blog/`, label: t("nav.blog"), key: "blog" },
+  { href: `${basePath}/projects/`, label: t("nav.projects"), key: "projects" },
+  { href: `${basePath}/courses/`, label: t("nav.courses"), key: "courses" },
+  { href: `${basePath}/about/`, label: t("nav.about"), key: "about" },
+  { href: `${basePath}/misc/`, label: t("nav.misc"), key: "misc" },
+  { href: `${basePath}/contact/`, label: t("nav.contact"), key: "contact" },
 ];
 
 const pathname = Astro.url.pathname.replace(/\/$/, "") || "/";

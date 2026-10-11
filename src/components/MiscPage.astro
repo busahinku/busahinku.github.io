@@ -154,7 +154,7 @@ const playlists = [
       {
         photos.slice(0, 4).map((photo) => (
           <li>
-            <a href={`${basePath}/photos`}>
+            <a href={`${basePath}/photos/`}>
               <Image
                 src={photo.src}
                 alt={photo.alt}
@@ -169,7 +169,7 @@ const playlists = [
         ))
       }
     </ul>
-    <a class="more-link" href={`${basePath}/photos`}>{copy.allPhotos}</a>
+    <a class="more-link" href={`${basePath}/photos/`}>{copy.allPhotos}</a>
   </section>
 
   <section class="misc-section" id="bookmarks">
@@ -195,7 +195,7 @@ const playlists = [
         ))
       }
     </ul>
-    <a class="more-link" href={`${basePath}/misc/bookmarks`}
+    <a class="more-link" href={`${basePath}/misc/bookmarks/`}
       >{copy.allBookmarks}</a
     >
   </section>
@@ -220,7 +220,7 @@ const playlists = [
         ))
       }
     </ul>
-    <a class="more-link" href={`${basePath}/misc/books`}>{copy.allBooks}</a>
+    <a class="more-link" href={`${basePath}/misc/books/`}>{copy.allBooks}</a>
   </section>
 
 

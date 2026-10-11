@@ -12,9 +12,9 @@ const { lang = 'en', authorName = SITE_CONFIG.author } = Astro.props;
 const currentYear = new Date().getFullYear();
 
 const navLinks = [
-  { label: lang === 'tr' ? 'Yazılar' : 'Writing', href: '/blog' },
-  { label: lang === 'tr' ? 'Projeler' : 'Projects', href: '/projects' },
-  { label: lang === 'tr' ? 'Hakkımda' : 'About', href: '/about' },
+  { label: lang === 'tr' ? 'Yazılar' : 'Writing', href: '/blog/' },
+  { label: lang === 'tr' ? 'Projeler' : 'Projects', href: '/projects/' },
+  { label: lang === 'tr' ? 'Hakkımda' : 'About', href: '/about/' },
   { label: 'RSS', href: '/rss.xml' },
 ];
 
