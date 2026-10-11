@@ -1,5 +1,6 @@
 ---
 import { Image } from "astro:assets";
+import { coverName } from "../lib/motion";
 import type { ImageMetadata } from "astro";
 import FormattedDate from "./FormattedDate.astro";
 
@@ -98,7 +99,11 @@ const showFilters = items.length > 2 || categories.length > 1;
             data-category={item.category || ""}
           >
             <a class="card" href={item.href}>
-              <span class="card-media">
+              <span
+                class="card-media"
+                data-cover={coverName(item.href)}
+                style={`view-transition-name: ${coverName(item.href)}`}
+              >
                 {item.image ? (
                   <Image
                     src={item.image}
@@ -179,6 +184,8 @@ const showFilters = items.length > 2 || categories.length > 1;
 </div>
 
 <script>
+  import { canAnimate } from "../lib/motion";
+
   function initArchiveFilters() {
     document
       .querySelectorAll<HTMLElement>("[data-archive]")
@@ -254,9 +261,28 @@ const showFilters = items.length > 2 || categories.length > 1;
           } catch {}
           if (saved === "list" || saved === "grid") setView(saved);
 
+          // Cards glide to their new places: each is named for the length of
+          // the switch only (covers already carry their own names and move too).
+          const switchView = (view: string) => {
+            if (!canAnimate() || grid.dataset.view === view) return setView(view);
+            const cards = Array.from(grid.children) as HTMLElement[];
+            cards.forEach((card, i) => {
+              card.style.setProperty("view-transition-name", `archive-card-${i}`);
+              card.style.setProperty("view-transition-class", "archive-card");
+            });
+            document
+              .startViewTransition(() => setView(view))
+              .finished.finally(() =>
+                cards.forEach((card) => {
+                  card.style.removeProperty("view-transition-name");
+                  card.style.removeProperty("view-transition-class");
+                }),
+              );
+          };
+
           viewButtons.forEach((b) =>
             b.addEventListener("click", () =>
-              setView(b.dataset.archiveView || "grid"),
+              switchView(b.dataset.archiveView || "grid"),
             ),
           );
         }

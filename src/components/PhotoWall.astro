@@ -111,6 +111,8 @@ const formatTaken = (value?: string) => {
 </div>
 
 <script>
+  import { canAnimate } from "../lib/motion";
+
   function initPhotoWall() {
     document.querySelectorAll<HTMLElement>("[data-wall]").forEach((wall) => {
       if (wall.dataset.initialized) return;
@@ -130,12 +132,20 @@ const formatTaken = (value?: string) => {
       const nextBtn = wall.querySelector<HTMLElement>("[data-viewer-next]")!;
 
       let index = 0;
-      let opener: HTMLElement | null = null;
 
       const show = (next: number) => {
         index = (next + shots.length) % shots.length;
         const shot = shots[index];
         const img = shot.querySelector("img");
+        // Sized by the photo's shape, not by whichever file has arrived, so
+        // the thumbnail shown first and the full photo fill the same box.
+        const w = Number(img?.getAttribute("width")) || img?.naturalWidth || 3;
+        const h = Number(img?.getAttribute("height")) || img?.naturalHeight || 2;
+        image.style.setProperty("--ratio", String(w / h));
+        // The thumbnail is already loaded, so the viewer never opens empty;
+        // the larger rendition takes over when it arrives (an img keeps
+        // showing the old picture until the new one is ready).
+        if (img?.currentSrc) image.src = img.currentSrc;
         image.src = shot.dataset.full || img?.src || "";
         image.alt = img?.alt || "";
         const original = shot.dataset.original;
@@ -152,24 +162,47 @@ const formatTaken = (value?: string) => {
         count.textContent = `${index + 1} / ${shots.length}`;
       };
 
+      // The photo grows out of its thumbnail and shrinks back into it: the
+      // same view-transition-name moves from one image to the other inside
+      // the transition, and the rest of the viewer fades around it.
+      const morph = (from: HTMLElement | null, to: HTMLElement | null, update: () => void) => {
+        if (!canAnimate() || !from || !to) {
+          update();
+          return Promise.resolve();
+        }
+        from.style.viewTransitionName = "photo";
+        const transition = document.startViewTransition(() => {
+          from.style.viewTransitionName = "";
+          update();
+          to.style.viewTransitionName = "photo";
+        });
+        transition.finished.finally(() => (to.style.viewTransitionName = ""));
+        return transition.updateCallbackDone;
+      };
+
       const open = (next: number, from: HTMLElement) => {
-        opener = from;
-        show(next);
-        viewer.setAttribute("aria-hidden", "false");
-        viewer.classList.add("open");
-        document.body.style.overflow = "hidden";
-        // the close button is the one control that is always present, so it
-        // is where the keyboard should land
-        (viewer.querySelector(".viewer-close") as HTMLElement)?.focus();
+        morph(from.querySelector("img"), image, () => {
+          show(next);
+          viewer.setAttribute("aria-hidden", "false");
+          viewer.classList.add("open");
+          document.body.style.overflow = "hidden";
+        }).then(() =>
+          // the close button is the one control that is always present, so
+          // it is where the keyboard should land
+          (viewer.querySelector(".viewer-close") as HTMLElement)?.focus(),
+        );
       };
 
       const close = () => {
-        viewer.setAttribute("aria-hidden", "true");
-        viewer.classList.remove("open");
-        document.body.style.overflow = "";
-        // hand the keyboard back to the thumbnail that opened it
-        opener?.focus();
-        opener = null;
+        // Back to the photo on screen now, which may not be the one opened:
+        // it is scrolled into view so the picture has somewhere to land.
+        const shot = shots[index];
+        morph(image, shot.querySelector("img"), () => {
+          viewer.setAttribute("aria-hidden", "true");
+          viewer.classList.remove("open");
+          document.body.style.overflow = "";
+          shot.scrollIntoView({ block: "nearest" });
+        }).then(() => shot.focus({ preventScroll: true }));
       };
 
       shots.forEach((shot, i) =>
@@ -317,6 +350,11 @@ const formatTaken = (value?: string) => {
     display: flex;
   }
 
+  /* Its own layer in a view transition, so it fades around the photo. */
+  .viewer {
+    view-transition-name: photo-viewer;
+  }
+
   .viewer-backdrop {
     position: absolute;
     inset: 0;
@@ -335,13 +373,17 @@ const formatTaken = (value?: string) => {
     max-height: 100%;
   }
 
+  /* Sized from the photo's shape (--ratio) to the largest box that fits,
+     leaving room for the caption under it. */
   .viewer-image {
+    --room: calc(100vh - 9rem);
     display: block;
-    max-width: 100%;
-    /* leaves room for the caption under it */
-    max-height: calc(100vh - 9rem);
-    width: auto;
+    width: min(1200px, calc(100vw - 2 * clamp(1rem, 4vw, 3rem)), calc(var(--room) * var(--ratio, 1.5)));
     height: auto;
+    aspect-ratio: var(--ratio, auto);
+    max-width: 100%;
+    max-height: var(--room);
+    object-fit: contain;
     margin: 0;
     border-radius: 0.375rem;
   }
@@ -413,7 +455,7 @@ const formatTaken = (value?: string) => {
       right: 0.5rem;
     }
     .viewer-image {
-      max-height: calc(100svh - 11rem);
+      --room: calc(100svh - 11rem);
     }
   }
 
@@ -448,5 +490,30 @@ const formatTaken = (value?: string) => {
 
   :global([data-theme="eink"]) .viewer-image {
     border: 1px solid var(--text-primary);
+  }
+</style>
+
+<style is:global>
+  /* The viewer fades in and out around the photo (BaseHead keeps other
+     one-sided layers still, so these two say otherwise). */
+  ::view-transition-new(photo-viewer):only-child {
+    animation: photo-viewer-in 0.24s ease-out both;
+  }
+
+  ::view-transition-old(photo-viewer):only-child {
+    opacity: 1;
+    animation: photo-viewer-out 0.2s ease-in both;
+  }
+
+  @keyframes photo-viewer-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes photo-viewer-out {
+    to {
+      opacity: 0;
+    }
   }
 </style>

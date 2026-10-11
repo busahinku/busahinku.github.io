@@ -355,6 +355,29 @@ a,
   html {
     scroll-behavior: auto;
   }
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* Images still loading fade in when they arrive (BaseHead script). An
+   animation, not a transition, so it never fights an image's own hover
+   transition. */
+img.img-fade:not(.img-in) {
+  opacity: 0;
+}
+
+img.img-in {
+  animation: img-in 0.4s ease-out both;
+}
+
+@keyframes img-in {
+  from {
+    opacity: 0;
+  }
 }
 
 /* Responsive */
@@ -395,9 +418,11 @@ a,
   scroll-behavior: auto;
 }
 
-/* view transitions repaint the whole screen on every navigation */
-[data-theme="eink"]::view-transition-old(root),
-[data-theme="eink"]::view-transition-new(root) {
+/* view transitions repaint the whole screen on every navigation, and the
+   cover morph would smear across it: no transition animates here */
+[data-theme="eink"]::view-transition-group(*),
+[data-theme="eink"]::view-transition-old(*),
+[data-theme="eink"]::view-transition-new(*) {
   animation: none !important;
 }
 

@@ -228,9 +228,94 @@ const csp = [
      completed navigation feel as though it is still waiting. -->
 <ClientRouter />
 
+<script>
+  import { canAnimate, coverName } from "../lib/motion";
+
+  // A project's cover grows from its card into the page. Its image must be
+  // decoded before the transition starts or the morph lands on an empty
+  // frame, so when there is a card to grow from, wait for it (briefly).
+  document.addEventListener("astro:before-preparation", (event) => {
+    const name = coverName(event.to.pathname);
+    if (!canAnimate() || !document.querySelector(`[data-cover="${name}"]`)) return;
+    const load = event.loader;
+    event.loader = async () => {
+      await load();
+      const img = event.newDocument.querySelector<HTMLImageElement>(`[data-cover="${name}"] img`);
+      if (!img) return;
+      const probe = new Image();
+      probe.sizes = img.sizes;
+      probe.srcset = img.srcset;
+      probe.src = img.src;
+      await Promise.race([probe.decode().catch(() => {}), new Promise((r) => setTimeout(r, 350))]);
+    };
+  });
+
+  // Images fade in as they arrive instead of popping in. Ones already there
+  // (cached, or loaded first) show at once, and without JavaScript nothing changes.
+  const fadeImages = () => {
+    if (!canAnimate()) return;
+    for (const img of document.querySelectorAll<HTMLImageElement>("main img, article img")) {
+      if (img.complete) continue;
+      img.classList.add("img-fade");
+      const shown = () => img.classList.add("img-in");
+      img.addEventListener("load", shown, { once: true });
+      img.addEventListener("error", shown, { once: true });
+    }
+  };
+  document.addEventListener("astro:page-load", fadeImages);
+</script>
+
 <style is:global>
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
+  }
+
+  /* What does move is continuity: a project's cover grows from its card into
+     the page, a photo from its thumbnail, cards glide between grid and list.
+     One curve for all of it, quick out of the gate and soft at the end. */
+  ::view-transition-group(*) {
+    animation-duration: 0.32s;
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  /* A named element with no partner on the other side (every card except the
+     one opened, a cover reached from a page with no card) does not fade: the
+     old leaves at once, the new is simply there, like the rest of the page. */
+  ::view-transition-old(*):only-child {
+    animation: none;
+    opacity: 0;
+  }
+
+  ::view-transition-new(*):only-child {
+    animation: none;
+  }
+
+  /* Cards gliding between grid and list keep their own size, so text never
+     stretches; only the frame moves. */
+  ::view-transition-old(.archive-card),
+  ::view-transition-new(.archive-card) {
+    width: auto;
+    height: auto;
+  }
+
+  /* A theme change: the new colours fade in over the old. */
+  html.theme-fade::view-transition-new(root) {
+    animation: theme-in 0.22s ease-out;
+  }
+
+  /* A named element is lifted into a layer above the whole page for the
+     length of a transition, so a cover under an open menu or dialog would show
+     through it. A theme change is one picture fading into another, with no
+     names at all; and while a menu or dialog is open, covers keep theirs off. */
+  html.theme-fade *,
+  html:has(.mobile-menu.active, dialog[open]) [data-cover] {
+    view-transition-name: none !important;
+  }
+
+  @keyframes theme-in {
+    from {
+      opacity: 0;
+    }
   }
 </style>

@@ -204,6 +204,18 @@ const copy = {
     max-width: 720px;
     margin: 0 auto;
     padding: max(1.25rem, env(safe-area-inset-top)) 1rem 4rem;
+    transition:
+      opacity 0.2s ease-out,
+      transform 0.2s ease-out;
+  }
+
+  /* The page covers the screen at once (nothing shows through); only its
+     contents ease in. */
+  @starting-style {
+    .search[open] .search-page {
+      opacity: 0;
+      transform: translateY(6px);
+    }
   }
 
   @media (min-width: 769px) {

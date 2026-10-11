@@ -235,6 +235,8 @@ const t = useTranslations(lang);
 </style>
 
 <script>
+  import { canAnimate } from '../lib/motion';
+
   function initTheme() {
     // Must mirror the pre-paint detection in BaseHead, or the two disagree
     // on the first render.
@@ -257,7 +259,14 @@ const t = useTranslations(lang);
     // visit, so it could never follow the system again.
     const setTheme = (theme: string) => {
       localStorage.setItem('theme', theme);
-      applyTheme(theme);
+      // A pick fades in (BaseHead: html.theme-fade). Into or out of e-ink,
+      // with reduced motion, or without view transitions it just switches.
+      const html = document.documentElement;
+      if (!canAnimate() || theme === 'eink' || html.getAttribute('data-theme') === theme) return applyTheme(theme);
+      html.classList.add('theme-fade');
+      document
+        .startViewTransition(() => applyTheme(theme))
+        .finished.finally(() => html.classList.remove('theme-fade'));
     };
 
     const updateButtons = (theme: string) => {

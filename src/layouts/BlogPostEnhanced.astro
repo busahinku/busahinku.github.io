@@ -16,6 +16,7 @@ import ShareRow from "../components/blog/ShareRow.astro";
 import PostNav, { type PostNavLink } from "../components/blog/PostNav.astro";
 import { useTranslations, type Lang } from "../i18n/translations";
 import { pageKey } from "../lib/engagement";
+import { coverName } from "../lib/motion";
 import "../styles/blog-post.css";
 import "katex/dist/katex.min.css";
 
@@ -96,6 +97,8 @@ const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
                 "hero-image-wrapper",
                 { "hero-image-cover": isCoverHero },
               ]}
+              data-cover={isCoverHero ? coverName(Astro.url.pathname) : undefined}
+              style={isCoverHero ? `view-transition-name: ${coverName(Astro.url.pathname)}` : undefined}
             >
               <Image
                 width={isCoverHero ? 1600 : 900}
