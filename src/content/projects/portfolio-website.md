@@ -29,7 +29,7 @@ This portfolio website showcases my work and writings. Built with modern web tec
 - Astro 5.x
 - TypeScript
 - CSS Variables for theming
-- Firebase for analytics and comments
+- Cloudflare Workers and D1 for views, likes and comments
 
 ## Lessons Learned
 

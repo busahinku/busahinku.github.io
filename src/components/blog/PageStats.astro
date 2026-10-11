@@ -1,0 +1,155 @@
+---
+import type { Lang } from "../../i18n/translations";
+
+interface Props {
+  pageKey: string;
+  lang: Lang;
+}
+
+const { pageKey, lang } = Astro.props;
+const copy = {
+  en: { views: "views", like: "Like this page" },
+  tr: { views: "görüntülenme", like: "Bu sayfayı beğen" },
+}[lang];
+---
+
+<!-- Hidden until the counts arrive, so a failed request leaves no empty pill. -->
+<div class="post-engagement" data-stats={pageKey} data-pagefind-ignore hidden>
+  <div class="engagement-stats">
+    <span class="stat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+      <span data-views></span><span class="sr-only"> {copy.views}</span>
+    </span>
+    <button class="like" type="button" aria-pressed="false" title={copy.like}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path
+          d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+        ></path>
+      </svg>
+      <span class="sr-only">{copy.like}, </span><span data-likes></span>
+    </button>
+  </div>
+</div>
+
+<script>
+  import { load, send, visitor } from "../../lib/engagement";
+
+  const short = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}K` : String(n));
+
+  function initStats() {
+    const root = document.querySelector<HTMLElement>("[data-stats]");
+    if (!root || root.dataset.ready) return;
+    root.dataset.ready = "true";
+    const key = root.dataset.stats!;
+    const views = root.querySelector<HTMLElement>("[data-views]")!;
+    const likes = root.querySelector<HTMLElement>("[data-likes]")!;
+    const button = root.querySelector<HTMLButtonElement>(".like")!;
+    let count = 0;
+    const show = (liked: boolean) => {
+      button.setAttribute("aria-pressed", String(liked));
+      likes.textContent = short(count);
+    };
+
+    load(key).then((data) => {
+      if (!data) return;
+      views.textContent = short(data.views);
+      count = data.likes;
+      show(data.liked);
+      root.hidden = false;
+    });
+
+    button.addEventListener("click", async () => {
+      const was = button.getAttribute("aria-pressed") === "true";
+      count += was ? -1 : 1;
+      show(!was);
+      button.disabled = true;
+      const result = await send<{ likes: number; liked: boolean }>("/like", { key, visitor: visitor(), liked: !was });
+      if (result) count = result.likes;
+      else count += was ? 1 : -1;
+      show(result ? result.liked : was);
+      button.disabled = false;
+    });
+  }
+
+  // Never compete with the page itself or a navigation.
+  const schedule = () => ("requestIdleCallback" in window ? requestIdleCallback(initStats, { timeout: 2000 }) : setTimeout(initStats, 1000));
+  schedule();
+  document.addEventListener("astro:after-swap", schedule);
+</script>
+
+<style>
+  .post-engagement {
+    display: flex;
+    justify-content: center;
+    margin: 2rem 0;
+  }
+
+  .post-engagement[hidden] {
+    display: none;
+  }
+
+  .engagement-stats {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 0.5rem 1.125rem;
+    border: 1px solid var(--border);
+    border-radius: 2rem;
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stat,
+  .like {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4375rem;
+  }
+
+  svg {
+    width: 1.0625rem;
+    height: 1.0625rem;
+    flex: none;
+    transition: transform 0.16s ease-out;
+  }
+
+  /* A taller hit area than the pill shows. */
+  .like {
+    margin: -0.5rem -0.375rem;
+    padding: 0.5rem 0.375rem;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .like:disabled {
+    cursor: default;
+  }
+
+  /* Liked is a filled heart, not only a colour, so e-ink shows it too. */
+  .like[aria-pressed="true"] {
+    color: var(--accent);
+  }
+
+  .like[aria-pressed="true"] svg {
+    fill: currentColor;
+  }
+
+  .like:active svg {
+    transform: scale(0.85);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .like:hover {
+      color: var(--accent);
+    }
+  }
+</style>

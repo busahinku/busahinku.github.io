@@ -9,7 +9,7 @@ Live at [busahin.com](https://busahin.com), in English and Turkish (`/tr/`).
 - [Astro 5](https://astro.build) (static output) with MDX, KaTeX, and Shiki
 - Vanilla CSS with custom properties; three themes (light / dark / paper)
 - Melodrama + Inter, self-hosted
-- Firebase (Firestore) for view counts, likes, and comments; loaded lazily
+- Cloudflare Workers + D1 for view counts, likes, and moderated comments (`workers/engagement`)
 - GitHub Pages behind Cloudflare
 
 ## Development
@@ -20,8 +20,6 @@ npm run dev       # dev server at localhost:4321
 npm run build     # static build into dist/
 npm run preview   # serve the built site
 ```
-
-Firebase credentials go in `.env` (see `.env.example`). The site builds and runs without them; the engagement widgets just stay idle.
 
 ## Content
 

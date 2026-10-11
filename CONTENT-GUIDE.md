@@ -287,8 +287,8 @@ This method is standard<Cite id="clrs" num={1} />.
 
 - Arbitrary React/Vue/Svelte components. Only the components in section 6 exist.
 - Raw `<script>`, external stylesheets, custom fonts, or CDN resources. The
-  content security policy blocks anything not on the allowlist (Firebase,
-  Spotify, YouTube, Vimeo).
+  content security policy blocks anything not on the allowlist (Spotify,
+  YouTube, Vimeo).
 - Embeds from hosts other than YouTube and Vimeo.
 - Inline HTML for layout. Stick to the Markdown and components above; the design
   system handles all styling.

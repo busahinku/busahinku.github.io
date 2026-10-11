@@ -10,14 +10,13 @@ import AskSelection from "../components/AskSelection.astro";
 import FormattedDate from "../components/FormattedDate.astro";
 import BlogHeader from "../components/blog/BlogHeader.astro";
 import TableOfContents from "../components/blog/TableOfContents.astro";
-import ViewCounter from "../components/blog/ViewCounter.astro";
-import LikeButton from "../components/blog/LikeButton.astro";
-import CommentSection from "../components/blog/CommentSection.astro";
+import PageStats from "../components/blog/PageStats.astro";
+import Comments from "../components/blog/Comments.astro";
 import ShareRow from "../components/blog/ShareRow.astro";
 import PostNav, { type PostNavLink } from "../components/blog/PostNav.astro";
 import { useTranslations, type Lang } from "../i18n/translations";
+import { pageKey } from "../lib/engagement";
 import "../styles/blog-post.css";
-import "../styles/firebase-components.css";
 import "katex/dist/katex.min.css";
 
 interface Props {
@@ -27,7 +26,6 @@ interface Props {
     | CollectionEntry<"courses">["data"];
   headings: MarkdownHeading[];
   lang?: Lang;
-  slug: string;
   github?: string;
   demo?: string;
   backUrl?: string;
@@ -44,7 +42,6 @@ const {
   post,
   headings,
   lang = "en",
-  slug,
   github,
   demo,
   backUrl,
@@ -57,6 +54,8 @@ const {
 const { title, description, pubDate, updatedDate, heroImage } = post;
 const t = useTranslations(lang);
 const isCoverHero = heroAspect === "16:10";
+// Views, likes and comments are kept per page, shared by both languages.
+const key = pageKey(Astro.url.pathname);
 
 // The TOC lists h2/h3 only; the mobile trigger appears only if there are any.
 const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
@@ -179,13 +178,7 @@ const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
           <slot />
         </div>
 
-        <!-- Post engagement section -->
-        <div class="post-engagement" data-pagefind-ignore>
-          <div class="engagement-stats">
-            <ViewCounter slug={slug} />
-            <LikeButton slug={slug} />
-          </div>
-        </div>
+        <PageStats pageKey={key} lang={lang} />
 
         <ShareRow title={title} lang={lang} />
 
@@ -193,8 +186,7 @@ const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
 
         <hr class="article-divider" />
 
-        <!-- Comments section -->
-        <CommentSection slug={slug} lang={lang} />
+        <Comments pageKey={key} lang={lang} />
 
         <!-- inside the article so it stops above the footer -->
         <Assistant lang={lang} />

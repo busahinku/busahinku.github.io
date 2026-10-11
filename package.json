@@ -9,7 +9,8 @@
     "astro": "astro",
     "notes": "node scripts/course-notes.mjs",
     "photo": "node scripts/photo.mjs",
-    "backup": "node scripts/backup.mjs"
+    "backup": "node scripts/backup.mjs",
+    "comments": "node scripts/comments.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.3.13",
@@ -18,7 +19,6 @@
     "@lucide/astro": "^0.563.0",
     "@tailwindcss/vite": "^4.1.18",
     "astro": "^5.16.15",
-    "firebase": "^12.8.0",
     "katex": "^0.16.27",
     "rehype-katex": "^7.0.1",
     "remark-math": "^6.0.0",

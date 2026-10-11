@@ -57,9 +57,9 @@ const personSchema = JSON.stringify({
 
 /*
  * Content-Security-Policy (meta form; GitHub Pages cannot send headers).
- * Allowlist covers: self-hosted assets, Firebase (Firestore + Auth),
- * Google sign-in, Spotify / YouTube / Vimeo embeds, Cloudflare Web Analytics,
- * the R2 files domain and the site assistant.
+ * Allowlist covers: self-hosted assets, Spotify / YouTube / Vimeo embeds,
+ * Cloudflare Web Analytics, the R2 files domain, and the site's own Workers
+ * (assistant, views/likes/comments) on busahin.com/api.
  * frame-ancestors and X-Frame-Options cannot be set from <meta>;
  * add those via a Cloudflare Transform Rule if desired.
  */
@@ -68,13 +68,13 @@ const csp = [
   // static.cloudflareinsights.com: Cloudflare Web Analytics, which Cloudflare
   // injects at the edge and which reports back to this origin ('self').
   // 'wasm-unsafe-eval': site search (Pagefind) runs as WebAssembly.
-  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://apis.google.com https://www.gstatic.com https://static.cloudflareinsights.com",
+  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
   "font-src 'self'",
-  // busahin.com explicitly so the dev server can reach the live assistant
-  "connect-src 'self' https://busahin.com https://*.googleapis.com wss://*.firebaseio.com",
-  "frame-src https://open.spotify.com https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com https://*.firebaseapp.com https://accounts.google.com",
+  // busahin.com explicitly so the dev server can reach the live Workers
+  "connect-src 'self' https://busahin.com",
+  "frame-src https://open.spotify.com https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

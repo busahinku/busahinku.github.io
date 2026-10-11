@@ -1,0 +1,30 @@
+# Deploy: npx wrangler@4.146.0 deploy --config workers/engagement/wrangler.toml
+name = "busahin-engagement"
+main = "index.js"
+compatibility_date = "2026-09-01"
+workers_dev = false
+preview_urls = false
+# More specific than the assistant's busahin.com/api/*, so it wins for these paths.
+routes = [{ pattern = "busahin.com/api/page*", zone_name = "busahin.com" }]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "busahin-engagement"
+database_id = "673de863-6560-46cf-9ce5-44fa504c870d"
+
+# Views and likes: thirty a minute per visitor, three hundred for the site.
+[[ratelimits]]
+name = "PER_VISITOR"
+namespace_id = "4973"
+simple = { limit = 30, period = 60 }
+
+[[ratelimits]]
+name = "SITE_WIDE"
+namespace_id = "4974"
+simple = { limit = 300, period = 60 }
+
+# Comments: two a minute per visitor.
+[[ratelimits]]
+name = "COMMENTS"
+namespace_id = "4975"
+simple = { limit = 2, period = 60 }
