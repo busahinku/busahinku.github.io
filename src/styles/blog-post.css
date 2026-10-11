@@ -781,6 +781,12 @@ html[data-blog-font="sans"] .article-content {
   margin-bottom: 1.5rem;
 }
 
+/* A jump to a heading (search result, #link, "continue reading") stops below
+   the fixed header, at the same 80px the table of contents scrolls to. */
+.article-content :is(h2, h3, h4) {
+  scroll-margin-top: 80px;
+}
+
 .article-content h2 {
   margin-top: 2.5rem;
   margin-bottom: 1rem;

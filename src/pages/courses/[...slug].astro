@@ -3,6 +3,7 @@ import { type CollectionEntry, getCollection, render } from "astro:content";
 import BlogPostEnhanced from "../../layouts/BlogPostEnhanced.astro";
 import CourseFiles from "../../components/CourseFiles.astro";
 import StudyTools from "../../components/StudyTools.astro";
+import ResumeReading from "../../components/ResumeReading.astro";
 import Callout from "../../components/blog/Callout.astro";
 import ConceptCheck from "../../components/blog/ConceptCheck.astro";
 import { useTranslations, type Lang } from "../../i18n/translations";
@@ -61,5 +62,6 @@ const components = { Callout, ConceptCheck };
 >
   <CourseFiles slot="header" slug={course.id} lang={lang} />
   <StudyTools slot="header" slug={course.id} lang={lang} />
+  <ResumeReading slot="header" slug={course.id} lang={lang} />
   <Content components={components} />
 </BlogPostEnhanced>

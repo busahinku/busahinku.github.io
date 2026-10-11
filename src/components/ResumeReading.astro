@@ -1,0 +1,108 @@
+---
+import type { Lang } from "../i18n/translations";
+
+interface Props {
+  slug: string;
+  lang: Lang;
+}
+
+// Long notes remember the section you were reading, on this device only, and
+// offer the way back next time. A first visit shows nothing.
+const { slug, lang } = Astro.props;
+const copy = {
+  en: { before: "Last time you stopped at ", after: "." },
+  tr: { before: "Geçen sefer ", after: " bölümünde kalmıştın." },
+}[lang];
+---
+
+<p class="resume" data-resume={slug} data-pagefind-ignore hidden>
+  {copy.before}<a href="#"></a>{copy.after}
+</p>
+
+<script>
+  let stop: (() => void) | null = null;
+
+  function initResume() {
+    stop?.();
+    stop = null;
+    const box = document.querySelector<HTMLElement>("[data-resume]");
+    if (!box) return;
+    const headings = [...document.querySelectorAll<HTMLElement>(".article-content :is(h2, h3)[id]")];
+    if (headings.length < 3) return;
+    const store = `reading:${box.dataset.resume}`;
+    const link = box.querySelector("a")!;
+
+    // The TOC holds each heading as plain text (math included), so take it from there.
+    const text = (h: HTMLElement) => document.querySelector(`[data-toc-link][data-target="${h.id}"]`)?.textContent?.trim() || h.textContent!.trim();
+    // An h3 alone can be ambiguous ("Check yourself" closes every week), so name its week too.
+    const label = (h: HTMLElement) => {
+      if (h.tagName === "H2") return text(h);
+      const week = headings.slice(0, headings.indexOf(h)).reverse().find((x) => x.tagName === "H2");
+      return week ? `${text(week)}, ${text(h)}` : text(h);
+    };
+
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem(store);
+    } catch {}
+    const target = saved ? document.getElementById(saved) : null;
+    // Not when the visit already points somewhere (a #link), or at the very start.
+    if (target && headings.includes(target) && target !== headings[0] && !location.hash) {
+      link.href = `#${target.id}`;
+      link.textContent = label(target);
+      box.hidden = false;
+      link.addEventListener("click", () => (box.hidden = true));
+    }
+
+    // Remember the last heading that has passed the top of the screen.
+    let last = "";
+    let queued = false;
+    const track = () => {
+      queued = false;
+      let current: HTMLElement | null = null;
+      for (const h of headings) {
+        if (h.getBoundingClientRect().top > 120) break;
+        current = h;
+      }
+      if (!current || current.id === last) return;
+      last = current.id;
+      try {
+        localStorage.setItem(store, current.id);
+      } catch {}
+      if (current.id === saved) box.hidden = true;
+    };
+    const onScroll = () => {
+      if (!queued) (queued = true), requestAnimationFrame(track);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    stop = () => window.removeEventListener("scroll", onScroll);
+  }
+
+  initResume();
+  document.addEventListener("astro:after-swap", initResume);
+</script>
+
+<style>
+  .resume {
+    margin: 1rem 0 0;
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+  }
+
+  .resume[hidden] {
+    display: none;
+  }
+
+  .resume a {
+    color: var(--text-primary);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .resume a:hover {
+      color: var(--accent);
+    }
+  }
+</style>
