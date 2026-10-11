@@ -22,6 +22,7 @@ import remarkMdx from "remark-mdx";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { upload } from "./r2.mjs";
+import { axes, stacks, walks } from "../src/lib/random-walk.mjs";
 
 const [cmd, slug, exportPdf] = process.argv.slice(2);
 const mdxPath = `src/content/courses/${slug}.mdx`;
@@ -384,8 +385,43 @@ function component(n) {
     answers.push({ id, answer: blocks(n.children) });
     return `\\begin{notesexercise}{${id}}\n${text(a.question ?? "")}\n\\end{notesexercise}`;
   }
+  if (n.name === "RandomWalk") return randomWalk(a);
   console.warn(`left out of the PDF: <${n.name}>`);
   return "";
+}
+
+// The interactive figure as it first appears on the page: the same seed draws
+// the same paths, with the time and the followed path at their starting values.
+function randomWalk(a) {
+  const paths = Number(a.paths ?? 8);
+  const steps = Number(a.steps ?? 60);
+  const t = Math.min(steps, Number(a.t ?? Math.round(steps * 0.65)));
+  const pick = Math.min(paths - 1, Number(a.pick ?? 0));
+  const data = walks(paths, steps, Number(a.seed ?? 497));
+  const { lo, hi, tick, tTick } = axes(data);
+  const coords = (p) => p.map((v, s) => `(${s},${v})`).join(" ");
+  const dir = t > steps * 0.8 ? -1 : 1;
+  // "t" and "ω" in the caption are the notation, so set them as math.
+  const caption = text(a.caption ?? "").replace(/\bt\b/g, "$t$").replace(/ω/g, "$\\omega$");
+  return [
+    "\\begin{figure}[htbp]",
+    "\\centering",
+    "\\begin{tikzpicture}",
+    `\\begin{axis}[width=\\linewidth, height=5.6cm, xmin=0, xmax=${steps}, ymin=${lo}, ymax=${hi},`,
+    `  xtick distance=${tTick}, ytick distance=${tick}, axis line style={draw=none}, tick style={draw=none},`,
+    "  ymajorgrids, grid style={quiet!25, line width=.4pt}, tick label style={font=\\small, text=quiet}, clip=false]",
+    ...data.map((p, i) => (i === pick ? "" : `\\addplot[quiet!55, line width=.5pt] coordinates {${coords(p)}};`)).filter(Boolean),
+    `\\addplot[accent, line width=1.3pt] coordinates {${coords(data[pick])}};`,
+    `\\draw[densely dashed, line width=.6pt] (axis cs:${t},${lo}) -- (axis cs:${t},${hi}) node[above, font=\\small] {$t = ${t}$};`,
+    ...stacks(data, t, pick).map(
+      ({ i, v, j }) =>
+        `\\filldraw[line width=.6pt, draw=${i === pick ? "accent" : "black"}, fill=${i === pick ? "accent" : "white"}] ([xshift=${dir * j * 5}pt]axis cs:${t},${v}) circle (2.2pt);`,
+    ),
+    "\\end{axis}",
+    "\\end{tikzpicture}",
+    `\\caption{${caption} The web version lets you move the time and draw new paths.}`,
+    "\\end{figure}",
+  ].join("\n");
 }
 
 if (!slug || !/^[a-z0-9-]+$/.test(slug)) die("usage: npm run notes -- <pages|build> <slug> [export.pdf]");

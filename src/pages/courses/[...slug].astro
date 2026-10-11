@@ -6,6 +6,7 @@ import StudyTools from "../../components/StudyTools.astro";
 import ResumeReading from "../../components/ResumeReading.astro";
 import Callout from "../../components/blog/Callout.astro";
 import ConceptCheck from "../../components/blog/ConceptCheck.astro";
+import RandomWalk from "../../components/blog/RandomWalk.astro";
 import { useTranslations, type Lang } from "../../i18n/translations";
 import type { PostNavLink } from "../../components/blog/PostNav.astro";
 import { comparePinnedThenNewest } from "../../utils/content-sort";
@@ -46,7 +47,7 @@ const t = useTranslations(lang);
 const { course, prevPost, nextPost } = Astro.props;
 const { Content, headings } = await render(course);
 // The components the notes PDF also understands (scripts/course-notes.mjs).
-const components = { Callout, ConceptCheck };
+const components = { Callout, ConceptCheck, RandomWalk };
 ---
 
 <BlogPostEnhanced

@@ -49,6 +49,7 @@ The PDF converter understands exactly this markup. Anything else is dropped from
   - `warning` for cautions and common mistakes
   - `note` for side notes and sticky notes
 - `<ConceptCheck question="...">answer</ConceptCheck>`.
+- `<RandomWalk paths="8" steps="60" seed="497" caption="..." />`: interactive sample paths of a simple random walk (move t, pick an ω). Only where the lecture itself is about sample paths or random walks; the PDF draws the same paths from the same seed. Attributes are strings.
 - Callout titles and questions are plain text. No `$` math in them.
 
 The PDF builds more from this markup, so use it as intended:

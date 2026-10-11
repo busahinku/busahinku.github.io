@@ -1,0 +1,294 @@
+---
+import { describe, plot, walks } from "../../lib/random-walk.mjs";
+
+// Sample paths of a simple random walk, for teaching Y(ω, t): move the fixed
+// time t and the values across the paths are the random variable Y(ω, t);
+// pick a path and it is one realization. The page is built with the figure
+// already drawn; the browser adds the controls. The PDF draws the same paths
+// (scripts/course-notes.mjs), so attributes are plain strings MDX can pass on.
+interface Props {
+  paths?: string | number;
+  steps?: string | number;
+  seed?: string | number;
+  t?: string | number;
+  pick?: string | number;
+  caption?: string;
+}
+
+const { paths = 8, steps = 60, seed = 497, caption } = Astro.props;
+const n = Number(paths);
+const length = Number(steps);
+const t = Math.min(length, Number(Astro.props.t ?? Math.round(length * 0.65)));
+const pick = Math.min(n - 1, Number(Astro.props.pick ?? 0));
+const lang = Astro.url.pathname.startsWith("/tr/") ? "tr" : "en";
+const copy = {
+  en: {
+    label: "Sample paths of a simple random walk",
+    time: "Time t",
+    another: "Another ω",
+    fresh: "New paths",
+    fixedT: "At t = {t} the {n} paths take values from {min} to {max}, one for each ω: that is the random variable Y(ω, {t}).",
+    fixedW: "The highlighted line is {w}: one realization, followed through every t.",
+  },
+  tr: {
+    label: "Basit bir rastgele yürüyüşün örnek yolları",
+    time: "Zaman t",
+    another: "Başka bir ω",
+    fresh: "Yeni yollar",
+    fixedT: "t = {t} anında {n} yol {min} ile {max} arasında değer alıyor, her ω için bir tane: bu Y(ω, {t}) rastgele değişkeni.",
+    fixedW: "Vurgulanan çizgi {w}: her t boyunca izlenen tek bir gerçekleşme.",
+  },
+}[lang];
+const data = walks(n, length, Number(seed));
+const drawn = plot(data, { t, picked: pick });
+const [aboutT, aboutW] = describe(data, t, pick, copy);
+---
+
+<figure class="rw" data-rw data-paths={n} data-steps={length} data-seed={seed} data-t={t} data-pick={pick} data-copy={JSON.stringify(copy)}>
+  <svg class="rw-plot" viewBox={`0 0 640 ${drawn.height}`} role="img" aria-label={copy.label} set:html={drawn.svg} />
+  <div class="rw-controls" data-pagefind-ignore hidden>
+    <label class="rw-time">
+      <span>{copy.time}</span>
+      <input type="range" min="0" max={length} step="1" value={t} />
+    </label>
+    <button type="button" class="rw-button" data-rw-another>{copy.another}</button>
+    <button type="button" class="rw-button" data-rw-fresh>{copy.fresh}</button>
+  </div>
+  <div class="rw-readout" aria-live="polite" data-pagefind-ignore>
+    <p data-rw-t>{aboutT}</p>
+    <p data-rw-w>{aboutW}</p>
+  </div>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<script>
+  import { axes, describe, plot, walks, MARGIN } from "../../lib/random-walk.mjs";
+
+  function initWalks() {
+    document.querySelectorAll<HTMLElement>("[data-rw]:not([data-ready])").forEach((figure) => {
+      figure.dataset.ready = "true";
+      const copy = JSON.parse(figure.dataset.copy!);
+      const n = Number(figure.dataset.paths);
+      const steps = Number(figure.dataset.steps);
+      let data = walks(n, steps, Number(figure.dataset.seed));
+      let t = Number(figure.dataset.t);
+      let picked = Number(figure.dataset.pick);
+      const svg = figure.querySelector<SVGSVGElement>(".rw-plot")!;
+      const slider = figure.querySelector<HTMLInputElement>("input")!;
+      const aboutT = figure.querySelector<HTMLElement>("[data-rw-t]")!;
+      const aboutW = figure.querySelector<HTMLElement>("[data-rw-w]")!;
+      let width = 0;
+      let height = 0;
+
+      // Redrawn at the plot's real width, so 12px labels stay 12px on a phone.
+      const draw = () => {
+        width = Math.round(svg.getBoundingClientRect().width) || 640;
+        const drawn = plot(data, { t, picked, width });
+        height = drawn.height;
+        svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+        svg.innerHTML = drawn.svg;
+        slider.value = String(t);
+        [aboutT.textContent, aboutW.textContent] = describe(data, t, picked, copy);
+      };
+
+      // Pointer position to a step in time, and to the path nearest it.
+      const stepAt = (e: PointerEvent) => {
+        const b = svg.getBoundingClientRect();
+        const s = Math.round(((e.clientX - b.left - MARGIN.l) / (b.width - MARGIN.l - MARGIN.r)) * steps);
+        return Math.max(0, Math.min(steps, s));
+      };
+      const pathAt = (e: PointerEvent) => {
+        const { lo, hi } = axes(data);
+        const s = stepAt(e);
+        const v = hi - ((e.clientY - svg.getBoundingClientRect().top - MARGIN.t) / (height - MARGIN.t - MARGIN.b)) * (hi - lo);
+        return data.reduce((best, p, i) => (Math.abs(p[s] - v) < Math.abs(data[best][s] - v) ? i : best), picked);
+      };
+
+      // A horizontal drag moves t; a tap picks the nearest path. Vertical
+      // swipes still scroll the page (touch-action: pan-y).
+      let down: { x: number; moved: boolean } | null = null;
+      svg.addEventListener("pointerdown", (e) => {
+        down = { x: e.clientX, moved: false };
+        svg.setPointerCapture(e.pointerId);
+      });
+      svg.addEventListener("pointermove", (e) => {
+        if (!down) return;
+        if (Math.abs(e.clientX - down.x) > 4) down.moved = true;
+        if (!down.moved || stepAt(e) === t) return;
+        t = stepAt(e);
+        draw();
+      });
+      svg.addEventListener("pointerup", (e) => {
+        if (down && !down.moved) {
+          picked = pathAt(e);
+          draw();
+        }
+        down = null;
+      });
+      svg.addEventListener("pointercancel", () => (down = null));
+
+      slider.addEventListener("input", () => {
+        t = Number(slider.value);
+        draw();
+      });
+      figure.querySelector("[data-rw-another]")!.addEventListener("click", () => {
+        picked = (picked + 1) % n;
+        draw();
+      });
+      figure.querySelector("[data-rw-fresh]")!.addEventListener("click", () => {
+        data = walks(n, steps, crypto.getRandomValues(new Uint32Array(1))[0]);
+        draw();
+      });
+
+      new ResizeObserver(() => {
+        if (Math.round(svg.getBoundingClientRect().width) !== width) draw();
+      }).observe(figure);
+      figure.querySelectorAll<HTMLElement>("[hidden]").forEach((el) => (el.hidden = false));
+      draw();
+    });
+  }
+
+  initWalks();
+  document.addEventListener("astro:after-swap", initWalks);
+</script>
+
+<style>
+  .rw-plot {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    touch-action: pan-y;
+    cursor: ew-resize;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .rw :global(.rw-grid) {
+    stroke: var(--border);
+    stroke-width: 1;
+  }
+
+  .rw :global(.rw-label) {
+    fill: var(--text-muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rw :global(.rw-path) {
+    fill: none;
+    stroke: var(--text-muted);
+    stroke-width: 1.25;
+    stroke-opacity: 0.55;
+    stroke-linejoin: round;
+  }
+
+  /* The followed path is thicker as well as coloured, so e-ink shows it too. */
+  .rw :global(.rw-path.rw-picked) {
+    stroke: var(--accent);
+    stroke-width: 2.5;
+    stroke-opacity: 1;
+  }
+
+  .rw :global(.rw-t) {
+    stroke: var(--text-primary);
+    stroke-width: 1;
+    stroke-dasharray: 4 3;
+  }
+
+  .rw :global(.rw-t-label) {
+    fill: var(--text-primary);
+    font-weight: 600;
+  }
+
+  .rw :global(.rw-dot) {
+    fill: var(--bg-primary);
+    stroke: var(--text-primary);
+    stroke-width: 1.5;
+  }
+
+  .rw :global(.rw-dot.rw-picked) {
+    fill: var(--accent);
+    stroke: var(--accent);
+  }
+
+  .rw-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin-top: 0.75rem;
+  }
+
+  .rw-controls[hidden] {
+    display: none;
+  }
+
+  .rw-time {
+    display: flex;
+    flex: 1 1 12rem;
+    align-items: center;
+    gap: 0.625rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  /* On a phone the slider gets its own row and the two buttons share the next. */
+  @media (max-width: 480px) {
+    .rw-time {
+      flex-basis: 100%;
+    }
+  }
+
+  .rw-time input {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    accent-color: var(--accent);
+  }
+
+  .rw-button {
+    min-height: 2.25rem;
+    padding: 0.375rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition:
+      color 0.2s ease,
+      border-color 0.2s ease;
+  }
+
+  .rw-button:active {
+    transform: scale(0.97);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .rw-button:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+  }
+
+  .rw-readout {
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  .rw-readout p {
+    margin: 0;
+  }
+
+  @media print {
+    .rw-controls {
+      display: none;
+    }
+  }
+</style>

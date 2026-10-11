@@ -83,6 +83,10 @@ $$
 
 ![Three possible sample paths of the daily temperature. Fixing the time at Tuesday leaves a random variable with one value per scenario; fixing the outcome at scenario 1 leaves a sample path. A real time series dataset contains one observed path, not all possible ones.](../../assets/courses/stat497/sample-paths.svg)
 
+With more than three outcomes the picture is the same. Each line below is one outcome $\omega$ of a simple random walk, which starts at 0 and moves up or down by 1 at every step with equal chance.
+
+<RandomWalk paths="8" steps="60" seed="497" caption="Eight sample paths of a simple random walk. The dashed line fixes the time t, and the dots on it are the values of the random variable at that time. The highlighted line fixes the outcome ω: one realization." />
+
 ### Continuous time vs. discrete time
 
 In practice we cannot measure a physical quantity at every possible instant. That does not mean the underlying process cannot be modeled in continuous time.
