@@ -184,7 +184,7 @@ const showFilters = items.length > 2 || categories.length > 1;
 </div>
 
 <script>
-  import { canAnimate } from "../lib/motion";
+  import { canAnimate, liftAsk } from "../lib/motion";
 
   function initArchiveFilters() {
     document
@@ -266,18 +266,20 @@ const showFilters = items.length > 2 || categories.length > 1;
           const switchView = (view: string) => {
             if (!canAnimate() || grid.dataset.view === view) return setView(view);
             const cards = Array.from(grid.children) as HTMLElement[];
+            const dropAsk = liftAsk();
             cards.forEach((card, i) => {
               card.style.setProperty("view-transition-name", `archive-card-${i}`);
               card.style.setProperty("view-transition-class", "archive-card");
             });
             document
               .startViewTransition(() => setView(view))
-              .finished.finally(() =>
+              .finished.finally(() => {
+                dropAsk();
                 cards.forEach((card) => {
                   card.style.removeProperty("view-transition-name");
                   card.style.removeProperty("view-transition-class");
-                }),
-              );
+                });
+              });
           };
 
           viewButtons.forEach((b) =>

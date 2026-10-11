@@ -229,14 +229,17 @@ const csp = [
 <ClientRouter />
 
 <script>
-  import { canAnimate, coverName } from "../lib/motion";
+  import { canAnimate, coverName, liftAsk } from "../lib/motion";
 
   // A project's cover grows from its card into the page. Its image must be
   // decoded before the transition starts or the morph lands on an empty
-  // frame, so when there is a card to grow from, wait for it (briefly).
+  // frame, so when there is a card to grow from, wait for it (briefly). Only
+  // then does a navigation animate at all, and the ask bar is lifted for it.
+  let dropAsk = () => {};
   document.addEventListener("astro:before-preparation", (event) => {
     const name = coverName(event.to.pathname);
     if (!canAnimate() || !document.querySelector(`[data-cover="${name}"]`)) return;
+    dropAsk = liftAsk();
     const load = event.loader;
     event.loader = async () => {
       await load();
@@ -248,6 +251,12 @@ const csp = [
       probe.src = img.src;
       await Promise.race([probe.decode().catch(() => {}), new Promise((r) => setTimeout(r, 350))]);
     };
+  });
+
+  document.addEventListener("astro:before-swap", (event) => {
+    const drop = dropAsk;
+    dropAsk = () => {};
+    event.viewTransition.finished.finally(drop);
   });
 
   // Images fade in as they arrive instead of popping in. Ones already there
@@ -277,6 +286,13 @@ const csp = [
   ::view-transition-group(*) {
     animation-duration: 0.32s;
     animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  /* The page itself never moves, so a navigation with nothing to morph is
+     over in a frame. While a transition runs, a phone shows a snapshot laid
+     out as if its toolbar were hidden; the shorter that is, the better. */
+  ::view-transition-group(root) {
+    animation: none;
   }
 
   /* A named element with no partner on the other side (every card except the
