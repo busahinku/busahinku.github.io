@@ -1200,7 +1200,11 @@ html[data-blog-font="sans"] .article-content {
   }
 }
 
+/* KaTeX hides its MathML copy with position: absolute. Without a positioned
+   ancestor it escapes any scroller it sits in (a wide table, long display
+   math) and widens the page, so a phone opens the page zoomed in. */
 .katex {
+  position: relative;
   font-size: 1.1em;
   color: inherit;
 }
