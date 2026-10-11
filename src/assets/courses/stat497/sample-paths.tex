@@ -1,6 +1,8 @@
 % Figure source. `npm run notes -- build stat497` compiles it to the PDF the
 % notes include and to sample-paths.svg for the web page. Values are the ones
-% read off the handwritten chart; Monday to Wednesday match the table.
+% read off the handwritten chart; Monday to Wednesday match the table. The
+% chart labels its highlighted line omega_3, but the values it plots are
+% scenario omega_2's, so it is labelled omega_2 here.
 \documentclass[tikz,border=4pt]{standalone}
 \usepackage{libertinus}
 \usepackage{libertinust1math}
@@ -28,15 +30,15 @@
       node[above, font=\small] {fixed $t$: Tuesday};
 
     \addplot[quiet, densely dashed, line width=.7pt, mark=square*, mark size=1.6pt,
-      mark options={solid}] coordinates {(1,18) (2,19) (3,17) (4,20) (5,21)}
-      node[right, font=\small, text=quiet] {$\omega_2$};
+      mark options={solid}] coordinates {(1,20) (2,22) (3,21) (4,24) (5,23)}
+      node[right, font=\small, text=quiet] {$\omega_1$};
     \addplot[quiet, densely dotted, line width=.8pt, mark=triangle*, mark size=2pt,
       mark options={solid}] coordinates {(1,22) (2,23) (3,25) (4,24) (5,26)}
       node[right, font=\small, text=quiet] {$\omega_3$};
     % Fixing the outcome: one whole path through time.
     \addplot[accent, line width=1.6pt, mark=*, mark size=2.2pt]
-      coordinates {(1,20) (2,22) (3,21) (4,24) (5,23)}
-      node[right, font=\small, text=accent] {$\omega_1$, a sample path};
+      coordinates {(1,18) (2,19) (3,17) (4,20) (5,21)}
+      node[right, font=\small, text=accent] {$\omega_2$, fixed $\omega$};
 
     % The random variable at Tuesday: one value per scenario.
     \pgfplotsinvokeforeach{19,22,23}{
