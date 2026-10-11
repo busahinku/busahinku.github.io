@@ -493,27 +493,3 @@ const formatTaken = (value?: string) => {
   }
 </style>
 
-<style is:global>
-  /* The viewer fades in and out around the photo (BaseHead keeps other
-     one-sided layers still, so these two say otherwise). */
-  ::view-transition-new(photo-viewer):only-child {
-    animation: photo-viewer-in 0.24s ease-out both;
-  }
-
-  ::view-transition-old(photo-viewer):only-child {
-    opacity: 1;
-    animation: photo-viewer-out 0.2s ease-in both;
-  }
-
-  @keyframes photo-viewer-in {
-    from {
-      opacity: 0;
-    }
-  }
-
-  @keyframes photo-viewer-out {
-    to {
-      opacity: 0;
-    }
-  }
-</style>

@@ -102,7 +102,6 @@ const showFilters = items.length > 2 || categories.length > 1;
               <span
                 class="card-media"
                 data-cover={coverName(item.href)}
-                style={`view-transition-name: ${coverName(item.href)}`}
               >
                 {item.image ? (
                   <Image
@@ -184,7 +183,7 @@ const showFilters = items.length > 2 || categories.length > 1;
 </div>
 
 <script>
-  import { canAnimate, liftAsk } from "../lib/motion";
+  import { canAnimate } from "../lib/motion";
 
   function initArchiveFilters() {
     document
@@ -261,25 +260,24 @@ const showFilters = items.length > 2 || categories.length > 1;
           } catch {}
           if (saved === "list" || saved === "grid") setView(saved);
 
-          // Cards glide to their new places: each is named for the length of
-          // the switch only (covers already carry their own names and move too).
+          // Cards slide to their new places on the live page (each starts where
+          // it was and settles where the new layout puts it), not inside a
+          // view transition, whose snapshot made the ask bar dip on phones.
           const switchView = (view: string) => {
             if (!canAnimate() || grid.dataset.view === view) return setView(view);
             const cards = Array.from(grid.children) as HTMLElement[];
-            const dropAsk = liftAsk();
+            const before = cards.map((card) => card.getBoundingClientRect());
+            setView(view);
             cards.forEach((card, i) => {
-              card.style.setProperty("view-transition-name", `archive-card-${i}`);
-              card.style.setProperty("view-transition-class", "archive-card");
-            });
-            document
-              .startViewTransition(() => setView(view))
-              .finished.finally(() => {
-                dropAsk();
-                cards.forEach((card) => {
-                  card.style.removeProperty("view-transition-name");
-                  card.style.removeProperty("view-transition-class");
-                });
+              const after = card.getBoundingClientRect();
+              const dx = before[i].left - after.left;
+              const dy = before[i].top - after.top;
+              if (!after.width || (!dx && !dy)) return;
+              card.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], {
+                duration: 320,
+                easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
               });
+            });
           };
 
           viewButtons.forEach((b) =>

@@ -98,7 +98,6 @@ const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
                 { "hero-image-cover": isCoverHero },
               ]}
               data-cover={isCoverHero ? coverName(Astro.url.pathname) : undefined}
-              style={isCoverHero ? `view-transition-name: ${coverName(Astro.url.pathname)}` : undefined}
             >
               <Image
                 width={isCoverHero ? 1600 : 900}

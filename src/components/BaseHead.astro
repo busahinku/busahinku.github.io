@@ -229,17 +229,31 @@ const csp = [
 <ClientRouter />
 
 <script>
-  import { canAnimate, coverName, liftAsk } from "../lib/motion";
+  import { canAnimate, coverName } from "../lib/motion";
 
-  // A project's cover grows from its card into the page. Its image must be
-  // decoded before the transition starts or the morph lands on an empty
-  // frame, so when there is a card to grow from, wait for it (briefly). Only
-  // then does a navigation animate at all, and the ask bar is lifted for it.
-  let dropAsk = () => {};
+  // A project's cover grows from its card into the page, and back. A copy of
+  // the picture is flown over the live page instead of being morphed inside a
+  // view transition: for as long as a transition runs, a phone shows a
+  // snapshot, and Chrome-based browsers on Android (Brave, Chrome) lay it out
+  // as if the toolbar were hidden, so the ask bar at the bottom dipped and
+  // came back. This way the navigation itself is over in a frame.
+  let flight: { name: string; from: DOMRect; src: string } | null = null;
+
   document.addEventListener("astro:before-preparation", (event) => {
-    const name = coverName(event.to.pathname);
-    if (!canAnimate() || !document.querySelector(`[data-cover="${name}"]`)) return;
-    dropAsk = liftAsk();
+    flight = null;
+    if (!canAnimate()) return;
+    // Forward the card is here and the page's cover there; back, the reverse.
+    // event.from, not location: on the back button the address has already changed.
+    const name = [coverName(event.to.pathname), coverName(event.from.pathname)].find((n) =>
+      document.querySelector(`[data-cover="${n}"]`),
+    );
+    const from = name ? document.querySelector<HTMLElement>(`[data-cover="${name}"]`) : null;
+    const src = from?.querySelector("img")?.currentSrc;
+    const rect = from?.getBoundingClientRect();
+    if (!name || !src || !rect || rect.bottom < 0 || rect.top > innerHeight) return;
+    flight = { name, from: rect, src };
+    // The picture it lands on must be decoded first, or it lands on an empty
+    // frame; wait for it, briefly.
     const load = event.loader;
     event.loader = async () => {
       await load();
@@ -253,10 +267,33 @@ const csp = [
     };
   });
 
-  document.addEventListener("astro:before-swap", (event) => {
-    const drop = dropAsk;
-    dropAsk = () => {};
-    event.viewTransition.finished.finally(drop);
+  // The new page is in place and scrolled where it belongs: fly the copy from
+  // where the picture was to where it now is, with the real one hidden until
+  // it lands. Both are 16:10, so a uniform scale never distorts it.
+  document.addEventListener("astro:after-swap", () => {
+    const trip = flight;
+    flight = null;
+    const target = trip && document.querySelector<HTMLElement>(`[data-cover="${trip.name}"]`);
+    if (!trip || !target) return;
+    const to = target.getBoundingClientRect();
+    const ghost = document.createElement("img");
+    ghost.src = trip.src;
+    ghost.alt = "";
+    ghost.className = "cover-flight";
+    Object.assign(ghost.style, { left: `${to.left}px`, top: `${to.top}px`, width: `${to.width}px`, height: `${to.height}px` });
+    document.body.append(ghost);
+    target.style.visibility = "hidden";
+    const dx = trip.from.left - to.left;
+    const dy = trip.from.top - to.top;
+    ghost
+      .animate([{ transform: `translate(${dx}px, ${dy}px) scale(${trip.from.width / to.width})` }, { transform: "none" }], {
+        duration: 320,
+        easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+      })
+      .finished.finally(() => {
+        target.style.visibility = "";
+        ghost.remove();
+      });
   });
 
   // Images fade in as they arrive instead of popping in. Ones already there
@@ -280,12 +317,23 @@ const csp = [
     animation: none;
   }
 
-  /* What does move is continuity: a project's cover grows from its card into
-     the page, a photo from its thumbnail, cards glide between grid and list.
-     One curve for all of it, quick out of the gate and soft at the end. */
+  /* What does move is continuity (a photo grows from its thumbnail). The
+     same curve as the cover's flight: quick out of the gate, soft at the end. */
   ::view-transition-group(*) {
     animation-duration: 0.32s;
     animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  /* The copy of a cover in flight between its card and its page. Under the
+     header and the ask bar, above everything else. */
+  .cover-flight {
+    position: fixed;
+    z-index: 80;
+    margin: 0;
+    border-radius: 0.75rem;
+    object-fit: cover;
+    transform-origin: 0 0;
+    pointer-events: none;
   }
 
   /* The page itself never moves, so a navigation with nothing to morph is
@@ -295,25 +343,6 @@ const csp = [
     animation: none;
   }
 
-  /* A named element with no partner on the other side (every card except the
-     one opened, a cover reached from a page with no card) does not fade: the
-     old leaves at once, the new is simply there, like the rest of the page. */
-  ::view-transition-old(*):only-child {
-    animation: none;
-    opacity: 0;
-  }
-
-  ::view-transition-new(*):only-child {
-    animation: none;
-  }
-
-  /* Cards gliding between grid and list keep their own size, so text never
-     stretches; only the frame moves. */
-  ::view-transition-old(.archive-card),
-  ::view-transition-new(.archive-card) {
-    width: auto;
-    height: auto;
-  }
 
   /* A theme change: the new colours fade in over the old. */
   html.theme-fade::view-transition-new(root) {
@@ -321,11 +350,9 @@ const csp = [
   }
 
   /* A named element is lifted into a layer above the whole page for the
-     length of a transition, so a cover under an open menu or dialog would show
-     through it. A theme change is one picture fading into another, with no
-     names at all; and while a menu or dialog is open, covers keep theirs off. */
-  html.theme-fade *,
-  html:has(.mobile-menu.active, dialog[open]) [data-cover] {
+     length of a transition, so it would show through an open menu. A theme
+     change is one picture fading into another, with no names at all. */
+  html.theme-fade * {
     view-transition-name: none !important;
   }
 
