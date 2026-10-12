@@ -211,6 +211,13 @@ function inline(nodes) {
   return nodes.map(node).join("");
 }
 
+// Index terms sort in lower case. Words are shown in lower case too, unless
+// they hold an acronym (ACF, MSE), which keeps its capitals.
+function indexEntry(term) {
+  const lower = term.toLowerCase();
+  return /[A-Z]{2}/.test(term) ? `${lower}@${term}` : lower;
+}
+
 function plain(n) {
   return n.value ?? (n.children ?? []).map(plain).join("");
 }
@@ -247,7 +254,7 @@ function node(n) {
       // A short bold phrase is a term being introduced: it goes in the index.
       const term = plain(n).trim();
       const indexed = /^[\p{L}\p{N}' -]{2,40}$/u.test(term) && term.split(/\s+/).length <= 4;
-      return `\\textbf{${inline(n.children)}}${indexed ? `\\index{${term.toLowerCase()}}` : ""}`;
+      return `\\textbf{${inline(n.children)}}${indexed ? `\\index{${indexEntry(term)}}` : ""}`;
     }
     case "emphasis":
       return `\\emph{${inline(n.children)}}`;
@@ -378,7 +385,10 @@ function component(n) {
       summary.at(-1)?.keys.push(content);
     }
     if (env === "definition") summary.at(-1)?.defs.push({ title: text(a.title ?? ""), content });
-    return `\\begin{${env}}${title ? `[{${text(title)}}]` : ""}\n${content}\n\\end{${env}}`;
+    // kaobook sets definitions and examples in italics, where "the $e_t$" runs
+    // together with the italic math; keep their text upright.
+    const body = numbered ? `\\upshape\n${content}` : content;
+    return `\\begin{${env}}${title ? `[{${text(title)}}]` : ""}\n${body}\n\\end{${env}}`;
   }
   if (n.name === "ConceptCheck") {
     const id = `exercise-${answers.length + 1}`;

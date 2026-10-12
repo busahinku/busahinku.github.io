@@ -35,17 +35,32 @@
 % Bold terms in the notes are indexed by the converter; the index closes the book.
 \makeindex[columns=2, title=Index, intoc]
 
-% A week opens with "Week" over the big numeral in the margin and, under the
-% heading, that week's own contents. kaobook resets the chapter style at
-% \mainmatter, so the numeral format is applied per chapter here.
+% A week opens with "Week" over the big numeral in the margin. kaobook resets
+% the chapter style at \mainmatter, so the numeral format is applied per
+% chapter here. No contents in the margin: a week with many sections overflows
+% the page, and the contents page already lists them.
 \renewcommand*{\chaptermarkformat}{Week~\thechapter\enskip}
 \newcommand*{\notesweek}[2]{%
   \setcounter{chapter}{\numexpr#1-1\relax}%
   \renewcommand*{\chapterformat}{\mbox{\parbox[b]{\marginparwidth}{\raggedright
     {\large\itshape Week}\\[-1pt]\scalebox{2.85}{\thechapter}}}}%
-  \setchapterpreamble[u]{\margintoc}%
   \chapter{#2}}
 \unsettoc{toc}{totoc}
+
+% kaobook keeps every float inside its section (placeins). A figure taller
+% than the space left then ends the page early and leaves half of it blank.
+% Let figures move on to the next page while the text keeps flowing; a week
+% still opens on a new page, so no figure ever leaves its week.
+\makeatletter
+\AtBeginDocument{\renewcommand\@fb@secFB{}}
+% Pages end ragged, so an early break costs TeX nothing, and LaTeX's -300
+% penalty before a section made it end the page there whenever the whole
+% section did not fit, leaving several lines blank. Break where the page is full.
+\@secpenalty=0
+\makeatother
+\renewcommand\textfraction{.15}
+\renewcommand\bottomfraction{.5}
+\renewcommand\floatpagefraction{.75}
 
 % Definitions and examples count within the week: Definition 1.1, 1.2, ...
 \counterwithout{definition}{section}\counterwithin{definition}{chapter}
@@ -132,8 +147,7 @@
 
 \chapter*{How to read these notes}
 These are my notes from <<code>>, typeset from the pages I write in class and
-updated as the term goes on. Each week is a chapter, and the margin at the
-start of a week lists what it covers.
+updated as the term goes on. Each week is a chapter.
 
 \medskip
 {\raggedright % chips cannot stretch, so let the line end where it ends

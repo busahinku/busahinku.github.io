@@ -17,7 +17,7 @@
 \begin{tikzpicture}
   \begin{axis}[
       width=10.5cm, height=6.2cm,
-      xmin=0.7, xmax=5.75, ymin=15.5, ymax=27.5,
+      xmin=0.7, xmax=5.15, ymin=15.5, ymax=27.5,
       xtick={1,...,5}, xticklabels={Mon,Tue,Wed,Thu,Fri},
       ytick={16,18,...,26}, yticklabel={$\pgfmathprintnumber{\tick}^\circ$},
       axis line style={draw=none}, tick style={draw=none},
@@ -31,14 +31,14 @@
 
     \addplot[quiet, densely dashed, line width=.7pt, mark=square*, mark size=1.6pt,
       mark options={solid}] coordinates {(1,20) (2,22) (3,21) (4,24) (5,23)}
-      node[right, font=\small, text=quiet] {$\omega_1$};
+      node[right, xshift=10pt, font=\small, text=quiet] {$\omega_1$};
     \addplot[quiet, densely dotted, line width=.8pt, mark=triangle*, mark size=2pt,
       mark options={solid}] coordinates {(1,22) (2,23) (3,25) (4,24) (5,26)}
-      node[right, font=\small, text=quiet] {$\omega_3$};
+      node[right, xshift=10pt, font=\small, text=quiet] {$\omega_3$};
     % Fixing the outcome: one whole path through time.
     \addplot[accent, line width=1.6pt, mark=*, mark size=2.2pt]
       coordinates {(1,18) (2,19) (3,17) (4,20) (5,21)}
-      node[right, font=\small, text=accent] {$\omega_2$, fixed $\omega$};
+      node[right, xshift=10pt, font=\small, text=accent] {$\omega_2$, fixed $\omega$};
 
     % The random variable at Tuesday: one value per scenario.
     \pgfplotsinvokeforeach{19,22,23}{
