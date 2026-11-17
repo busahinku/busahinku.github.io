@@ -871,6 +871,13 @@ assert.deepEqual(Object.keys(publicCard).sort(), ["day", "streak"], "still only 
   assert.equal((await call("GET", "/api/reading/admin", env.READING_TOKEN)).status, 200, "deleting the row brings the secret back (the documented recovery)");
 }
 
+// ---- a queued grade is only given up when the Worker says it can never apply
+{
+  const { dropGrade } = await import("./page.js");
+  for (const [status, json, drop] of [[400, true, true], [409, true, true], [404, true, true], [404, false, false], [429, true, false], [500, true, false], [503, false, false], [undefined, false, false]])
+    assert.equal(Boolean(dropGrade(status, json)), drop, `${status} ${json ? "json" : "empty"}`);
+}
+
 // ---- Workers reject fetch redirect "error" (Node accepts it, so only this catches it)
 for (const f of fs.readdirSync(here).filter((f) => f.endsWith(".js")))
   assert.ok(!/redirect:\s*["']error["']/.test(fs.readFileSync(new URL(f, here), "utf8")), `${f} uses redirect "error"`);

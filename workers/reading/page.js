@@ -344,6 +344,16 @@ const TEXT = {
   },
 };
 
+/**
+ * Whether a queued grade is given up after this answer. Only when the Worker
+ * itself said it cannot apply (400 bad, 409 not due, a 404 with its JSON body:
+ * no such card). Rate limits (429), server errors, a lost connection and a
+ * signed-out session (an empty 404) keep it queued for the next try.
+ */
+export function dropGrade(status, json) {
+  return status === 400 || status === 409 || (status === 404 && json);
+}
+
 // The copy table as JavaScript source, functions included, so the page runs it without eval.
 const source = (v) =>
   typeof v === "function" ? v.toString() : v && typeof v === "object" ? `{${Object.entries(v).map(([k, x]) => `${JSON.stringify(k)}: ${source(x)}`).join(", ")}}` : JSON.stringify(v);
@@ -355,7 +365,7 @@ export function appPage(nonce) {
     nonce,
     `<main id="app" aria-live="polite"></main>
 <nav class="tabs" aria-label="Screens"></nav>
-<script nonce="${nonce}">(${client.toString()})(${JSON.stringify(icons)}, ${source(TEXT)});</script>`,
+<script nonce="${nonce}">(${client.toString()})(${JSON.stringify(icons)}, ${source(TEXT)}, ${dropGrade.toString()});</script>`,
     "en",
     `<link rel="manifest" href="/api/reading/app.webmanifest">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -367,7 +377,7 @@ export function appPage(nonce) {
  * The app itself. Runs in the browser: this function is sent as source text,
  * so it may only use its two arguments and the browser's own globals.
  */
-function client(ICON, TEXT) {
+function client(ICON, TEXT, dropGrade) {
   const store = {
     get: (k, d) => {
       try {
@@ -421,12 +431,14 @@ function client(ICON, TEXT) {
 
   async function api(path, body) {
     const res = await fetch(`/api/reading/${path}`, body !== undefined ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {});
-    if (res.status === 401) {
+    const json = (res.headers.get("content-type") ?? "").includes("json");
+    // Without a valid session every private route answers an empty 404: back to the sign-in form.
+    if (res.status === 404 && !json) {
       location.reload();
-      throw new Error("signed out");
+      throw Object.assign(new Error("signed out"), { status: 404, json: false });
     }
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw Object.assign(new Error(data.error || `HTTP ${res.status}`), { status: res.status, data });
+    const data = json ? await res.json().catch(() => ({})) : {};
+    if (!res.ok) throw Object.assign(new Error(data.error || `HTTP ${res.status}`), { status: res.status, json, data });
     return data;
   }
 
@@ -452,8 +464,8 @@ function client(ICON, TEXT) {
         try {
           await api("review", g);
         } catch (e) {
-          // 4xx other than a lost connection: the answer cannot be applied (not due, unknown); drop it.
-          if (!(e.status >= 400 && e.status < 500)) break;
+          // Kept unless the Worker said it can never apply; the next try is in 30 seconds or on reconnecting.
+          if (!dropGrade(e.status, e.json)) break;
         }
         store.set(QUEUE, store.get(QUEUE, []).filter((q) => q.id !== g.id));
       }
