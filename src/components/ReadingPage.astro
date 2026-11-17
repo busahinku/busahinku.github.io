@@ -1,5 +1,5 @@
 ---
-import { Flag, RotateCw } from "@lucide/astro";
+import { ChevronDown, Flag, RotateCw } from "@lucide/astro";
 import type { Lang } from "../i18n/translations";
 
 interface Props {
@@ -9,6 +9,8 @@ interface Props {
 // Live numbers from workers/reading (/api/reading/summary). The page ships
 // only its headings: every block that needs data stays hidden until the data
 // is there, so a failed request or no JavaScript never shows an empty chart.
+// Motion here goes further than elsewhere on the site, by the owner's choice,
+// but only through canAnimate(), on transform and opacity, never blocking a number.
 const { lang } = Astro.props;
 const tr = lang === "tr";
 const copy = tr
@@ -28,12 +30,12 @@ const copy = tr
 
   <dl class="figures" data-block hidden></dl>
 
-  <section class="reading-section" data-block="year" hidden>
+  <section class="reading-section year-section" data-block="year" hidden>
     <div class="section-head"><h2>{copy.year}</h2></div>
     <div class="year-scroll" data-scroll>
       <div class="year" data-year>
         <div class="months" data-months aria-hidden="true"></div>
-        <div class="year-grid" data-grid role="img"></div>
+        <div class="year-grid" data-grid role="img" tabindex="0"></div>
       </div>
     </div>
     <div class="legend" aria-hidden="true">
@@ -43,6 +45,8 @@ const copy = tr
         data-level="3"></span><span class="day" data-level="4"></span>
       <span>{copy.more}</span>
     </div>
+    <div class="tip" data-tip aria-hidden="true"></div>
+    <p class="sr-only" data-day-live aria-live="polite"></p>
   </section>
 
   <section class="reading-section" data-block="now" hidden>
@@ -56,6 +60,7 @@ const copy = tr
   </section>
 
   <template data-icon="flag"><Flag size={13} aria-hidden="true" /></template>
+  <template data-icon="chevron"><ChevronDown size={16} aria-hidden="true" /></template>
 </div>
 
 <script>
@@ -64,7 +69,17 @@ const copy = tr
   const ENDPOINT = import.meta.env.DEV ? "https://busahin.com/api/reading/summary" : "/api/reading/summary";
   const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)"; // the site's one motion curve (ArchiveList, BaseHead)
 
-  type Book = { title: string; author: string | null; percent: number; percent_per_day: number; pages_per_day: number | null; forecast: string | null };
+  type Book = {
+    title: string;
+    author: string | null;
+    percent: number;
+    page_count: number | null;
+    started: string | null;
+    last_read: string | null;
+    percent_per_day: number;
+    pages_per_day: number | null;
+    forecast: string | null;
+  };
   type Done = { title: string; author: string | null; finished: string | null; days: number | null };
   type Summary = {
     today: string;
@@ -89,14 +104,19 @@ const copy = tr
       daysRead: "Days read, last 12 months",
       pages: "Pages, last 12 months",
       hours: "Hours read",
-      grid: (n: number, p: number) => `Reading days over the last 12 months: ${n} days, ${p} pages.`,
-      cell: (day: string, pages: number | undefined) => (pages === undefined ? day : `${day}, ${pages === 1 ? "1 page" : `${pages} pages`}`),
+      grid: (n: number, p: string) => `Reading days over the last 12 months: ${n} days, ${p} pages. Use the arrow keys for single days.`,
+      cell: (day: string, pages: number | undefined) => (pages === undefined ? `${day}, not read` : `${day}, ${pages === 1 ? "1 page" : `${pages} pages`}`),
       perDay: (v: string, pages: boolean) => (pages ? `${v} pages a day` : `${v}% a day`),
       by: "Expected to finish",
       stalled: "No progress in two weeks",
       took: (n: number, s: string) => (n === 1 ? "1 day" : `${s} days`),
       nothingNow: "Nothing open right now.",
       nothingDone: "None yet.",
+      started: "Started",
+      lastRead: "Last read",
+      left: "Pages left",
+      week: "A week from now",
+      details: "Details",
     },
     tr: {
       locale: "tr-TR",
@@ -110,14 +130,19 @@ const copy = tr
       daysRead: "Son 12 ayda okuduğum gün",
       pages: "Son 12 ayda okuduğum sayfa",
       hours: "Okuma saati",
-      grid: (n: number, p: number) => `Son 12 ayın okuma günleri: ${n} gün, ${p} sayfa.`,
-      cell: (day: string, pages: number | undefined) => (pages === undefined ? day : `${day}, ${pages} sayfa`),
+      grid: (n: number, p: string) => `Son 12 ayın okuma günleri: ${n} gün, ${p} sayfa. Tek tek günler için ok tuşlarını kullan.`,
+      cell: (day: string, pages: number | undefined) => (pages === undefined ? `${day}, okunmadı` : `${day}, ${pages} sayfa`),
       perDay: (v: string, pages: boolean) => (pages ? `günde ${v} sayfa` : `günde %${v}`),
       by: "Tahmini bitiş",
       stalled: "İki haftadır ilerleme yok",
       took: (n: number, s: string) => `${s} gün`,
       nothingNow: "Şu an açık bir kitap yok.",
       nothingDone: "Henüz yok.",
+      started: "Başlangıç",
+      lastRead: "Son okuma",
+      left: "Kalan sayfa",
+      week: "Bir hafta sonra",
+      details: "Ayrıntılar",
     },
   };
   type Text = (typeof text)["en"];
@@ -129,43 +154,133 @@ const copy = tr
     if (content !== undefined) node.textContent = content;
     return node;
   };
+  const icon = (root: HTMLElement, name: string) => root.querySelector<HTMLTemplateElement>(`template[data-icon="${name}"]`)!.content.cloneNode(true);
 
-  // A leader row: title (and author), dotted leader, value; optional bar and a quiet line under it.
-  function row(title: string, sub: string | null, value: string, under?: Node[], percent?: number) {
-    const li = el("li");
-    const line = el("div", "leader-row");
+  // The visible parts of a leader row: title (and author), dotted leader, value.
+  function line(tag: "div" | "summary", title: string, sub: string | null, value: string) {
+    const row = el(tag, "leader-row");
     const t = el("span", "row-title", title);
     if (sub) t.append(el("span", "row-sub", `, ${sub}`));
     const leader = el("span", "row-leader");
     leader.setAttribute("aria-hidden", "true");
-    line.append(t, leader, el("span", "row-meta", value));
-    li.append(line);
-    if (percent !== undefined) {
-      const bar = el("span", "bar");
-      bar.setAttribute("aria-hidden", "true");
-      const fill = el("span");
-      fill.style.transform = `scaleX(${Math.min(100, Math.max(0, percent)) / 100})`;
-      bar.append(fill);
-      li.append(bar);
-    }
-    if (under?.length) {
-      const note = el("p", "row-note");
-      note.append(...under);
-      li.append(note);
-    }
-    return li;
+    row.append(t, leader, el("span", "row-meta", value));
+    return row;
   }
 
-  function figure(value: string, unit: string | null, label: string) {
+  function bar(percent: number, week: number | null) {
+    const b = el("span", "bar");
+    b.setAttribute("aria-hidden", "true");
+    const clamp = (v: number) => Math.min(100, Math.max(0, v)) / 100;
+    if (week !== null && week > percent) {
+      // Where the book will be in a week at this pace; shown while the row is open.
+      const ghost = el("span", "ghost");
+      ghost.style.transform = `translateX(${clamp(percent) * 100}%) scaleX(${clamp(week) - clamp(percent)})`;
+      b.append(ghost);
+    }
+    const fill = el("span", "fill");
+    fill.style.transform = `scaleX(${clamp(percent)})`;
+    b.append(fill);
+    return b;
+  }
+
+  function figure(value: number, shown: string, unit: string | null, label: string) {
     const wrap = el("div", "figure");
-    const dd = el("dd", "figure-value", value);
+    const dd = el("dd", "figure-value");
+    const n = el("span", "n");
+    n.append(el("span", "n-final", shown));
+    n.dataset.value = String(value);
+    dd.append(n);
     if (unit) dd.append(el("span", "figure-unit", ` ${unit}`));
     wrap.append(el("dt", "figure-label", label), dd);
     return wrap;
   }
 
-  function render(root: HTMLElement, data: Summary, t: Text) {
+  let stop = new AbortController();
+
+  // Each figure counts up to its value. The real number is in the page from the
+  // start (for layout and screen readers); the counting copy sits over it.
+  function countUp(root: HTMLElement, fmt: (v: number) => string, signal: AbortSignal) {
+    root.querySelectorAll<HTMLElement>(".figure .n").forEach((n, i) => {
+      const value = Number(n.dataset.value);
+      if (!(value > 1)) return;
+      const final = n.querySelector<HTMLElement>(".n-final")!;
+      const live = el("span", "n-live", fmt(0));
+      live.setAttribute("aria-hidden", "true");
+      n.append(live);
+      final.style.opacity = "0";
+      const begin = performance.now() + i * 60;
+      const duration = 700;
+      const finish = () => {
+        live.remove();
+        final.style.opacity = "";
+      };
+      signal.addEventListener("abort", finish, { once: true });
+      const tick = (time: number) => {
+        if (signal.aborted) return;
+        const t = Math.min(1, Math.max(0, (time - begin) / duration));
+        live.textContent = fmt(t === 1 ? value : Math.round(value * (1 - Math.pow(2, -10 * t))));
+        if (t < 1) requestAnimationFrame(tick);
+        else finish();
+      };
+      requestAnimationFrame(tick);
+    });
+  }
+
+  // A day of the year on hover, tap or the arrow keys: one small label over the square.
+  function heatmapTips(root: HTMLElement, describe: (cell: HTMLElement) => string, signal: AbortSignal) {
+    const section = root.querySelector<HTMLElement>(".year-section")!;
+    const grid = root.querySelector<HTMLElement>("[data-grid]")!;
+    const tip = root.querySelector<HTMLElement>("[data-tip]")!;
+    const live = root.querySelector<HTMLElement>("[data-day-live]")!;
+    const cells = [...grid.querySelectorAll<HTMLElement>(".day:not(.future)")];
+    let active: HTMLElement | null = null;
+    // Keyboard moves are instant: an arrow key is pressed too often to wait for a glide.
+    const show = (cell: HTMLElement | null, announce = false) => {
+      tip.classList.toggle("is-instant", announce);
+      active?.classList.remove("is-active");
+      active = cell;
+      if (!cell) return tip.classList.remove("is-shown");
+      cell.classList.add("is-active");
+      tip.textContent = describe(cell);
+      const box = section.getBoundingClientRect();
+      const at = cell.getBoundingClientRect();
+      const x = Math.min(Math.max(at.left + at.width / 2 - box.left, 60), box.width - 60);
+      tip.style.transform = `translate(${x}px, ${at.top - box.top}px) translate(-50%, calc(-100% - 6px))`;
+      tip.classList.add("is-shown");
+      if (announce) live.textContent = tip.textContent;
+    };
+    const opts = { signal };
+    grid.addEventListener("pointerover", (e) => {
+      const cell = (e.target as HTMLElement).closest<HTMLElement>(".day:not(.future)");
+      if (cell && e.pointerType === "mouse") show(cell);
+    }, opts);
+    grid.addEventListener("pointerleave", (e) => e.pointerType === "mouse" && document.activeElement !== grid && show(null), opts);
+    grid.addEventListener("click", (e) => {
+      const cell = (e.target as HTMLElement).closest<HTMLElement>(".day:not(.future)");
+      show(cell && cell !== active ? cell : null);
+    }, opts);
+    grid.addEventListener("keydown", (e) => {
+      const step = { ArrowUp: -1, ArrowDown: 1, ArrowLeft: -7, ArrowRight: 7, Home: -Infinity, End: Infinity }[e.key];
+      if (step === undefined) return;
+      e.preventDefault();
+      const i = active ? cells.indexOf(active) : cells.length - 1;
+      const next = cells[Math.min(cells.length - 1, Math.max(0, i + (Number.isFinite(step) ? step : step > 0 ? cells.length : -cells.length)))];
+      next.scrollIntoView({ block: "nearest", inline: "nearest" });
+      show(next, true);
+    }, opts);
+    grid.addEventListener("focus", () => show(active ?? cells.at(-1) ?? null, true), opts);
+    grid.addEventListener("blur", () => show(null), opts);
+    root.querySelector<HTMLElement>("[data-scroll]")!.addEventListener("scroll", () => show(null), { ...opts, passive: true });
+  }
+
+  function render(root: HTMLElement, data: Summary, t: Text, motion: boolean) {
+    if (!data || typeof data.today !== "string" || !Array.isArray(data.days) || !Array.isArray(data.reading) || !Array.isArray(data.finished) || !data.streak)
+      throw new Error("unexpected answer");
+    stop.abort();
+    stop = new AbortController();
     const num = new Intl.NumberFormat(t.locale, { maximumFractionDigits: 1 });
+    // Small rates keep two significant figures, so slow progress never reads as zero.
+    const rate = (v: number) => (v < 1 ? new Intl.NumberFormat(t.locale, { maximumSignificantDigits: 2 }).format(v) : num.format(v));
     const thisYear = data.today.slice(0, 4);
     const fmt = (day: string, opts: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(t.locale, { ...opts, timeZone: "UTC" }).format(new Date(`${day}T12:00:00Z`));
     const date = (day: string) => fmt(day, { day: "numeric", month: "short", year: day.slice(0, 4) === thisYear ? undefined : "numeric" });
@@ -177,19 +292,20 @@ const copy = tr
     const yearAgo = new Date(today - 364 * DAY_MS).toISOString().slice(0, 10);
     const lastYear = data.days.filter(([d]) => d >= yearAgo);
     const pagesYear = lastYear.reduce((s, [, p]) => s + p, 0);
+    const hours = data.time ? Math.round(data.time.seconds / 3600) : 0;
     const figures = root.querySelector<HTMLElement>("dl.figures")!;
     figures.replaceChildren(
-      figure(num.format(data.streak.current), t.day(data.streak.current), t.current),
-      figure(num.format(data.streak.longest), t.day(data.streak.longest), t.longest),
-      figure(num.format(lastYear.length), null, t.daysRead),
-      data.time ? figure(num.format(Math.round(data.time.seconds / 3600)), null, t.hours) : figure(num.format(pagesYear), null, t.pages),
+      figure(data.streak.current, num.format(data.streak.current), t.day(data.streak.current), t.current),
+      figure(data.streak.longest, num.format(data.streak.longest), t.day(data.streak.longest), t.longest),
+      figure(lastYear.length, num.format(lastYear.length), null, t.daysRead),
+      data.time ? figure(hours, num.format(hours), null, t.hours) : figure(pagesYear, num.format(pagesYear), null, t.pages),
     );
 
     // The year: 53 weeks, Monday to Sunday down each column, ending with this week.
     const pages = new Map(data.days);
     const grid = root.querySelector<HTMLElement>("[data-grid]")!;
     const months = root.querySelector<HTMLElement>("[data-months]")!;
-    grid.setAttribute("aria-label", t.grid(lastYear.length, pagesYear));
+    grid.setAttribute("aria-label", t.grid(lastYear.length, num.format(pagesYear)));
     const weekday = (new Date(today).getUTCDay() + 6) % 7;
     const start = today - (52 * 7 + weekday) * DAY_MS;
     const cells = document.createDocumentFragment();
@@ -207,36 +323,66 @@ const copy = tr
       else {
         const p = pages.get(day);
         cell.dataset.level = p === undefined ? "0" : p < 10 ? "1" : p < 25 ? "2" : p < 50 ? "3" : "4";
-        cell.title = t.cell(date(day), p);
+        cell.dataset.day = day;
       }
       cells.append(cell);
     }
     grid.replaceChildren(cells);
     months.replaceChildren(labels);
+    heatmapTips(root, (cell) => t.cell(fmt(cell.dataset.day!, { weekday: "short", day: "numeric", month: "short", year: cell.dataset.day!.slice(0, 4) === thisYear ? undefined : "numeric" }), pages.get(cell.dataset.day!)), stop.signal);
 
-    // Books.
-    const flag = root.querySelector<HTMLTemplateElement>('template[data-icon="flag"]')!;
+    // Books in progress: the row opens on the details and where the book will be in a week.
     const now = list("now");
     now.replaceChildren(
       ...data.reading.map((b) => {
-        const under: Node[] = [];
+        const li = el("li", "book");
+        const details = el("details");
+        const summary = line("summary", b.title, b.author, `${num.format(b.percent)}%`);
+        const chev = el("span", "chev");
+        chev.append(icon(root, "chevron"));
+        summary.append(chev);
+        const week = b.percent_per_day > 0 ? Math.min(100, b.percent + 7 * b.percent_per_day) : null;
+        const facts = el("dl", "facts");
+        const fact = (k: string, v: string | null) => {
+          if (!v) return;
+          const pair = el("div");
+          pair.append(el("dt", undefined, k), el("dd", undefined, v));
+          facts.append(pair);
+        };
+        fact(t.started, b.started && date(b.started));
+        fact(t.lastRead, b.last_read && date(b.last_read));
+        fact(t.left, b.page_count ? num.format(Math.max(0, Math.round(b.page_count * (1 - b.percent / 100)))) : null);
+        fact(t.week, week !== null ? `${num.format(Math.round(week * 10) / 10)}%` : null);
+        details.append(summary, facts);
+        details.addEventListener("toggle", () => {
+          if (details.open && motion && canAnimate())
+            facts.animate([{ opacity: 0, transform: "translateY(-4px)" }, { opacity: 1, transform: "none" }], { duration: 200, easing: EASE });
+        });
+        li.append(details, bar(b.percent, week));
+        const note = el("p", "row-note");
         if (b.percent_per_day > 0) {
-          under.push(document.createTextNode(t.perDay(num.format(b.pages_per_day ?? b.percent_per_day), b.pages_per_day != null)));
+          note.append(t.perDay(rate(b.pages_per_day ?? b.percent_per_day), b.pages_per_day != null));
           if (b.forecast) {
             const by = el("span", "forecast");
             by.title = t.by;
-            by.append(flag.content.cloneNode(true), el("span", "sr-only", `${t.by}: `), document.createTextNode(date(b.forecast)));
-            under.push(by);
+            by.append(icon(root, "flag"), el("span", "sr-only", `${t.by}: `), date(b.forecast));
+            note.append(by);
           }
-        } else under.push(document.createTextNode(t.stalled));
-        return row(b.title, b.author, `${num.format(b.percent)}%`, under, b.percent);
+        } else note.append(t.stalled);
+        li.append(note);
+        return li;
       }),
     );
     if (!data.reading.length) now.append(el("li", "empty", t.nothingNow));
 
     const done = list("finished");
     done.replaceChildren(
-      ...data.finished.map((b) => row(b.title, b.author, b.finished ? date(b.finished) : "", b.days ? [document.createTextNode(t.took(b.days, num.format(b.days)))] : undefined)),
+      ...data.finished.map((b) => {
+        const li = el("li");
+        li.append(line("div", b.title, b.author, b.finished ? date(b.finished) : ""));
+        if (b.days) li.append(el("p", "row-note", t.took(b.days, num.format(b.days))));
+        return li;
+      }),
     );
     if (!data.finished.length) done.append(el("li", "empty", t.nothingDone));
 
@@ -245,46 +391,67 @@ const copy = tr
     const scroll = root.querySelector<HTMLElement>("[data-scroll]")!;
     scroll.scrollLeft = scroll.scrollWidth; // the newest weeks first on a narrow screen
 
-    // Motion: the blocks settle in where the loading line was, and each bar
-    // grows to its value once, so the eye reads progress rather than a jump.
-    if (!canAnimate()) return;
+    if (!motion) return;
+    // The blocks settle in where the loading line was.
     shown.forEach((b, i) =>
       b.animate([{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], { duration: 320, delay: i * 40, easing: EASE, fill: "backwards" }),
     );
-    for (const fill of root.querySelectorAll<HTMLElement>(".bar > span"))
-      fill.animate([{ transform: "scaleX(0)" }, { transform: fill.style.transform }], { duration: 480, delay: 120, easing: EASE, fill: "backwards" });
+    countUp(root, (v) => num.format(v), stop.signal);
+    // The year fills in day by day, oldest first, the way it was read.
+    const days = [...grid.children] as HTMLElement[];
+    days.forEach((cell, i) =>
+      cell.animate([{ opacity: 0, transform: "scale(0.4)" }, { opacity: 1, transform: "none" }], { duration: 260, delay: 80 + i * 1.5, easing: EASE, fill: "backwards" }),
+    );
+    // Each bar grows to its value once, then the week ahead joins it.
+    for (const fill of root.querySelectorAll<HTMLElement>(".bar > .fill"))
+      fill.animate([{ transform: "scaleX(0)" }, { transform: fill.style.transform }], { duration: 480, delay: 160, easing: EASE, fill: "backwards" });
   }
 
   function initReading() {
     const root = document.querySelector<HTMLElement>("[data-reading]");
     if (!root || root.dataset.ready) return;
     root.dataset.ready = "true";
+    const motion = canAnimate();
+    root.dataset.motion = motion ? "on" : "off";
     const t = text[root.dataset.reading === "tr" ? "tr" : "en"];
     const status = root.querySelector<HTMLElement>("[data-status]")!;
     const label = root.querySelector<HTMLElement>("[data-status-text]")!;
     const retry = root.querySelector<HTMLButtonElement>("[data-retry]")!;
+    const say = (words: string) => {
+      label.textContent = words;
+      if (motion) label.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: "ease-out" });
+    };
 
+    let loading = false;
     const load = async () => {
-      label.textContent = t.loading;
-      retry.hidden = true;
+      if (loading) return;
+      loading = true;
       status.hidden = false;
       status.setAttribute("aria-busy", "true");
-      let data: Summary;
+      retry.disabled = true;
+      retry.classList.add("is-busy");
+      if (retry.hidden) say(t.loading);
       try {
         const res = await fetch(ENDPOINT);
         if (!res.ok) throw new Error(String(res.status));
-        data = await res.json();
+        const data: Summary = await res.json();
+        render(root, data, t, motion);
+        retry.hidden = true;
+        say(
+          data.updated_at
+            ? t.synced(new Intl.DateTimeFormat(t.locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" }).format(data.updated_at * 1000))
+            : t.never,
+        );
       } catch {
-        label.textContent = t.failed;
+        // A failed request or an answer of another shape: never stuck on Loading.
+        say(t.failed);
         retry.hidden = false;
-        return;
       } finally {
+        loading = false;
+        retry.disabled = false;
+        retry.classList.remove("is-busy");
         status.removeAttribute("aria-busy");
       }
-      render(root, data, t);
-      label.textContent = data.updated_at
-        ? t.synced(new Intl.DateTimeFormat(t.locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" }).format(data.updated_at * 1000))
-        : t.never;
     };
     retry.addEventListener("click", load);
     load();
@@ -384,6 +551,19 @@ const copy = tr
     line-height: 1.1;
     color: var(--text-primary);
     font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  .figures :global(.n) {
+    position: relative;
+    display: inline-block;
+  }
+
+  /* The counting copy sits over the real number, right-aligned to it. */
+  .figures :global(.n-live) {
+    position: absolute;
+    top: 0;
+    right: 0;
+    white-space: nowrap;
   }
 
   .figures :global(.figure-unit) {
@@ -503,6 +683,7 @@ const copy = tr
 
   /* Progress under a book; the percentage is in the row as text too. */
   .leader-list :global(.bar) {
+    position: relative;
     display: block;
     height: 3px;
     margin-top: 0.625rem;
@@ -512,10 +693,76 @@ const copy = tr
   }
 
   .leader-list :global(.bar > span) {
-    display: block;
-    height: 100%;
-    background: var(--accent);
+    position: absolute;
+    inset: 0;
     transform-origin: left;
+  }
+
+  .leader-list :global(.bar > .fill) {
+    background: var(--accent);
+  }
+
+  /* The week ahead at this pace, shown while the book's row is open. */
+  .leader-list :global(.bar > .ghost) {
+    background: color-mix(in srgb, var(--accent) 35%, transparent);
+    opacity: 0;
+    transition: opacity 200ms ease;
+  }
+
+  .leader-list :global(.book:has(details[open]) .ghost) {
+    opacity: 1;
+  }
+
+  /* A book row opens on its details. */
+  .leader-list :global(summary) {
+    list-style: none;
+    cursor: pointer;
+    border-radius: 0.25rem;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .leader-list :global(summary::-webkit-details-marker) {
+    display: none;
+  }
+
+  .leader-list :global(.chev) {
+    display: inline-flex;
+    align-self: center;
+    color: var(--text-secondary);
+    transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .leader-list :global(details[open] .chev) {
+    transform: rotate(180deg);
+  }
+
+  .leader-list :global(summary:active .row-title) {
+    opacity: 0.7;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .leader-list :global(summary:hover .row-title) {
+      color: var(--accent);
+    }
+  }
+
+  .leader-list :global(.facts) {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.5rem 1rem;
+    margin: 0.75rem 0 0;
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .leader-list :global(.facts dt) {
+    color: var(--text-secondary);
+  }
+
+  .leader-list :global(.facts dd) {
+    margin: 0.125rem 0 0;
+    color: var(--text-primary);
   }
 
   /* The year */
@@ -569,6 +816,77 @@ const copy = tr
 
   .year-grid :global(.day.future) {
     visibility: hidden;
+  }
+
+  .year-grid {
+    border-radius: 2px;
+    outline-offset: 4px;
+    cursor: default;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .year-grid :global(.day) {
+    transition: transform 120ms ease-out;
+  }
+
+  .year-grid :global(.day.is-active) {
+    outline: 2px solid var(--text-primary);
+    outline-offset: 1px;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .year-grid :global(.day:not(.future):hover) {
+      transform: scale(1.35);
+    }
+  }
+
+  .year-section {
+    position: relative;
+  }
+
+  /* One label for the day under the pointer, finger or arrow keys. */
+  .tip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    font-size: 0.75rem;
+    line-height: 1.4;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition:
+      opacity 120ms ease-out,
+      transform 90ms ease-out;
+  }
+
+  .tip:global(.is-shown) {
+    opacity: 1;
+  }
+
+  .tip:global(.is-instant) {
+    transition: none;
+  }
+
+  .retry:global(.is-busy) svg {
+    animation: spin 700ms linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* Reduced motion and e-ink (canAnimate is false): states change instantly. */
+  .reading-page[data-motion="off"] :global(*),
+  .reading-page[data-motion="off"] .tip {
+    transition: none !important;
+    animation: none !important;
   }
 
   .reading-page :global(.day[data-level="1"]) {
@@ -638,6 +956,10 @@ const copy = tr
 
   @media (max-width: 640px) {
     .figures {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .leader-list :global(.facts) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 

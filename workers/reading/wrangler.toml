@@ -17,8 +17,14 @@ crons = ["*/30 * * * *", "0 5 * * *"]
 # CrossPoint Sync, or a self-hosted copy of it.
 SYNC_URL = "https://sync.crosspointreader.com"
 NTFY_URL = "https://ntfy.sh"
+<<<<<<< HEAD
+# Books whose title contains any of these (comma separated, any case) are left
+# off the public page. Single books are hidden from the private side instead.
+HIDE_TITLES = "ielts,toefl,cambridge english,english grammar,english vocabulary,vocabulary,word power,phrasal verbs,idioms"
+=======
 # Where the files Worker serves the bucket below; recordings are linked from here.
 FILES_URL = "https://files.busahin.com"
+>>>>>>> 1fda092 (Reading: private words page with hand-added words, examples and recordings)
 
 [[d1_databases]]
 binding = "DB"

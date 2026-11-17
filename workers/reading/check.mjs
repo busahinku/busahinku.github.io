@@ -133,7 +133,8 @@ assert.ok(requests.filter((r) => r.url.pathname.startsWith("/api/v1/stats/")).ev
 assert.equal(first.books, 4);
 assert.equal(first.clippings, 7, "the blank clipping and the malformed id are skipped");
 const t1 = tables();
-assert.equal(t1.books.find((b) => b.document === "ffeeddccbbaa99887766554433221100").title, "Klara and the Sun - Kazuo Ishiguro", "no metadata: the file name stands in");
+const klaraRow = t1.books.find((b) => b.document === "ffeeddccbbaa99887766554433221100");
+assert.deepEqual([klaraRow.title, klaraRow.filename], [null, "Klara and the Sun - Kazuo Ishiguro.epub"], "no metadata: no title, the file name kept apart");
 assert.deepEqual(t1.clippings.filter((c) => c.kind === "word").map((c) => c.term).sort(), ["abandoned", "give up", "mellow", "running", "ubiquitous"]);
 assert.deepEqual(t1.cards.map((c) => [c.term, c.box, c.due]), ["abandoned", "give up", "mellow", "running", "ubiquitous"].map((t) => [t, 1, "2026-11-18"]));
 assert.equal(first.translated, 2);
@@ -147,7 +148,7 @@ assert.deepEqual(second.changed, []);
 assert.equal(second.translated, 0);
 assert.equal(aiCalls, 2);
 assert.deepEqual(tables(), t1);
-assert.equal(changes() - before, 4, "only the four raw rows' fetched_at");
+assert.equal(changes() - before, 5, "only the four raw rows' fetched_at and the stored summary");
 assert.ok(sqlite.prepare("SELECT COUNT(*) AS n FROM raw WHERE server_version = '0.1.0'").get().n === 4);
 
 // ---- a re-derive from the stored raw answers gives the same rows
@@ -160,11 +161,7 @@ assert.equal(s.today, "2026-11-18");
 assert.deepEqual(s.streak, { current: 8, longest: 11 });
 assert.equal(s.days.length, 21);
 assert.deepEqual(s.days.at(-1), ["2026-11-17", 5]);
-assert.deepEqual(
-  s.reading.map((b) => b.title),
-  ["The Remains of the Day", "Klara and the Sun - Kazuo Ishiguro"],
-  "paused and finished books are not in progress; newest first",
-);
+assert.deepEqual(s.reading.map((b) => b.title), ["The Remains of the Day"], "paused and finished books are not in progress, and a book with only a file name is not shown");
 const remains = s.reading[0];
 // 0.22 of the book over the last 14 days (it was started 18 days ago).
 assert.equal(remains.percent, 62);
@@ -172,9 +169,6 @@ assert.equal(remains.percent_per_day, 1.6);
 assert.equal(remains.pages_per_day, 4.1);
 assert.equal(remains.forecast, "2026-12-13");
 assert.equal(remains.started, "2026-11-01");
-const klara = s.reading[1];
-assert.equal(klara.pages_per_day, null, "no page count, no pages a day");
-assert.equal(klara.percent_per_day, 1.7, "0.05 over the three days since it was started");
 assert.deepEqual(s.finished, [{ title: "Foundryside", author: "Robert Jackson Bennett", started: "2026-10-20", finished: "2026-10-30", days: 11 }]);
 assert.deepEqual(Object.keys(s).sort(), ["days", "finished", "reading", "streak", "time", "today", "updated_at"], "nothing about words in public");
 assert.equal(s.time, null, "CrossPoint uploads no reading time");
@@ -200,16 +194,21 @@ assert.deepEqual(abandoned.word, { term: "abandoned", ipa: "əˈbæn.dən", tr: 
 assert.equal(await w.review(env, { term: "nope", grade: "good" }, NOW), undefined);
 assert.equal(await w.review(env, { term: "mellow", grade: "maybe" }, NOW), null);
 assert.equal(await w.review(env, { term: 42, grade: "good" }, NOW), null);
-let card = await w.review(env, { term: "Mellow", grade: "good" }, NOW);
-assert.deepEqual({ ...card }, { term: "mellow", box: 2, due: "2026-11-20", reviews: 1, lapses: 0 });
-for (let i = 0; i < 3; i++) card = await w.review(env, { term: "mellow", grade: "good" }, NOW);
-assert.equal(card.box, 5);
-assert.equal(card.due, "2026-12-04");
-assert.equal((await w.todayCard(env, NOW, true)).words.learned, 1);
+let card = await w.review(env, { term: "Mel\u00ADlow\u200B", grade: "good" }, NOW);
+assert.deepEqual({ ...card }, { term: "mellow", box: 2, due: "2026-11-20", reviews: 1, lapses: 0 }, "a soft hyphen or zero-width space never makes another word");
+const again = await w.review(env, { term: "mellow", grade: "good" }, NOW);
+assert.equal(again.error, "not due", "a retried or doubled answer cannot move the card twice");
+assert.deepEqual({ ...again.card }, { term: "mellow", box: 2, due: "2026-11-20", reviews: 1, lapses: 0 });
+// Answered on each due day: 1 -> 2 -> 3 -> 4 -> 5 days 2, 4 and 8 apart.
+const at = (day) => Date.parse(`${day}T07:00:00Z`);
+for (const day of ["2026-11-20", "2026-11-24", "2026-12-02"]) card = await w.review(env, { term: "mellow", grade: "good" }, at(day));
+assert.deepEqual([card.box, card.due, card.reviews], [5, "2026-12-18", 4]);
+assert.equal((await w.todayCard(env, at("2026-12-02"), true)).words.learned, 1);
 const times = sqlite.prepare("SELECT first_reviewed_at, matured_at FROM cards WHERE term = 'mellow'").get();
-assert.deepEqual({ ...times }, { first_reviewed_at: NOW / 1000, matured_at: NOW / 1000 }, "first review and maturity are recorded");
-card = await w.review(env, { term: "mellow", grade: "again" }, NOW);
-assert.deepEqual([card.box, card.due, card.lapses], [1, "2026-11-19", 1]);
+assert.deepEqual({ ...times }, { first_reviewed_at: NOW / 1000, matured_at: at("2026-12-02") / 1000 }, "first review and maturity are recorded");
+card = await w.review(env, { term: "mellow", grade: "again" }, at("2026-12-18"));
+assert.deepEqual([card.box, card.due, card.lapses], [1, "2026-12-19", 1]);
+sqlite.exec("UPDATE cards SET due = '2026-11-18' WHERE term = 'mellow'");
 
 // ---- the Anki export
 const csv = await w.cardsCsv(env);
@@ -293,6 +292,160 @@ assert.equal((await call("DELETE", "/api/reading/summary")).status, 405);
 assert.equal((await call("GET", "/api/reading/nope")).status, 404);
 const publicSummary = await (await call("GET", "/api/reading/summary")).text();
 for (const word of ["word", "vocab", "learn", "english", "ielts"]) assert.ok(!publicSummary.toLowerCase().includes(word), `public summary mentions "${word}"`);
+
+// ---- R1: a sentence the model fails on never holds up the others
+{
+  sqlite.exec("UPDATE daily SET translations = 0");
+  sqlite.exec("UPDATE clippings SET translation = NULL, translate_tries = 0 WHERE kind = 'sentence'");
+  const bad = "c0ffee0011223302"; // the newest sentence
+  const saved = env.AI;
+  const log = console.error;
+  console.error = () => {}; // the failures below are on purpose
+  let calls = 0;
+  env.AI = { run: async (model, input) => (calls++, input.text.startsWith("The ubiquitous") ? Promise.reject(new Error("model refused")) : { translated_text: `TR: ${input.text}` }) };
+  await w.ingest(env, NOW + 10_000_000);
+  const row = (id) => sqlite.prepare("SELECT translation, translate_tries FROM clippings WHERE id = ?").get(id);
+  assert.equal(row(bad).translate_tries, 1);
+  assert.ok(row("c0ffee0011223307").translation, "the older sentence is translated past the failing one");
+  for (let i = 0; i < 6; i++) await w.ingest(env, NOW + 10_000_000 + i);
+  assert.equal(row(bad).translate_tries, 5, "tried five times, then left alone");
+  assert.equal(calls, 6, "one call per run until then, none after");
+  // An empty answer counts as a failure, and two in a row end the run.
+  sqlite.exec("UPDATE daily SET translations = 0");
+  sqlite.exec("UPDATE clippings SET translation = NULL, translate_tries = 0 WHERE kind = 'sentence'");
+  calls = 0;
+  env.AI = { run: async () => (calls++, { translated_text: "  " }) };
+  await w.ingest(env, NOW + 11_000_000);
+  assert.equal(calls, 2);
+  assert.deepEqual(sqlite.prepare("SELECT translate_tries FROM clippings WHERE kind = 'sentence' ORDER BY id").all().map((r) => r.translate_tries), [1, 1]);
+  env.AI = saved;
+  console.error = log;
+}
+
+// ---- R2: a 200 with the wrong shape, or empty lists, never empties the tables
+{
+  const counts = () => sqlite.prepare("SELECT (SELECT COUNT(*) FROM books) b, (SELECT COUNT(*) FROM days) d, (SELECT COUNT(*) FROM book_days) bd, (SELECT COUNT(*) FROM clippings WHERE deleted = 0) c").get();
+  const before = { ...counts() };
+  const saved = { ...answers };
+  for (const [name, body] of [["activity", "{}"], ["progress", '{"error":"maintenance"}'], ["progress", "[]"], ["clippings", '{"items":null}'], ["overview", "null"]]) {
+    Object.assign(answers, saved, { [name]: body });
+    await assert.rejects(w.ingest(env, NOW + 12_000_000), /unexpected answer shape/, `${name} ${body}`);
+    assert.deepEqual({ ...counts() }, before);
+  }
+  Object.assign(answers, saved, { activity: '{"books":[],"days":[]}', progress: '{"items":[],"next":null}', clippings: '{"items":[]}' });
+  await w.ingest(env, NOW + 12_000_000);
+  assert.deepEqual({ ...counts() }, before, "empty lists from a fresh or reset server delete nothing");
+  // Null and broken records are skipped one by one, never the whole pull.
+  const progress = JSON.parse(saved.progress);
+  progress.items.push(null, 7, { document: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", title: 42, filename: 99, percentage: 3, timestamp: 1e17 });
+  const activity = JSON.parse(saved.activity);
+  activity.books.push(null, { document: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", started_at: 1e17 });
+  activity.days.push(null, { day: 5 }, { day: "2026-11-18", books: [null, { document: 3 }] });
+  Object.assign(answers, saved, { progress: JSON.stringify(progress), activity: JSON.stringify(activity), clippings: JSON.stringify({ items: [null, 1, ...JSON.parse(saved.clippings).items] }) });
+  await w.ingest(env, NOW + 13_000_000);
+  const broken = sqlite.prepare("SELECT title, filename, percentage, started_at, last_at FROM books WHERE document = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'").get();
+  assert.deepEqual({ ...broken }, { title: null, filename: null, percentage: null, started_at: null, last_at: null }, "out-of-range values become null");
+  assert.ok((await w.summary(env, NOW)).streak, "and the summary still builds");
+  // A first page of books (next is set) deletes none of the rest.
+  Object.assign(answers, saved, { progress: JSON.stringify({ items: JSON.parse(saved.progress).items.slice(0, 1), next: "x:y" }) });
+  await w.ingest(env, NOW + 14_000_000);
+  assert.equal(counts().b, before.b + 1);
+  Object.assign(answers, saved);
+  await w.ingest(env, NOW + 15_000_000);
+  assert.equal(counts().b, before.b, "the broken book goes once the full list no longer has it");
+}
+
+// ---- R4: a health check that is not JSON never stops a pull
+{
+  const saved = answers.healthz;
+  for (const body of ["ok", "null", ""]) {
+    answers.healthz = body;
+    await w.ingest(env, NOW + 16_000_000);
+  }
+  answers.healthz = saved;
+}
+
+// ---- R5: titles that must stay off the public page
+{
+  const doc = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+  const progress = JSON.parse(answers.progress);
+  progress.items.push({ document: doc, title: "Cambridge IELTS 18 Academic", author: "Cambridge", filename: "ielts18.pdf", percentage: 0.3, timestamp: 1794944400, status: "reading" });
+  answers.progress = JSON.stringify(progress);
+  await w.ingest(env, NOW + 17_000_000);
+  env.HIDE_TITLES = "ielts, toefl";
+  const shown = async () => {
+    await w.ingest(env, NOW + 17_100_000);
+    return JSON.stringify(await w.summary(env, NOW + 17_100_000));
+  };
+  let pub = await shown();
+  assert.ok(!/ielts|klara|\.epub|\.pdf/i.test(pub), "a matching title and a file-name-only book stay off the public page");
+  const remains = "a1b2c3d4e5f60718293a4b5c6d7e8f90";
+  assert.equal((await w.setBook(env, { document: remains, hidden: true }, NOW)).shown_as, null);
+  assert.ok(!(await w.summary(env, NOW)).reading.length, "a hidden book disappears at once (the stored summary is rebuilt)");
+  await w.setBook(env, { document: remains, hidden: false }, NOW);
+  const klara = await w.setBook(env, { document: "ffeeddccbbaa99887766554433221100", title: "Klara and the Sun" }, NOW);
+  assert.equal(klara.shown_as, "Klara and the Sun");
+  pub = await w.summary(env, NOW);
+  assert.deepEqual(pub.reading.map((b) => b.title), ["The Remains of the Day", "Klara and the Sun"], "a title given from the private side is shown");
+  const klaraPub = pub.reading[1];
+  assert.deepEqual([klaraPub.percent_per_day, klaraPub.forecast], [0, null], "the first synced day is where the book was, not reading done that day");
+  assert.equal(await w.setBook(env, { document: "no pe!" }, NOW), null);
+  assert.equal(await w.setBook(env, { document: "cccccccccccccccccccccccccccccccc" }, NOW), undefined);
+  assert.equal(await w.setBook(env, { document: remains, hidden: "yes" }, NOW), null);
+  assert.ok((await w.booksList(env)).books.some((b) => b.document === doc && b.shown_as === null && b.filename === "ielts18.pdf"), "the private list says what is hidden and why it is there");
+  delete env.HIDE_TITLES;
+}
+
+// ---- slow progress stays visible
+{
+  const doc = "a1b2c3d4e5f60718293a4b5c6d7e8f90";
+  sqlite.exec(`UPDATE book_days SET from_pct = 0.6, to_pct = 0.603 WHERE document = '${doc}' AND day = '2026-11-17'`);
+  sqlite.exec(`UPDATE book_days SET from_pct = to_pct WHERE document = '${doc}' AND day <> '2026-11-17'`);
+  const slow = (await w.buildSummary(env, NOW)).reading.find((b) => b.title === "The Remains of the Day");
+  assert.ok(slow.percent_per_day > 0 && slow.forecast, `0.3% over two weeks is shown, not rounded to nothing (${slow.percent_per_day})`);
+}
+
+// ---- R3: the private routes find a card's clipping through an index, not a scan
+{
+  const plan = (sql) => sqlite.prepare(`EXPLAIN QUERY PLAN ${sql}`).all().map((r) => r.detail).join(" | ");
+  assert.match(plan("SELECT 1 FROM cards WHERE EXISTS (SELECT 1 FROM clippings w WHERE w.kind = 'word' AND w.deleted = 0 AND w.term = cards.term)"), /clippings_word_term/);
+  assert.match(plan("SELECT 1 FROM clippings s WHERE s.kind = 'sentence' AND s.deleted = 0 AND s.document = 'x'"), /clippings_sentences/);
+  // 3000 cards: the private card count stays fast.
+  sqlite.exec("BEGIN");
+  const ins = sqlite.prepare("INSERT INTO clippings (id, document, text, kind, term, created_at) VALUES (?, 'a1b2c3d4e5f60718293a4b5c6d7e8f90', ?, 'word', ?, 1794900000)");
+  const card = sqlite.prepare("INSERT OR IGNORE INTO cards (term, due, added_at) VALUES (?, '2026-11-18', 1)");
+  for (let i = 0; i < 3000; i++) (ins.run(`f${String(i).padStart(15, "0")}`, `word${i}`, `word${i}`), card.run(`word${i}`));
+  sqlite.exec("COMMIT");
+  const t0 = performance.now();
+  await w.todayCard(env, NOW, true);
+  assert.ok(performance.now() - t0 < 200, `private today at 3000 cards took ${Math.round(performance.now() - t0)} ms`);
+  sqlite.exec("DELETE FROM clippings WHERE id LIKE 'f%'; DELETE FROM cards WHERE term LIKE 'word%'");
+}
+
+// ---- the stored summary is what the public route reads
+{
+  sqlite.exec(`UPDATE meta SET value = json_set(value, '$.streak.longest', 999) WHERE key = 'summary'`);
+  const stored = JSON.parse(sqlite.prepare("SELECT value FROM meta WHERE key = 'summary'").get().value);
+  assert.equal((await w.summary(env, Date.parse(`${stored.today}T12:00:00Z`))).streak.longest, 999, "one row read on a hit");
+  assert.notEqual((await w.summary(env, Date.parse(`${stored.today}T12:00:00Z`) + 86_400_000)).streak.longest, 999, "a stored summary from yesterday is not used");
+}
+
+// ---- the limiter runs first and really refuses; CORS only on public answers
+{
+  const shut = { limit: async () => ({ success: false }) };
+  const res = await w.default.fetch(new Request("https://busahin.com/api/reading/cards.csv", { headers: { authorization: "Bearer wrong" } }), { ...env, PER_VISITOR: shut, SITE_WIDE: open }, { waitUntil() {} });
+  assert.equal(res.status, 429, "refused before the token is even checked");
+  const site = await w.default.fetch(new Request("https://busahin.com/api/reading/summary"), { ...env, PER_VISITOR: open, SITE_WIDE: shut }, { waitUntil() {} });
+  assert.equal(site.status, 429, "the site-wide limit holds too");
+  const from = (path, origin, auth) =>
+    w.default.fetch(new Request(`https://busahin.com${path}`, { headers: { origin, ...(auth ? { authorization: `Bearer ${auth}` } : {}) } }), { ...env, PER_VISITOR: open, SITE_WIDE: open }, { waitUntil() {} });
+  assert.equal((await from("/api/reading/summary", "http://localhost:4321")).headers.get("access-control-allow-origin"), "http://localhost:4321");
+  assert.equal((await from("/api/reading/summary", "https://evil.example")).headers.get("access-control-allow-origin"), null);
+  for (const path of ["/api/reading/today", "/api/reading/cards.csv", "/api/reading/books"])
+    assert.equal((await from(path, "http://localhost:4321", env.READING_TOKEN)).headers.get("access-control-allow-origin"), null, `${path} never carries CORS`);
+  for (const [method, path] of [["GET", "/api/reading/books"], ["POST", "/api/reading/books"]])
+    assert.equal((await call(method, path)).status, 401, `${method} ${path} needs the token`);
+}
 
 // ---- words added by hand
 assert.equal(w.handTerm("  Serendipity! "), "serendipity");

@@ -12,6 +12,8 @@
 //          GET  /api/reading/sentences clipped sentences with translations
 //          POST /api/reading/review    {"term", "grade": "good" | "again"}
 //          POST /api/reading/sync      pull from CrossPoint Sync now
+//          GET  /api/reading/books     every book and the title the public page shows for it, if any
+//          POST /api/reading/books     {"document", "hidden"?: bool, "title"?: string | null}
 //          GET  /api/reading/cards     every card with meaning, examples, audio
 //          POST /api/reading/words     add a word by hand ({term, note?, sentence?}); /edit and /delete
 //          POST /api/reading/audio     find and keep a human recording for {term}
@@ -95,11 +97,18 @@ function forecast(percentage, perDay, today) {
 }
 
 const EDGES = /^[\p{P}\p{S}\s]+|[\p{P}\p{S}\s]+$/gu;
+// Soft hyphens and zero-width characters vanish; every apostrophe becomes '.
+const INVISIBLE = /[­​-‏⁠﻿]/g;
+const APOSTROPHES = /[‘’ʼ`´]/g;
+const tidy = (v) => String(v ?? "").normalize("NFC").replace(INVISIBLE, "").replace(APOSTROPHES, "'").replace(/\s+/g, " ").replace(EDGES, "");
+/** The one spelling of a term, shared by clippings and reviews, so the same word never makes two cards. */
+const termOf = (v) => tidy(v).toLowerCase();
+
 /** A clipping of three words or fewer is vocabulary; anything longer is a sentence. */
 function classify(text) {
-  const clean = String(text ?? "").replace(/\s+/g, " ").replace(EDGES, "");
+  const clean = tidy(text);
   if (!clean) return null;
-  if (clean.split(" ").length <= 3 && clean.length <= 60) return { kind: "word", term: clean.toLowerCase().replace(/[‘’]/g, "'") };
+  if (clean.split(" ").length <= 3 && clean.length <= 60) return { kind: "word", term: clean.toLowerCase() };
   return { kind: "sentence", term: null };
 }
 
@@ -117,47 +126,78 @@ function candidates(term) {
 const nextBox = (box, grade) => (grade === "good" ? Math.min(LEARNED, box + 1) : 1);
 
 const text = (v, max) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
-const int = (v) => (Number.isFinite(v) ? Math.round(v) : null);
-const num = (v) => (Number.isFinite(v) ? v : null);
+const int = (v, min = 0, max = 1e9) => (Number.isFinite(v) && v >= min && v <= max ? Math.round(v) : null);
+const num = (v, min = 0, max = 1) => (Number.isFinite(v) && v >= min && v <= max ? v : null);
+// Unix seconds between 2000 and 2100; anything else is a broken record, not a date.
+const ts = (v) => int(v, 946_684_800, 4_102_444_800);
+const isRecord = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+const list = (v) => (Array.isArray(v) ? v.filter(isRecord) : []);
 
-/** Rows for D1 from the Sync answers. Pure, so check.mjs can run it on the fixtures. */
-function derive({ progress, activity, clippings }) {
-  const act = new Map((activity.books ?? []).map((b) => [b.document, b]));
-  const books = (progress.items ?? [])
-    .filter((i) => DOC.test(i.document ?? ""))
+/** Throws unless the answer has the documented shape, so a maintenance page or a renamed field can never empty the tables. */
+function shape(name, body, keys) {
+  if (!isRecord(body) || keys.some((k) => !Array.isArray(body[k]))) throw new Error(`${name}: unexpected answer shape`);
+  return body;
+}
+
+/**
+ * Books from /progress joined with /stats/activity. `title` is the book's own
+ * metadata title or null: the file name is kept apart and never published.
+ */
+function deriveBooks(progress, activity) {
+  const act = new Map(list(activity.books).map((b) => [b.document, b]));
+  return list(progress.items)
+    .filter((i) => DOC.test(typeof i.document === "string" ? i.document : ""))
     .map((i) => {
       const a = act.get(i.document) ?? {};
       return {
         document: i.document,
-        title: text(i.title, 200) ?? text((i.filename ?? "").replace(/\.[a-z0-9]+$/i, ""), 200) ?? "Untitled",
+        title: text(i.title, 200),
+        filename: text(i.filename, 200),
         author: text(i.author, 200),
         percentage: num(i.percentage ?? a.percentage),
         status: STATUSES.has(i.status) ? i.status : null,
-        page_count: int(i.page_count ?? a.page_count),
-        started_at: int(a.started_at),
-        last_at: int(a.last_at ?? i.timestamp),
-        finished_at: int(a.finished_at),
-        days_to_finish: int(a.days_to_finish),
+        page_count: int(i.page_count ?? a.page_count, 1, 100_000),
+        started_at: ts(a.started_at),
+        last_at: ts(a.last_at ?? i.timestamp),
+        finished_at: ts(a.finished_at),
+        days_to_finish: int(a.days_to_finish, 1, 100_000),
       };
     });
+}
+
+function deriveDays(activity) {
   const days = [];
   const bookDays = [];
-  for (const d of activity.days ?? []) {
-    if (!DAY.test(d.day ?? "")) continue;
+  for (const d of list(activity.days)) {
+    if (typeof d.day !== "string" || !DAY.test(d.day)) continue;
     days.push({ day: d.day, pages: int(d.pages) ?? 0, syncs: int(d.syncs) ?? 0 });
-    for (const b of d.books ?? [])
-      if (DOC.test(b.document ?? ""))
+    for (const b of list(d.books))
+      if (typeof b.document === "string" && DOC.test(b.document))
         bookDays.push({ day: d.day, document: b.document, pages: int(b.pages) ?? 0, syncs: int(b.syncs) ?? 0, from_pct: num(b.from), to_pct: num(b.to) });
   }
-  const items = clippings.items ?? [];
+  return { days, bookDays };
+}
+
+function deriveClippings(clippings) {
   const clips = [];
-  for (const c of items) {
-    if (typeof c.id !== "string" || !DOC.test(c.id) || !DOC.test(c.document ?? "") || typeof c.text !== "string") continue;
+  for (const c of list(clippings.items)) {
+    if (typeof c.id !== "string" || !DOC.test(c.id) || typeof c.document !== "string" || !DOC.test(c.document) || typeof c.text !== "string") continue;
     const kind = classify(c.text);
-    if (kind) clips.push({ id: c.id, document: c.document, text: c.text.slice(0, 4096), chapter: text(c.chapter, 64), created_at: int(c.created_at), ...kind });
+    if (kind) clips.push({ id: c.id, document: c.document, text: c.text.slice(0, 4096), chapter: text(c.chapter, 64), created_at: ts(c.created_at), ...kind });
   }
-  // A missing book or clipping only means "deleted" when the answer was the whole list.
-  return { books, days, bookDays, clippings: clips, allBooks: !progress.next, allClippings: items.length < CLIPPINGS_MAX };
+  return clips;
+}
+
+/** Rows for D1 from the Sync answers. Pure, so check.mjs can run it on the fixtures and on the stored raw answers. */
+function derive({ progress, activity, clippings }) {
+  return {
+    books: deriveBooks(progress, activity),
+    ...deriveDays(activity),
+    clippings: deriveClippings(clippings),
+    // A missing book or clipping only means "deleted" when the answer was the whole list.
+    allBooks: !progress.next,
+    allClippings: clippings.items.length < CLIPPINGS_MAX,
+  };
 }
 
 // ---------------------------------------------------------------- pulling from CrossPoint Sync
@@ -165,7 +205,8 @@ function derive({ progress, activity, clippings }) {
 async function get(env, path, auth = true) {
   const headers = { accept: "application/json", "user-agent": "reading-worker" };
   if (auth) Object.assign(headers, { "x-auth-user": env.SYNC_USER, "x-auth-key": env.SYNC_KEY });
-  const res = await fetch(new URL(path, env.SYNC_URL), { headers, signal: AbortSignal.timeout(20_000) });
+  // redirect: "error", so the credentials never follow a redirect to another host.
+  const res = await fetch(new URL(path, env.SYNC_URL), { headers, redirect: "error", signal: AbortSignal.timeout(20_000) });
   if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
   return res.text();
 }
@@ -179,14 +220,16 @@ const chunks = (rows, size) => Array.from({ length: Math.ceil(rows.length / size
 const J = JSON.stringify;
 
 /**
- * Reads every endpoint first and writes nothing unless all of them answered,
- * then writes in one batch (a transaction). Re-running it on the same answers
- * changes nothing: every write is an upsert that skips identical rows.
+ * Reads every endpoint first and writes nothing unless all of them answered
+ * with the documented shape, then writes in one batch (a transaction).
+ * Answers are hashed before anything is parsed: an unchanged answer costs a
+ * hash and its fetch time, nothing else. Re-running on the same answers
+ * changes nothing; every write is an upsert that skips identical rows.
  */
 async function ingest(env, now = Date.now()) {
   if (!env.SYNC_USER || !env.SYNC_KEY) throw new Error("SYNC_USER and SYNC_KEY are not set");
   const tz = `tz=${TZ_OFFSET}`;
-  // ponytail: one page of 500 books; derive() keeps books it did not see when there is a next page.
+  // ponytail: one page of 500 books; books not on it are kept (allBooks is false) when there is a next page.
   const [health, progress, activity, overview, clippings] = await Promise.all([
     get(env, "/healthz", false).catch(() => "{}"),
     get(env, "/api/v1/progress?include_history=1&limit=500"),
@@ -195,17 +238,28 @@ async function ingest(env, now = Date.now()) {
     get(env, "/api/v1/clippings"),
   ]);
   const bodies = { progress, activity, overview, clippings };
-  const parsed = Object.fromEntries(Object.entries(bodies).map(([k, v]) => [k, JSON.parse(v)]));
-  const version = text(JSON.parse(health).version, 40);
+  let version = null;
+  try {
+    version = text(JSON.parse(health)?.version, 40); // only a label; a strange health answer never stops a pull
+  } catch {}
 
   const db = env.DB;
   const stored = new Map((await db.prepare("SELECT endpoint, hash FROM raw").all()).results.map((r) => [r.endpoint, r.hash]));
   const hashes = Object.fromEntries(await Promise.all(Object.entries(bodies).map(async ([k, v]) => [k, await sha256(v)])));
   const changed = Object.keys(bodies).filter((k) => stored.get(k) !== hashes[k]);
-  const rows = derive(parsed);
+  const booksChanged = changed.includes("progress") || changed.includes("activity");
+  const parse = (k, keys) => shape(k, JSON.parse(bodies[k]), keys);
+  const parsed = {
+    progress: booksChanged ? parse("progress", ["items"]) : null,
+    activity: booksChanged ? parse("activity", ["books", "days"]) : null,
+    clippings: changed.includes("clippings") ? parse("clippings", ["items"]) : null,
+  };
+  if (changed.includes("overview")) parse("overview", []);
+
   const today = dayOf(now);
   const seconds = Math.floor(now / 1000);
   const statements = [];
+  const counts = {};
 
   for (const k of Object.keys(bodies))
     statements.push(
@@ -218,27 +272,34 @@ async function ingest(env, now = Date.now()) {
         .bind(k, hashes[k], bodies[k].length <= KEEP_RAW ? bodies[k] : null, version, seconds),
     );
 
-  if (changed.includes("progress") || changed.includes("activity")) {
+  // A delete only ever runs against a non-empty answer: an empty list is far
+  // more often a fresh server or an outage than a reader with nothing on it.
+  // ponytail: deleting the very last book or clipping on the reader is kept here until something replaces it.
+  const NONEMPTY = "json_array_length(?1) > 0";
+
+  if (booksChanged) {
+    const books = deriveBooks(parsed.progress, parsed.activity);
+    counts.books = books.length;
     statements.push(
       db
         .prepare(
-          `INSERT INTO books (document, title, author, percentage, status, page_count, started_at, last_at, finished_at, days_to_finish)
-           SELECT value->>'document', value->>'title', value->>'author', value->>'percentage', value->>'status', value->>'page_count',
+          `INSERT INTO books (document, title, filename, author, percentage, status, page_count, started_at, last_at, finished_at, days_to_finish)
+           SELECT value->>'document', value->>'title', value->>'filename', value->>'author', value->>'percentage', value->>'status', value->>'page_count',
                   value->>'started_at', value->>'last_at', value->>'finished_at', value->>'days_to_finish'
            FROM json_each(?1) WHERE true
-           ON CONFLICT (document) DO UPDATE SET title = excluded.title, author = excluded.author, percentage = excluded.percentage,
+           ON CONFLICT (document) DO UPDATE SET title = excluded.title, filename = excluded.filename, author = excluded.author, percentage = excluded.percentage,
              status = excluded.status, page_count = excluded.page_count, started_at = excluded.started_at, last_at = excluded.last_at,
              finished_at = excluded.finished_at, days_to_finish = excluded.days_to_finish
-           WHERE (books.title, books.author, books.percentage, books.status, books.page_count, books.started_at, books.last_at, books.finished_at, books.days_to_finish)
-             IS NOT (excluded.title, excluded.author, excluded.percentage, excluded.status, excluded.page_count, excluded.started_at, excluded.last_at, excluded.finished_at, excluded.days_to_finish)`,
+           WHERE (books.title, books.filename, books.author, books.percentage, books.status, books.page_count, books.started_at, books.last_at, books.finished_at, books.days_to_finish)
+             IS NOT (excluded.title, excluded.filename, excluded.author, excluded.percentage, excluded.status, excluded.page_count, excluded.started_at, excluded.last_at, excluded.finished_at, excluded.days_to_finish)`,
         )
-        .bind(J(rows.books)),
+        .bind(J(books)),
     );
-    if (rows.allBooks)
-      statements.push(db.prepare("DELETE FROM books WHERE document NOT IN (SELECT value->>'document' FROM json_each(?1))").bind(J(rows.books)));
-  }
+    if (!parsed.progress.next)
+      statements.push(db.prepare(`DELETE FROM books WHERE ${NONEMPTY} AND document NOT IN (SELECT value->>'document' FROM json_each(?1))`).bind(J(books)));
 
-  if (changed.includes("activity")) {
+    const { days, bookDays } = deriveDays(parsed.activity);
+    counts.days = days.length;
     statements.push(
       db
         .prepare(
@@ -246,8 +307,8 @@ async function ingest(env, now = Date.now()) {
            ON CONFLICT (day) DO UPDATE SET pages = excluded.pages, syncs = excluded.syncs
            WHERE (days.pages, days.syncs) IS NOT (excluded.pages, excluded.syncs)`,
         )
-        .bind(J(rows.days)),
-      db.prepare("DELETE FROM days WHERE day NOT IN (SELECT value->>'day' FROM json_each(?1))").bind(J(rows.days)),
+        .bind(J(days)),
+      db.prepare(`DELETE FROM days WHERE ${NONEMPTY} AND day NOT IN (SELECT value->>'day' FROM json_each(?1))`).bind(J(days)),
       db
         .prepare(
           `INSERT INTO book_days (day, document, pages, syncs, from_pct, to_pct)
@@ -255,15 +316,17 @@ async function ingest(env, now = Date.now()) {
            ON CONFLICT (day, document) DO UPDATE SET pages = excluded.pages, syncs = excluded.syncs, from_pct = excluded.from_pct, to_pct = excluded.to_pct
            WHERE (book_days.pages, book_days.syncs, book_days.from_pct, book_days.to_pct) IS NOT (excluded.pages, excluded.syncs, excluded.from_pct, excluded.to_pct)`,
         )
-        .bind(J(rows.bookDays)),
+        .bind(J(bookDays)),
       db
-        .prepare("DELETE FROM book_days WHERE (day, document) NOT IN (SELECT value->>'day', value->>'document' FROM json_each(?1))")
-        .bind(J(rows.bookDays.map(({ day, document }) => ({ day, document })))),
+        .prepare(`DELETE FROM book_days WHERE ${NONEMPTY} AND (day, document) NOT IN (SELECT value->>'day', value->>'document' FROM json_each(?1))`)
+        .bind(J(bookDays.map(({ day, document }) => ({ day, document })))),
     );
   }
 
-  if (changed.includes("clippings")) {
-    for (const part of chunks(rows.clippings, 500))
+  if (parsed.clippings) {
+    const clips = deriveClippings(parsed.clippings);
+    counts.clippings = clips.length;
+    for (const part of chunks(clips, 500))
       statements.push(
         db
           .prepare(
@@ -276,11 +339,9 @@ async function ingest(env, now = Date.now()) {
           )
           .bind(J(part)),
       );
-    if (rows.allClippings)
+    if (parsed.clippings.items.length < CLIPPINGS_MAX)
       statements.push(
-        db
-          .prepare("UPDATE clippings SET deleted = 1 WHERE deleted = 0 AND id NOT IN (SELECT value FROM json_each(?1))")
-          .bind(J(rows.clippings.map((c) => c.id))),
+        db.prepare(`UPDATE clippings SET deleted = 1 WHERE ${NONEMPTY} AND deleted = 0 AND id NOT IN (SELECT value FROM json_each(?1))`).bind(J(clips.map((c) => c.id))),
       );
     statements.push(
       db
@@ -304,7 +365,9 @@ async function ingest(env, now = Date.now()) {
       console.error(error);
     }
   }
-  return { changed, books: rows.books.length, days: rows.days.length, clippings: rows.clippings.length, translated, recorded };
+  // The public answer is rebuilt every pull (the day may have turned) and read back as one row.
+  await storeSummary(env, now);
+  return { changed, ...counts, translated, recorded };
 }
 
 /** Reserves one translation from today's cap; false when it is spent. */
@@ -330,7 +393,15 @@ async function translateOne(env, sentence, today) {
   }
 }
 
-/** Translates the newest untranslated sentences, within the daily cap. Attempts count, so a failing model cannot eat the allowance. */
+const TRANSLATE_TRIES = 5;
+
+/**
+ * Translates untranslated sentences within the daily cap, fewest tries first,
+ * newest first. A sentence the model fails on gets a try counted against it and
+ * goes to the back, so one bad row can never hold up the rest; after
+ * TRANSLATE_TRIES it is left alone. Two failures in a row end the run (most
+ * likely the free allowance is spent). Attempts count against the cap.
+ */
 async function translate(env, today, seconds) {
   if (!env.AI) return 0;
   const db = env.DB;
@@ -338,22 +409,31 @@ async function translate(env, today, seconds) {
   const room = Math.min(TRANSLATE_PER_RUN, TRANSLATE_PER_DAY - used);
   if (room <= 0) return 0;
   const { results } = await db
-    .prepare("SELECT id, text FROM clippings WHERE kind = 'sentence' AND deleted = 0 AND translation IS NULL ORDER BY created_at DESC LIMIT ?1")
-    .bind(room)
+    .prepare(
+      `SELECT id, text FROM clippings WHERE kind = 'sentence' AND deleted = 0 AND translation IS NULL AND translate_tries < ?2
+       ORDER BY translate_tries, created_at DESC LIMIT ?1`,
+    )
+    .bind(room, TRANSLATE_TRIES)
     .all();
   const done = [];
-  let tried = 0;
+  const failed = [];
+  let streakOfFailures = 0;
   for (const row of results) {
-    tried++;
+    let tr = null;
     try {
-      const out = await env.AI.run(MODEL, { text: row.text, source_lang: "en", target_lang: "tr" });
-      const tr = text(out?.translated_text, 8000);
-      if (tr) done.push({ id: row.id, tr });
+      tr = text((await env.AI.run(MODEL, { text: row.text, source_lang: "en", target_lang: "tr" }))?.translated_text, 8000);
     } catch (error) {
-      console.error(error); // most likely today's free allowance is spent; the next run tries again
-      break;
+      console.error(error);
+    }
+    if (tr) {
+      done.push({ id: row.id, tr });
+      streakOfFailures = 0;
+    } else {
+      failed.push(row.id);
+      if (++streakOfFailures >= 2) break;
     }
   }
+  const tried = done.length + failed.length;
   if (!tried) return 0;
   await db.batch([
     db
@@ -362,6 +442,7 @@ async function translate(env, today, seconds) {
          WHERE id IN (SELECT value->>'id' FROM json_each(?1))`,
       )
       .bind(J(done), seconds),
+    db.prepare("UPDATE clippings SET translate_tries = translate_tries + 1 WHERE id IN (SELECT value FROM json_each(?1))").bind(J(failed)),
     db
       .prepare("INSERT INTO daily (day, translations) VALUES (?1, ?2) ON CONFLICT (day) DO UPDATE SET translations = translations + excluded.translations")
       .bind(today, tried),
@@ -414,45 +495,73 @@ async function wordOfDay(db, today) {
   return { term, ...(await lookup(db, [term])).get(term) };
 }
 
-async function summary(env, now) {
+// Two significant figures under 10, one decimal above: slow progress stays visible instead of rounding to 0.
+const sig = (x) => (x > 0 ? (x >= 10 ? Math.round(x * 10) / 10 : Number(x.toPrecision(2))) : 0);
+
+/**
+ * The title a book may show in public, or null to leave it off the page: hidden
+ * from the private side, no title of its own (a file name is never published),
+ * or a title matching one of HIDE_TITLES. The owner can set a title instead.
+ */
+function publicTitle(book, env) {
+  const title = book.public_title ?? book.title;
+  if (book.hidden || !title) return null;
+  const patterns = String(env.HIDE_TITLES ?? "")
+    .split(",")
+    .map((p) => p.trim().toLowerCase())
+    .filter(Boolean);
+  const lower = title.toLowerCase();
+  return patterns.some((p) => lower.includes(p)) ? null : title;
+}
+
+/** Everything the public page shows, computed from the tables. */
+async function buildSummary(env, now) {
   const db = env.DB;
   const today = dayOf(now);
   const since = addDays(today, -370);
-  const [books, days, recent, meta] = (
+  const [books, days, recent, firsts, meta] = (
     await db.batch([
       db.prepare("SELECT * FROM books"),
       db.prepare("SELECT day, pages, syncs FROM days WHERE day >= ?1 AND (syncs > 0 OR pages > 0) ORDER BY day").bind(since),
       db.prepare("SELECT day, document, from_pct, to_pct FROM book_days WHERE day >= ?1").bind(addDays(today, 1 - PACE_WINDOW)),
+      db.prepare("SELECT document, MIN(day) AS first FROM book_days GROUP BY document"),
       db.prepare("SELECT MAX(fetched_at) AS updated, (SELECT body FROM raw WHERE endpoint = 'overview') AS overview FROM raw"),
     ])
   ).map((r) => r.results);
   let overview = {};
   try {
-    overview = JSON.parse(meta[0]?.overview ?? "{}");
+    overview = JSON.parse(meta[0]?.overview ?? "{}") ?? {};
   } catch {}
   const day = (s) => (s ? dayOf(s * 1000) : null);
+  const first = new Map(firsts.map((f) => [f.document, f.first]));
 
   const reading = books
     .filter((b) => b.status === "reading" && b.percentage != null && b.percentage < 1)
-    .sort((a, b) => (b.last_at ?? 0) - (a.last_at ?? 0))
-    .map((b) => {
-      const perDay = pace(recent.filter((r) => r.document === b.document), day(b.started_at), today);
+    .map((b) => ({ b, title: publicTitle(b, env) }))
+    .filter(({ title }) => title)
+    .sort((x, y) => (y.b.last_at ?? 0) - (x.b.last_at ?? 0))
+    .map(({ b, title }) => {
+      // The first logged day is where the book was when it was first synced, not reading done that day.
+      const rows = recent.filter((r) => r.document === b.document && r.day !== first.get(b.document));
+      const perDay = pace(rows, day(b.started_at), today);
       return {
-        title: b.title,
+        title,
         author: b.author,
         percent: Math.round(b.percentage * 1000) / 10,
         page_count: b.page_count,
         started: day(b.started_at),
         last_read: day(b.last_at),
-        percent_per_day: Math.round(perDay * 1000) / 10,
-        pages_per_day: b.page_count && perDay ? Math.round(perDay * b.page_count * 10) / 10 : null,
+        percent_per_day: sig(perDay * 100),
+        pages_per_day: b.page_count && perDay ? sig(perDay * b.page_count) : null,
         forecast: forecast(b.percentage, perDay, today),
       };
     });
   const finished = books
     .filter((b) => b.status === "finished")
-    .sort((a, b) => (b.finished_at ?? 0) - (a.finished_at ?? 0))
-    .map((b) => ({ title: b.title, author: b.author, started: day(b.started_at), finished: day(b.finished_at), days: b.days_to_finish }));
+    .map((b) => ({ b, title: publicTitle(b, env) }))
+    .filter(({ title }) => title)
+    .sort((x, y) => (y.b.finished_at ?? 0) - (x.b.finished_at ?? 0))
+    .map(({ b, title }) => ({ title, author: b.author, started: day(b.started_at), finished: day(b.finished_at), days: b.days_to_finish }));
 
   return {
     today,
@@ -464,6 +573,49 @@ async function summary(env, now) {
     // Reading time exists only when some device uploads stats; CrossPoint 2.0.0 does not.
     time: overview.seconds > 0 ? { seconds: overview.seconds, week_seconds: overview.week_seconds ?? 0 } : null,
   };
+}
+
+/** Rebuilt by every pull and by every change to a book's visibility. */
+async function storeSummary(env, now) {
+  const body = await buildSummary(env, now);
+  await env.DB.prepare("INSERT INTO meta (key, value, updated_at) VALUES ('summary', ?1, ?2) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at")
+    .bind(J(body), Math.floor(now / 1000))
+    .run();
+  return body;
+}
+
+/** One row read when the stored summary is today's; built from the tables only between midnight and the next pull. */
+async function summary(env, now) {
+  const row = await env.DB.prepare("SELECT value FROM meta WHERE key = 'summary'").first("value");
+  if (row) {
+    const stored = JSON.parse(row);
+    if (stored.today === dayOf(now)) return stored;
+  }
+  return buildSummary(env, now);
+}
+
+/** The private list of books with what the public page shows for each. */
+async function booksList(env) {
+  const { results } = await env.DB.prepare(
+    "SELECT document, title, filename, public_title, hidden, author, status, percentage FROM books ORDER BY last_at DESC",
+  ).all();
+  return { books: results.map((b) => ({ ...b, hidden: Boolean(b.hidden), shown_as: publicTitle(b, env) })) };
+}
+
+/** Hide or show a book publicly, or give it the title it should show ("" or null goes back to its own). */
+async function setBook(env, input, now) {
+  if (!isRecord(input) || typeof input.document !== "string" || !DOC.test(input.document)) return null;
+  if (input.hidden !== undefined && typeof input.hidden !== "boolean") return null;
+  if (input.title !== undefined && input.title !== null && typeof input.title !== "string") return null;
+  const db = env.DB;
+  const found = await db.prepare("SELECT 1 FROM books WHERE document = ?1").bind(input.document).first();
+  if (!found) return undefined;
+  await db
+    .prepare("UPDATE books SET hidden = CASE WHEN ?2 IS NULL THEN hidden ELSE ?2 END, public_title = CASE WHEN ?3 THEN ?4 ELSE public_title END WHERE document = ?1")
+    .bind(input.document, input.hidden === undefined ? null : input.hidden ? 1 : 0, input.title === undefined ? 0 : 1, text(input.title, 200))
+    .run();
+  await storeSummary(env, now);
+  return (await booksList(env)).books.find((b) => b.document === input.document);
 }
 
 /**
@@ -521,21 +673,29 @@ async function sentences(env) {
   return { items: results };
 }
 
+/**
+ * Records one answer. A card that is not due is refused, so a retried request
+ * (or a double tap) can never move a card twice; the answer carries the card as
+ * it stands so a client can treat the refusal as "already saved".
+ */
 async function review(env, input, now) {
-  const term = typeof input?.term === "string" ? input.term.trim().toLowerCase() : "";
+  const term = isRecord(input) && typeof input.term === "string" ? termOf(input.term) : "";
   if (!term || term.length > 60 || !["good", "again"].includes(input.grade)) return null;
   const db = env.DB;
-  const card = await db.prepare("SELECT box FROM cards WHERE term = ?1").bind(term).first();
+  const today = dayOf(now);
+  const card = await db.prepare("SELECT term, box, due, reviews, lapses FROM cards WHERE term = ?1").bind(term).first();
   if (!card) return undefined;
+  if (card.due > today) return { error: "not due", card: { ...card } };
   const box = nextBox(card.box, input.grade);
-  return db
+  const updated = await db
     .prepare(
       `UPDATE cards SET box = ?1, due = ?2, reviews = reviews + 1, lapses = lapses + ?3,
          first_reviewed_at = COALESCE(first_reviewed_at, ?5), matured_at = COALESCE(matured_at, CASE WHEN ?1 >= ${LEARNED} THEN ?5 END)
-       WHERE term = ?4 RETURNING term, box, due, reviews, lapses`,
+       WHERE term = ?4 AND due <= ?6 RETURNING term, box, due, reviews, lapses`,
     )
-    .bind(box, addDays(dayOf(now), INTERVALS[box - 1]), input.grade === "again" ? 1 : 0, term, Math.floor(now / 1000))
+    .bind(box, addDays(today, INTERVALS[box - 1]), input.grade === "again" ? 1 : 0, term, Math.floor(now / 1000), today)
     .first();
+  return updated ?? { error: "not due", card: { ...card } }; // a concurrent answer got there first
 }
 
 function givenToken(request) {
@@ -575,7 +735,7 @@ async function sameToken(given, token) {
 
 /** A word or phrase typed by hand: the clipping rules, plus up to six words for phrases. */
 function handTerm(v) {
-  const clean = String(v ?? "").replace(/\s+/g, " ").replace(EDGES, "").toLowerCase().replace(/[‘’]/g, "'");
+  const clean = termOf(v);
   return clean && clean.length <= 60 && clean.split(" ").length <= 6 && /\p{L}/u.test(clean) ? clean : null;
 }
 const optional = (v, max) => (v === undefined ? undefined : text(v, max)); // undefined: leave alone; null: clear
@@ -842,9 +1002,9 @@ const readJson = async (request) => {
   }
 };
 
-// null: the input was bad; undefined: no such card; {error}: refused as it stands.
+// null: the input was bad; undefined: no such record; {error}: refused as it stands.
 const answer = (out) =>
-  out === null ? respond({ error: "bad" }, 400) : out === undefined ? respond({ error: "unknown term" }, 404) : out.error ? respond(out, 409) : out;
+  out === null ? respond({ error: "bad" }, 400) : out === undefined ? respond({ error: "unknown" }, 404) : out.error ? respond(out, 409) : out;
 
 // Every private route, keyed "METHOD path". They all pass the one token check
 // in fetch() below, so a later private page only adds a line here.
@@ -860,6 +1020,8 @@ const PRIVATE = {
   "GET /api/reading/sentences": (env) => sentences(env),
   "POST /api/reading/sync": (env, request, now) => ingest(env, now),
   "POST /api/reading/review": async (env, request, now) => answer(await review(env, await readJson(request), now)),
+  "GET /api/reading/books": (env) => booksList(env),
+  "POST /api/reading/books": async (env, request, now) => answer(await setBook(env, await readJson(request), now)),
 };
 
 // The private page and its sign-in. Strict headers: no framing, no indexing,
@@ -949,4 +1111,4 @@ export default {
 };
 
 // For check.mjs.
-export { addDays, addWord, audioFor, authorized, cardsJson, commonsAudio, deleteWord, editWord, ensureAudio, handTerm, pickRecording, candidates, cardsCsv, classify, dayOf, derive, forecast, ingest, nextBox, notification, notify, pace, review, sentences, streak, summary, todayCard };
+export { addDays, addWord, audioFor, authorized, booksList, buildSummary, candidates, cardsCsv, cardsJson, classify, commonsAudio, dayOf, deleteWord, derive, editWord, ensureAudio, forecast, handTerm, ingest, nextBox, notification, notify, pace, pickRecording, publicTitle, review, sentences, setBook, streak, summary, termOf, todayCard };
