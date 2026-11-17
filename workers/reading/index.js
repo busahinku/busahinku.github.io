@@ -1427,7 +1427,7 @@ async function importList(env, input) {
     if (!term || term.length > 60 || !/\p{L}/u.test(term)) continue;
     words.push({
       term,
-      lemma: termOf(w.lemma) || null,
+      lemma: termOf(w.lemma).slice(0, 60) || null,
       chapter: int(w.chapter, 0, 10_000),
       chapter_title: text(w.chapter_title, 200),
       rank: int(w.rank, 1, 10_000_000),
@@ -1435,22 +1435,28 @@ async function importList(env, input) {
       tr: text(w.turkish, 300),
       def: text(w.definition, 500),
       awl: w.awl === true ? 1 : 0,
-      awl_headword: termOf(w.awl_headword) || null,
+      awl_headword: termOf(w.awl_headword).slice(0, 60) || null,
       count: int(w.count, 0, 1_000_000),
     });
   }
   const db = env.DB;
+  // Upserts that skip identical rows, then the words no longer on the list: importing the
+  // same file again writes nothing, and a changed file writes only what changed.
   await db.batch([
-    db.prepare("DELETE FROM prestudy WHERE book = ?1").bind(book),
     ...chunks(words, 500).map((part) =>
       db
         .prepare(
-          `INSERT OR REPLACE INTO prestudy (book, term, lemma, chapter, chapter_title, rank, ipa, tr, def, awl, awl_headword, count)
+          `INSERT INTO prestudy (book, term, lemma, chapter, chapter_title, rank, ipa, tr, def, awl, awl_headword, count)
            SELECT ?1, value->>'term', value->>'lemma', value->>'chapter', value->>'chapter_title', value->>'rank', value->>'ipa', value->>'tr',
-                  value->>'def', value->>'awl', value->>'awl_headword', value->>'count' FROM json_each(?2)`,
+                  value->>'def', value->>'awl', value->>'awl_headword', value->>'count' FROM json_each(?2) WHERE true
+           ON CONFLICT (book, term) DO UPDATE SET lemma = excluded.lemma, chapter = excluded.chapter, chapter_title = excluded.chapter_title,
+             rank = excluded.rank, ipa = excluded.ipa, tr = excluded.tr, def = excluded.def, awl = excluded.awl, awl_headword = excluded.awl_headword, count = excluded.count
+           WHERE (prestudy.lemma, prestudy.chapter, prestudy.chapter_title, prestudy.rank, prestudy.ipa, prestudy.tr, prestudy.def, prestudy.awl, prestudy.awl_headword, prestudy.count)
+             IS NOT (excluded.lemma, excluded.chapter, excluded.chapter_title, excluded.rank, excluded.ipa, excluded.tr, excluded.def, excluded.awl, excluded.awl_headword, excluded.count)`,
         )
         .bind(book, J(part)),
     ),
+    db.prepare("DELETE FROM prestudy WHERE book = ?1 AND term NOT IN (SELECT value->>'term' FROM json_each(?2))").bind(book, J(words.map(({ term }) => ({ term })))),
   ]);
   return { book, words: words.length, skipped: input.words.length - words.length };
 }
@@ -1520,7 +1526,8 @@ const PRIVATE = {
   "POST /api/reading/admin/token": (env, request) => rotateToken(env, request),
   "GET /api/reading/export.json": async (env) =>
     respond(await exportAll(env), 200, { "content-disposition": 'attachment; filename="reading-export.json"' }),
-  "POST /api/reading/prestudy": async (env, request) => answer(await importList(env, await readJson(request, 2_000_000))),
+  "POST /api/reading/prestudy": async (env, request) =>
+    request.headers.get("content-length") === null ? respond({ error: "length required" }, 411) : answer(await importList(env, await readJson(request, 2_000_000))),
   "GET /api/reading/books": (env) => booksList(env),
   "POST /api/reading/books": async (env, request, now) => answer(await setBook(env, await readJson(request), now)),
 };

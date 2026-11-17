@@ -749,6 +749,21 @@ assert.deepEqual(Object.keys(publicCard).sort(), ["day", "streak"], "still only 
   assert.deepEqual(await w.importList(env, list), { book: "The Call of the Wild", words: 2, skipped: 3 });
   assert.deepEqual(await w.importList(env, list), { book: "The Call of the Wild", words: 2, skipped: 3 }, "importing again replaces, never doubles");
   assert.equal(q("SELECT COUNT(*) AS n FROM prestudy")[0].n, 2);
+  const writes = () => sqlite.prepare("SELECT total_changes() AS n").get().n;
+  const w0 = writes();
+  await w.importList(env, list);
+  assert.equal(writes() - w0, 0, "the same file again writes nothing");
+  await w.importList(env, { ...list, words: [list.words[0], { ...list.words[1], rank: 14000 }, { word: "rugged", lemma: "x".repeat(100) }] });
+  assert.equal(writes() - w0, 2, "a changed file writes only the changed and the new rows");
+  assert.equal(q("SELECT LENGTH(lemma) AS n FROM prestudy WHERE term = 'rugged'")[0].n, 60, "lemma capped");
+  await w.importList(env, list);
+  assert.equal(q("SELECT COUNT(*) AS n FROM prestudy")[0].n, 2, "a word no longer on the list goes");
+  const noLength = await w.default.fetch(
+    new Request("https://busahin.com/api/reading/prestudy", { method: "POST", headers: { authorization: `Bearer ${env.READING_TOKEN}`, "content-type": "application/json" }, body: "{}" }),
+    { ...env, PER_VISITOR: { limit: async () => ({ success: true }) }, SITE_WIDE: { limit: async () => ({ success: true }) } },
+    { waitUntil() {} },
+  );
+  assert.equal(noLength.status, 411);
   assert.equal(await w.importList(env, { book: "", words: [] }), null);
   assert.equal(await w.importList(env, { book: "x", words: new Array(5001).fill({ word: "a" }) }), null);
   const mellow = (await w.cardsJson(env, NOW, "mellow")).cards[0];
