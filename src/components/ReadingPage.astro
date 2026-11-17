@@ -432,7 +432,8 @@ const copy = tr
       retry.classList.add("is-busy");
       if (retry.hidden) say(t.loading);
       try {
-        const res = await fetch(ENDPOINT);
+        // no-store: browsers that kept an answer under the zone's month-long Browser Cache TTL must not reuse it.
+        const res = await fetch(ENDPOINT, { cache: "no-store" });
         if (!res.ok) throw new Error(String(res.status));
         const data: Summary = await res.json();
         render(root, data, t, motion);

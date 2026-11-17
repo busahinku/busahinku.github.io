@@ -878,6 +878,24 @@ assert.deepEqual(Object.keys(publicCard).sort(), ["day", "streak"], "still only 
     assert.equal(Boolean(dropGrade(status, json)), drop, `${status} ${json ? "json" : "empty"}`);
 }
 
+// ---- public answers: five minutes in the edge cache, never kept by the browser
+{
+  const stored = new Map();
+  globalThis.caches = { default: { match: async (k) => stored.get(k.url)?.clone(), put: async (k, r) => void stored.set(k.url, r) } };
+  const waits = [];
+  const get = (path) => w.default.fetch(new Request(`https://busahin.com${path}`), { ...env, PER_VISITOR: open, SITE_WIDE: open }, { waitUntil: (p) => waits.push(p) });
+  for (const path of ["/api/reading/summary", "/api/reading/today"]) {
+    const miss = await get(path);
+    await Promise.all(waits);
+    assert.equal(miss.headers.get("cache-control"), "no-store", `${path} miss`);
+    assert.equal(stored.get(`https://busahin.com${path}`).headers.get("cache-control"), "public, max-age=300", `${path} edge copy keeps five minutes`);
+    const hit = await get(path);
+    assert.equal(hit.headers.get("cache-control"), "no-store", `${path} hit`);
+  }
+  delete globalThis.caches;
+}
+assert.ok(fs.readFileSync(new URL("../../src/components/ReadingPage.astro", here), "utf8").includes('fetch(ENDPOINT, { cache: "no-store" })'), "the page asks the browser not to reuse an old answer");
+
 // ---- Workers reject fetch redirect "error" (Node accepts it, so only this catches it)
 for (const f of fs.readdirSync(here).filter((f) => f.endsWith(".js")))
   assert.ok(!/redirect:\s*["']error["']/.test(fs.readFileSync(new URL(f, here), "utf8")), `${f} uses redirect "error"`);

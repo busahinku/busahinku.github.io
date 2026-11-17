@@ -1618,14 +1618,17 @@ export default {
 
       if (PUBLIC[path]) {
         if (request.method !== "GET") return new Response(null, { status: 405 });
-        // Five minutes at the edge: the data changes at most every thirty.
+        // Five minutes at the edge (the Cache API copy); the data changes at most every thirty.
+        // The browser gets no-store: the zone's Browser Cache TTL would otherwise stretch any
+        // max-age to a month, and the page would show the same numbers for weeks.
         const cache = globalThis.caches?.default;
         const key = new Request(url.origin + path);
+        const browser = (res) => new Response(res.body, { status: 200, headers: { ...Object.fromEntries(res.headers), "cache-control": "no-store", ...cors } });
         const hit = await cache?.match(key);
-        if (hit) return new Response(hit.body, { headers: { ...Object.fromEntries(hit.headers), ...cors } });
+        if (hit) return browser(hit);
         const res = respond(await PUBLIC[path](env, Date.now()), 200, { "cache-control": "public, max-age=300" });
         if (cache) ctx.waitUntil(cache.put(key, res.clone()));
-        return new Response(res.body, { headers: { ...Object.fromEntries(res.headers), ...cors } });
+        return browser(res);
       }
       return new Response(null, { status: 404 });
     } catch (error) {
