@@ -13,9 +13,15 @@ CREATE TABLE IF NOT EXISTS raw (
 );
 
 -- One row per book the account knows, joined from /progress and /stats/activity.
+-- `title` is the book's own metadata title (null without it) and `filename`
+-- is kept apart: the public page never shows a file name. `hidden` and
+-- `public_title` are set from the private side and never touched by a pull.
 CREATE TABLE IF NOT EXISTS books (
   document TEXT PRIMARY KEY,
-  title TEXT NOT NULL,
+  title TEXT,
+  filename TEXT,
+  public_title TEXT,
+  hidden INTEGER NOT NULL DEFAULT 0,
   author TEXT,
   percentage REAL,
   status TEXT,
@@ -58,9 +64,14 @@ CREATE TABLE IF NOT EXISTS clippings (
   term TEXT,
   translation TEXT,
   translated_at INTEGER,
+  translate_tries INTEGER NOT NULL DEFAULT 0,
   deleted INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS clippings_by_kind ON clippings (kind, deleted);
+-- A card's live clipping and a word's sentences are found through these, so
+-- private routes read a few rows per card instead of every clipping.
+CREATE INDEX IF NOT EXISTS clippings_word_term ON clippings (term) WHERE kind = 'word' AND deleted = 0;
+CREATE INDEX IF NOT EXISTS clippings_sentences ON clippings (document) WHERE kind = 'sentence' AND deleted = 0;
 
 -- Leitner boxes 1 to 5 for each vocabulary term (intervals in index.js).
 -- `shown` is the last day the term was the word of the day. The review times
@@ -100,3 +111,11 @@ CREATE TABLE IF NOT EXISTS dict (
   def TEXT,
   tr TEXT NOT NULL
 ) WITHOUT ROWID;
+
+-- Small precomputed answers. 'summary' is the public page's JSON, rebuilt by
+-- every pull, so a public request reads one row.
+CREATE TABLE IF NOT EXISTS meta (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);

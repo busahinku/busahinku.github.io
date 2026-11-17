@@ -35,7 +35,7 @@ node scripts/reading-dict.mjs
 npx wrangler@4.146.0 d1 execute busahin-reading --remote --file workers/reading/dict.sql --config workers/reading/wrangler.toml
 ```
 
-The first command downloads WikDict's English to Turkish StarDict (CC BY-SA 4.0) to a temporary folder and writes `workers/reading/dict.sql` (about 49,000 rows, 4.6 MB, ignored by git). Loading it writes about 49,000 rows, half of D1's free daily allowance of 100,000, so do it on its own day. Run both again only when you want a newer WikDict.
+The first command downloads WikDict's English to Turkish StarDict (CC BY-SA 4.0) to a temporary folder and writes `workers/reading/dict.sql` (about 49,000 rows, 4.6 MB, ignored by git). The first load writes about 49,000 rows, half of D1's free daily allowance of 100,000, so do it on its own day. A reload later costs about twice that (the file deletes every row, then inserts them again, close to the whole day's 100,000), so only reload when you want a newer WikDict, and on a day with nothing else to write.
 
 ## 4. Set the secrets
 
@@ -67,6 +67,8 @@ printf 'reading-%s' "$(openssl rand -hex 12)" | tee /dev/tty | npx wrangler@4.14
 The last two print the value once so you can save it.
 
 ## 5. Deploy
+
+Deploy the Worker **before** merging the site change that adds `/reading/`. Until the Worker is live, `busahin.com/api/reading/summary` falls through to the assistant Worker, which answers 403, so the page (linked from Misc) would show its failure state.
 
 ```bash
 npx wrangler@4.146.0 deploy --config workers/reading/wrangler.toml
@@ -104,7 +106,25 @@ curl -s -H "authorization: Bearer $TOKEN" -o reading-cards.csv https://busahin.c
 
 Then open https://busahin.com/reading/ and https://busahin.com/tr/reading/. Public answers are cached at the edge for five minutes.
 
-## 7. Phone and watch
+## 7. Book titles on the public page
+
+The public page shows a book only under a real title: its own metadata title, or one you set. A book synced without metadata is never shown under its file name. Titles containing any of `HIDE_TITLES` (in `wrangler.toml`) stay off the page. To see every book and what the page shows for it, and to hide one or give it a title:
+
+```bash
+curl -s -H "authorization: Bearer $TOKEN" https://busahin.com/api/reading/books
+```
+
+```bash
+curl -s -X POST -H "authorization: Bearer $TOKEN" -H "content-type: application/json" -d '{"document":"<hash>","hidden":true}' https://busahin.com/api/reading/books
+```
+
+```bash
+curl -s -X POST -H "authorization: Bearer $TOKEN" -H "content-type: application/json" -d '{"document":"<hash>","title":"Klara and the Sun"}' https://busahin.com/api/reading/books
+```
+
+`"title": null` goes back to the book's own title, `"hidden": false` shows it again. The public page changes at once (its stored answer is rebuilt), give or take the five-minute edge cache.
+
+## 8. Phone and watch
 
 Install the ntfy app, add a subscription on the default server (ntfy.sh) with the `NTFY_TOPIC` name, and allow its notifications on the watch in the Galaxy Wearable app. The first one arrives at 08:00 Istanbul time.
 
@@ -125,6 +145,8 @@ Install the ntfy app, add a subscription on the default server (ntfy.sh) with th
 | What | Where it stops |
 |---|---|
 | Requests | 30 a minute per visitor and 300 for the site (rate-limit bindings), on every route. |
-| Translations | 10 a run, 40 a day, counted as attempts in the `daily` table. Workers AI's free allowance is shared with the assistant; 40 short sentences use a small part of it. |
+| Translations | 10 a run, 40 a day, counted as attempts in the `daily` table. A sentence the model fails on is tried at most five times and goes to the back after each try, so it never holds up the rest. Workers AI's free allowance is shared with the assistant; 40 short sentences use a small part of it. |
 | CrossPoint Sync | Five small GETs per pull, every thirty minutes. The service documents rate limits only for registration and failed sign-ins. |
-| D1 writes | An unchanged answer writes nothing but its fetch time; a changed one rewrites only the rows that changed. |
+| D1 writes | An unchanged answer writes nothing but its fetch time; a changed one rewrites only the rows that changed. The public summary is one stored row, rewritten each pull. |
+| D1 reads | A public request reads one row (the stored summary). Private routes find a card's clipping through partial indexes, so they read a few rows per card, not every clipping. |
+| Bad answers | A 200 answer without the documented lists is refused before anything is written, and no delete runs against an empty list. |
