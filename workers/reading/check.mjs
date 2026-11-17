@@ -281,9 +281,9 @@ const publicToday = await (await call("GET", "/api/reading/today")).json();
 assert.deepEqual(Object.keys(publicToday).sort(), ["day", "streak"]);
 const privateToday = await (await call("GET", "/api/reading/today", env.READING_TOKEN)).json();
 assert.ok(privateToday.word && privateToday.words);
-assert.equal((await call("GET", "/api/reading/today", "wrong")).status, 401, "a wrong token is refused, not served the public card");
+assert.equal((await call("GET", "/api/reading/today", "wrong")).status, 404, "a wrong token is refused, not served the public card");
 for (const [method, path] of [["GET", "/api/reading/cards.csv"], ["GET", "/api/reading/sentences"], ["POST", "/api/reading/sync"], ["POST", "/api/reading/review"]])
-  assert.equal((await call(method, path)).status, 401, `${method} ${path} needs the token`);
+  assert.equal((await call(method, path)).status, 404, `${method} ${path} needs the token`);
 assert.equal((await call("GET", "/api/reading/cards.csv", env.READING_TOKEN)).headers.get("content-type"), "text/csv; charset=utf-8");
 assert.equal((await call("POST", "/api/reading/review", env.READING_TOKEN, '{"term":"give up","grade":"good"}')).status, 200);
 assert.equal((await call("POST", "/api/reading/review", env.READING_TOKEN, "not json")).status, 400);
@@ -377,7 +377,7 @@ for (const word of ["word", "vocab", "learn", "english", "ielts"]) assert.ok(!pu
   answers.activity = saved;
   const last = (await w.todayCard(env, NOW, true)).last_pull;
   assert.deepEqual([last.ok, last.error], [false, "activity: not JSON"]);
-  assert.equal((await call("POST", "/api/reading/sync")).status, 401, "never without the token");
+  assert.equal((await call("POST", "/api/reading/sync")).status, 404, "never without the token");
   const ok = await (await call("POST", "/api/reading/sync", env.READING_TOKEN)).json();
   assert.ok(Array.isArray(ok.changed));
   assert.equal((await w.todayCard(env, NOW, true)).last_pull.ok, true);
@@ -473,7 +473,7 @@ for (const word of ["word", "vocab", "learn", "english", "ielts"]) assert.ok(!pu
   for (const path of ["/api/reading/today", "/api/reading/cards.csv", "/api/reading/books"])
     assert.equal((await from(path, "http://localhost:4321", env.READING_TOKEN)).headers.get("access-control-allow-origin"), null, `${path} never carries CORS`);
   for (const [method, path] of [["GET", "/api/reading/books"], ["POST", "/api/reading/books"]])
-    assert.equal((await call(method, path)).status, 401, `${method} ${path} needs the token`);
+    assert.equal((await call(method, path)).status, 404, `${method} ${path} needs the token`);
 }
 
 // ---- words added by hand
@@ -587,7 +587,7 @@ const site = (method, path, { cookie, origin, form, json } = {}) => {
   const headers = {};
   if (cookie) headers.cookie = cookie;
   if (origin) headers.origin = origin;
-  if (form) headers["content-type"] = "application/x-www-form-urlencoded";
+  if (form) (headers["content-type"] = "application/x-www-form-urlencoded"), (headers["content-length"] = String(new URLSearchParams(form).toString().length));
   if (json) headers["content-type"] = "application/json";
   return w.default.fetch(
     new Request(`https://busahin.com${path}`, { method, headers, body: form ? new URLSearchParams(form).toString() : json ? JSON.stringify(json) : undefined, redirect: "manual" }),
@@ -604,8 +604,11 @@ assert.equal(res.status, 401);
 res = await site("POST", "/api/reading/login", { form: { token: env.READING_TOKEN } });
 assert.equal(res.status, 303);
 const setCookie = res.headers.get("set-cookie");
-assert.match(setCookie, /^reading_token=t{40}; Path=\/api\/reading; Max-Age=31536000; HttpOnly; SameSite=Strict; Secure$/);
+assert.match(setCookie, /^reading_session=\d{10}\.[0-9a-f]{64}; Path=\/api\/reading; Max-Age=5184000; HttpOnly; SameSite=Strict; Secure$/, "a signed, expiring session, never the token");
+assert.equal(res.headers.get("cache-control"), "no-store");
 const cookie = setCookie.split(";")[0];
+assert.ok(!cookie.includes(env.READING_TOKEN));
+assert.equal((await call("GET", "/api/reading/cards", cookie.split("=")[1])).status, 404, "the session cannot be used as a bearer token");
 res = await site("GET", "/api/reading/app", { cookie });
 assert.equal(res.status, 200);
 page = await res.text();
@@ -617,12 +620,30 @@ assert.equal(res.headers.get("x-robots-tag"), "noindex, nofollow");
 assert.ok(!page.includes("—"), "no em dashes on the page");
 assert.equal((await site("GET", "/api/reading/cards", { cookie })).status, 200, "the cookie opens the private routes");
 assert.equal((await site("POST", "/api/reading/words", { cookie, origin: "https://busahin.com", json: { term: "quixotic" } })).status, 200);
-assert.equal((await site("POST", "/api/reading/words", { cookie, origin: "https://evil.example", json: { term: "x" } })).status, 401, "a cookie from another site's form never counts");
+assert.equal((await site("POST", "/api/reading/words", { cookie, origin: "https://evil.example", json: { term: "x" } })).status, 404, "a cookie from another site's form never counts");
 assert.equal((await site("POST", "/api/reading/words/delete", { cookie, json: { term: "ubiquitous" } })).status, 409);
 assert.equal((await site("POST", "/api/reading/words/delete", { cookie, json: { term: "nothing here" } })).status, 404);
-assert.equal((await site("GET", "/api/reading/cards", { cookie: "reading_token=nope" })).status, 401);
-res = await site("POST", "/api/reading/logout", { cookie });
-assert.match(res.headers.get("set-cookie"), /^reading_token=; Path=\/api\/reading; Max-Age=0/);
+assert.equal((await site("GET", "/api/reading/cards", { cookie: "reading_session=1999999999.00ab" })).status, 404);
+// Sign-out: refused from another origin; from the page it ends every session.
+res = await site("POST", "/api/reading/logout", { cookie, origin: "https://evil.example" });
+assert.equal(res.status, 403);
+assert.equal((await site("GET", "/api/reading/cards", { cookie })).status, 200, "a foreign sign-out changed nothing");
+res = await site("POST", "/api/reading/logout", { cookie, origin: "https://busahin.com" });
+assert.match(res.headers.get("set-cookie"), /^reading_session=; Path=\/api\/reading; Max-Age=0/);
+assert.equal((await site("GET", "/api/reading/cards", { cookie })).status, 404, "the old session is dead after sign-out, wherever it was copied");
+assert.equal((await call("GET", "/api/reading/cards", env.READING_TOKEN)).status, 200, "the token itself still works for scripts");
+// Expired sessions, odd cookies, missing lengths and plain http.
+const expired = `${Math.floor(Date.now() / 1000) - 10}.${"0".repeat(64)}`;
+assert.equal((await site("GET", "/api/reading/cards", { cookie: `reading_session=${expired}` })).status, 404);
+assert.equal((await site("GET", "/api/reading/today", { cookie: "reading_session=%" })).status, 200, "a malformed cookie is no cookie");
+assert.deepEqual(Object.keys(await (await site("GET", "/api/reading/today", { cookie: "reading_session=1999999999.00ab" })).json()).sort(), ["day", "streak"], "a stale session sees the public card");
+const noLength = await w.default.fetch(new Request("https://busahin.com/api/reading/login", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "token=x" }), { ...env, PER_VISITOR: open, SITE_WIDE: open }, { waitUntil() {} });
+assert.equal(noLength.status, 411);
+const http = await w.default.fetch(new Request("http://busahin.com/api/reading/app"), { ...env, PER_VISITOR: open, SITE_WIDE: open }, { waitUntil() {} });
+assert.equal(http.status, 403, "never over plain http");
+// Without the token, private routes are indistinguishable from paths that do not exist, whatever the method.
+for (const [method, path] of [["GET", "/api/reading/words"], ["GET", "/api/reading/audio"], ["POST", "/api/reading/cards"], ["GET", "/api/reading/nope"]])
+  assert.equal((await call(method, path)).status, 404, `${method} ${path}`);
 const publicCard = await (await site("GET", "/api/reading/today")).json();
 assert.deepEqual(Object.keys(publicCard).sort(), ["day", "streak"], "still only the day and streak in public");
 
@@ -747,8 +768,8 @@ assert.deepEqual(Object.keys(publicCard).sort(), ["day", "streak"], "still only 
     ["POST", "/api/reading/admin/settings"], ["POST", "/api/reading/admin/token"], ["GET", "/api/reading/export.json"], ["POST", "/api/reading/prestudy"],
     ["GET", "/api/reading/books"], ["POST", "/api/reading/books"], ["GET", "/api/reading/sentences"], ["POST", "/api/reading/sync"],
   ]) {
-    assert.equal((await call(method, path)).status, 401, `${method} ${path} needs the token`);
-    assert.equal((await call(method, path, "x".repeat(64))).status, 401, `${method} ${path} refuses a wrong token`);
+    assert.equal((await call(method, path)).status, 404, `${method} ${path} needs the token`);
+    assert.equal((await call(method, path, "x".repeat(64))).status, 404, `${method} ${path} refuses a wrong token`);
   }
   const manifest = await call("GET", "/api/reading/app.webmanifest");
   assert.equal(manifest.status, 200);
@@ -771,8 +792,10 @@ assert.deepEqual(Object.keys(publicCard).sort(), ["day", "streak"], "still only 
   assert.equal(rotated.status, 200);
   const { token } = await rotated.json();
   assert.match(token, /^[0-9a-f]{64}$/);
-  assert.match(rotated.headers.get("set-cookie"), new RegExp(`^reading_token=${token}; Path=/api/reading;.*HttpOnly; SameSite=Strict`));
-  assert.equal((await call("GET", "/api/reading/admin", env.READING_TOKEN)).status, 401, "the old token no longer opens anything");
+  const fresh = rotated.headers.get("set-cookie");
+  assert.match(fresh, /^reading_session=\d{10}\.[0-9a-f]{64}; Path=\/api\/reading;.*HttpOnly; SameSite=Strict/, "this browser gets a session signed with the new key");
+  assert.ok(!fresh.includes(token));
+  assert.equal((await call("GET", "/api/reading/admin", env.READING_TOKEN)).status, 404, "the old token no longer opens anything");
   assert.equal((await call("GET", "/api/reading/admin", token)).status, 200);
   assert.equal((await (await call("GET", "/api/reading/admin", token)).json()).token_rotated, true);
   sqlite.exec("DELETE FROM settings WHERE key = 'token_hash'");

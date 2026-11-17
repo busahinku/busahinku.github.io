@@ -47,7 +47,8 @@ const AUDIO_PER_RUN = 5;
 const AUDIO_RETRY = 30 * 86_400;
 const AUDIO_MAX_BYTES = 1_000_000;
 const WIKI_HEADERS = { accept: "application/json", "user-agent": "busahin-reading/1 (https://busahin.com/)" };
-const COOKIE = "reading_token";
+const COOKIE = "reading_session";
+const SESSION_DAYS = 60;
 const CLIPPINGS_MAX = 5000; // GET /api/v1/clippings returns at most this many
 const KEEP_RAW = 900_000; // characters of an answer worth keeping; D1 rows stop at 2 MB
 
@@ -733,37 +734,70 @@ async function review(env, input, now) {
 function givenToken(request) {
   const bearer = (request.headers.get("authorization") ?? "").match(/^Bearer\s+(.+)$/i)?.[1];
   if (bearer) return { token: bearer, cookie: false };
-  const cookie = (request.headers.get("cookie") ?? "").match(new RegExp(`(?:^|;\\s*)${COOKIE}=([^;]*)`))?.[1];
-  return { token: cookie ? decodeURIComponent(cookie) : "", cookie: Boolean(cookie) };
+  const cookie = (request.headers.get("cookie") ?? "").match(new RegExp(`(?:^|;\\s*)${COOKIE}=([0-9a-f.]{1,200})(?:;|$)`))?.[1];
+  return { token: cookie ?? "", cookie: Boolean(cookie) };
 }
+
+/** The secret sessions are signed with: a rotated token's hash, else READING_TOKEN. */
+async function masterKey(env) {
+  const rotated = env.DB ? await env.DB.prepare("SELECT value FROM settings WHERE key = 'token_hash'").first("value") : null;
+  return { rotated, key: rotated ?? (env.READING_TOKEN?.length >= 32 ? env.READING_TOKEN : null) };
+}
+
+async function hmac(key, message) {
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(key), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(message)));
+  return Array.from(sig, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+const epochOf = async (env) => Number((await env.DB?.prepare("SELECT value FROM settings WHERE key = 'session_epoch'").first("value")) ?? 0);
+
+/**
+ * A session for the sign-in cookie: "<expiry>.<HMAC of the expiry and the
+ * current epoch>". It expires after SESSION_DAYS, cannot be turned back into
+ * the token or used as one, and every session ends when sign-out raises the
+ * epoch or the token is rotated (which changes the signing key).
+ */
+async function newSession(env, now = Date.now()) {
+  const { key } = await masterKey(env);
+  const exp = Math.floor(now / 1000) + SESSION_DAYS * 86_400;
+  return `${exp}.${await hmac(key, `session.${exp}.${await epochOf(env)}`)}`;
+}
+
+const sessionCookie = (value, request) => {
+  const local = new URL(request.url).hostname === "localhost";
+  return `${COOKIE}=${value}; Path=/api/reading; Max-Age=${value ? SESSION_DAYS * 86_400 : 0}; HttpOnly; SameSite=Strict${local ? "" : "; Secure"}`;
+};
 
 /**
  * The one check every private route and page goes through: the token as a
- * bearer header (scripts, a widget) or as the cookie the sign-in form sets
- * (the private page). A cookie on a POST from another origin never counts,
- * on top of SameSite=Strict.
+ * bearer header (scripts, a widget), or a session cookie from the sign-in form
+ * (the private page). A cookie on a POST from another origin never counts, on
+ * top of SameSite=Strict.
  */
 async function authorized(request, env, given = givenToken(request)) {
-  if (given.cookie && request.method === "POST") {
-    const origin = request.headers.get("origin");
-    if (origin && origin !== new URL(request.url).origin) return false;
+  const { rotated, key } = await masterKey(env);
+  if (!key) return false;
+  if (given.cookie) {
+    if (request.method === "POST") {
+      const origin = request.headers.get("origin");
+      if (origin && origin !== new URL(request.url).origin) return false;
+    }
+    const [exp, sig] = given.token.split(".");
+    if (!/^\d{10}$/.test(exp ?? "") || Number(exp) * 1000 < Date.now()) return false;
+    return sameToken(sig ?? "", await hmac(key, `session.${exp}.${await epochOf(env)}`));
   }
   // After a rotation from the admin page the new token's hash lives in D1 and
   // READING_TOKEN stops working; deleting that row brings the secret back.
-  const rotated = env.DB ? await env.DB.prepare("SELECT value FROM settings WHERE key = 'token_hash'").first("value") : null;
-  if (rotated) return sameToken(await sha256(given.token), rotated);
-  const token = env.READING_TOKEN;
-  if (!token || token.length < 32) return false;
-  return sameToken(given.token, token);
+  return rotated ? sameToken(await sha256(given.token), rotated) : sameToken(given.token, key);
 }
 
-/** A new random token: its hash replaces the old one, the cookie moves to it, and it is shown once. */
+/** A new random token: its hash replaces the old one (ending every session), this browser gets a new session, and it is shown once. */
 async function rotateToken(env, request) {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   const token = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
   await env.DB.prepare("INSERT INTO settings (key, value) VALUES ('token_hash', ?1) ON CONFLICT (key) DO UPDATE SET value = excluded.value").bind(await sha256(token)).run();
-  const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
-  return respond({ token }, 200, { "set-cookie": `${COOKIE}=${token}; Path=/api/reading; Max-Age=31536000; HttpOnly; SameSite=Strict${secure}` });
+  return respond({ token }, 200, { "set-cookie": sessionCookie(await newSession(env), request) });
 }
 
 /** Same work as a hashed compare: neither the length nor the first wrong byte shows in the timing. */
@@ -1483,23 +1517,35 @@ function html(body, status, nonce, extra = {}) {
 
 async function pageRoute(request, env, path) {
   const nonce = crypto.randomUUID().replace(/-/g, "");
-  const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
+  const url = new URL(request.url);
+  // Never over plain http (outside local development): a cookie or a token must not cross the wire in clear.
+  if (url.protocol !== "https:" && url.hostname !== "localhost") return new Response(null, { status: 403 });
+  const origin = request.headers.get("origin");
+  if (request.method === "POST" && origin && origin !== url.origin) return new Response(null, { status: 403 });
   if (path === "/api/reading/app" && request.method === "GET")
     return (await authorized(request, env)) ? html(appPage(nonce), 200, nonce) : html(loginPage(nonce), 401, nonce);
   if (path === "/api/reading/login" && request.method === "POST") {
     // Five tries a minute per visitor on top of the general limit; the token is 64 hex characters anyway.
     if (env.LOGIN && !(await env.LOGIN.limit({ key: request.headers.get("cf-connecting-ip") ?? "unknown" })).success)
       return html(loginPage(nonce, true), 429, nonce);
-    if (Number(request.headers.get("content-length") ?? 0) > 2000) return new Response(null, { status: 413 });
+    const length = request.headers.get("content-length");
+    if (length === null) return new Response(null, { status: 411 });
+    if (Number(length) > 2000) return new Response(null, { status: 413 });
     const token = String((await request.formData().catch(() => null))?.get("token") ?? "");
     if (!(await authorized(request, env, { token, cookie: false }))) return html(loginPage(nonce, true), 401, nonce);
     return new Response(null, {
       status: 303,
-      headers: { location: "/api/reading/app", "set-cookie": `${COOKIE}=${encodeURIComponent(token)}; Path=/api/reading; Max-Age=31536000; HttpOnly; SameSite=Strict${secure}` },
+      headers: { location: "/api/reading/app", "cache-control": "no-store", "set-cookie": sessionCookie(await newSession(env), request) },
     });
   }
-  if (path === "/api/reading/logout" && request.method === "POST")
-    return new Response(null, { status: 303, headers: { location: "/api/reading/app", "set-cookie": `${COOKIE}=; Path=/api/reading; Max-Age=0; HttpOnly; SameSite=Strict${secure}` } });
+  if (path === "/api/reading/logout" && request.method === "POST") {
+    // Signing out ends every session (the epoch moves on), but only when it is the owner asking.
+    if (await authorized(request, env))
+      await env.DB.prepare(
+        "INSERT INTO settings (key, value) VALUES ('session_epoch', '1') ON CONFLICT (key) DO UPDATE SET value = CAST(settings.value AS INTEGER) + 1",
+      ).run();
+    return new Response(null, { status: 303, headers: { location: "/api/reading/app", "cache-control": "no-store", "set-cookie": sessionCookie("", request) } });
+  }
   return null;
 }
 
@@ -1524,9 +1570,14 @@ export default {
         return (await pageRoute(request, env, path)) ?? new Response(null, { status: 405 });
 
       const route = PRIVATE[`${request.method} ${path}`];
-      // A private route that is also public (today) is private only with a token.
-      if (route && (!PUBLIC[path] || givenToken(request).token)) {
-        if (!(await authorized(request, env))) return respond({ error: "auth" }, 401);
+      const given = givenToken(request);
+      // today is public, and private only with a bearer token or a session that is still good.
+      const asOwner = route && PUBLIC[path] ? (given.cookie ? await authorized(request, env, given) : Boolean(given.token)) : true;
+      const privatePath = !PUBLIC[path] && Object.keys(PRIVATE).some((k) => k.endsWith(` ${path}`));
+      if ((route && asOwner) || privatePath) {
+        // Without the token a private route answers exactly like a path that does not exist.
+        if (!(await authorized(request, env, given))) return new Response(null, { status: 404 });
+        if (!route) return new Response(null, { status: 405 });
         const out = await route(env, request, Date.now(), ctx);
         return out instanceof Response ? out : respond(out, 200);
       }
@@ -1542,7 +1593,7 @@ export default {
         if (cache) ctx.waitUntil(cache.put(key, res.clone()));
         return new Response(res.body, { headers: { ...Object.fromEntries(res.headers), ...cors } });
       }
-      return new Response(null, { status: Object.keys(PRIVATE).some((k) => k.endsWith(` ${path}`)) ? 405 : 404 });
+      return new Response(null, { status: 404 });
     } catch (error) {
       // Most likely a free daily allowance is spent, or CrossPoint Sync is down.
       console.error(error);
