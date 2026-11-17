@@ -26,7 +26,8 @@ const TZ = "Europe/Istanbul";
 // Date#getTimezoneOffset() for Istanbul, which the Sync API takes as `tz`.
 // Turkey has stayed on UTC+3 all year since 2016.
 const TZ_OFFSET = -180;
-const MORNING = "0 5 * * *"; // 08:00 in Istanbul; the other cron is the pull.
+// One cron, every thirty minutes: the pull, and on the hour the notifications
+// whose hour (Istanbul time, set on the private page) has come.
 
 // Leitner: a card in box n comes back after INTERVALS[n - 1] days. A right
 // answer moves it up a box, a wrong one sends it back to box 1. A word is
@@ -674,28 +675,41 @@ async function sentences(env) {
 }
 
 /**
- * Records one answer. A card that is not due is refused, so a retried request
- * (or a double tap) can never move a card twice; the answer carries the card as
- * it stands so a client can treat the refusal as "already saved".
+ * Records one answer and logs it. A card that is not due is refused, so a
+ * retried request or a double tap never moves a card twice. `id` is the app's
+ * own id for the answer: an answer sent again after a dropped connection is
+ * recognised and not counted twice. `at` is when it was given (up to a week
+ * ago), so grades kept offline count on the day they were given.
  */
 async function review(env, input, now) {
   const term = isRecord(input) && typeof input.term === "string" ? termOf(input.term) : "";
   if (!term || term.length > 60 || !["good", "again"].includes(input.grade)) return null;
+  const id = typeof input.id === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(input.id) ? input.id : null;
+  if (input.id !== undefined && !id) return null;
+  const at = Number.isFinite(input.at) && input.at <= now + 60_000 && input.at >= now - 7 * 86_400_000 ? input.at : now;
   const db = env.DB;
-  const today = dayOf(now);
-  const card = await db.prepare("SELECT term, box, due, reviews, lapses FROM cards WHERE term = ?1").bind(term).first();
+  const today = dayOf(at);
+  const read = () => db.prepare("SELECT term, box, due, reviews, lapses FROM cards WHERE term = ?1").bind(term).first();
+  if (id && (await db.prepare("SELECT 1 FROM reviews WHERE client_id = ?1").bind(id).first())) return { duplicate: true, ...(await read()) };
+  const card = await read();
   if (!card) return undefined;
   if (card.due > today) return { error: "not due", card: { ...card } };
   const box = nextBox(card.box, input.grade);
-  const updated = await db
-    .prepare(
-      `UPDATE cards SET box = ?1, due = ?2, reviews = reviews + 1, lapses = lapses + ?3,
-         first_reviewed_at = COALESCE(first_reviewed_at, ?5), matured_at = COALESCE(matured_at, CASE WHEN ?1 >= ${LEARNED} THEN ?5 END)
-       WHERE term = ?4 AND due <= ?6 RETURNING term, box, due, reviews, lapses`,
-    )
-    .bind(box, addDays(today, INTERVALS[box - 1]), input.grade === "again" ? 1 : 0, term, Math.floor(now / 1000), today)
-    .first();
-  return updated ?? { error: "not due", card: { ...card } }; // a concurrent answer got there first
+  const seconds = Math.floor(at / 1000);
+  const [updated] = await db.batch([
+    db
+      .prepare(
+        `UPDATE cards SET box = ?1, due = ?2, reviews = reviews + 1, lapses = lapses + ?3,
+           first_reviewed_at = COALESCE(first_reviewed_at, ?5), matured_at = COALESCE(matured_at, CASE WHEN ?1 >= ${LEARNED} THEN ?5 END)
+         WHERE term = ?4 AND due <= ?6 RETURNING term, box, due, reviews, lapses`,
+      )
+      .bind(box, addDays(today, INTERVALS[box - 1]), input.grade === "again" ? 1 : 0, term, seconds, today),
+    // Logged only when the update above went through (changes() is that statement's count).
+    db
+      .prepare("INSERT INTO reviews (term, grade, box_before, box_after, day, reviewed_at, client_id) SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7 WHERE changes() > 0")
+      .bind(term, input.grade, card.box, box, today, seconds, id),
+  ]);
+  return updated.results[0] ?? { error: "not due", card: { ...card } }; // a concurrent answer got there first
 }
 
 function givenToken(request) {
@@ -712,13 +726,26 @@ function givenToken(request) {
  * on top of SameSite=Strict.
  */
 async function authorized(request, env, given = givenToken(request)) {
-  const token = env.READING_TOKEN;
-  if (!token || token.length < 32) return false;
   if (given.cookie && request.method === "POST") {
     const origin = request.headers.get("origin");
     if (origin && origin !== new URL(request.url).origin) return false;
   }
+  // After a rotation from the admin page the new token's hash lives in D1 and
+  // READING_TOKEN stops working; deleting that row brings the secret back.
+  const rotated = env.DB ? await env.DB.prepare("SELECT value FROM settings WHERE key = 'token_hash'").first("value") : null;
+  if (rotated) return sameToken(await sha256(given.token), rotated);
+  const token = env.READING_TOKEN;
+  if (!token || token.length < 32) return false;
   return sameToken(given.token, token);
+}
+
+/** A new random token: its hash replaces the old one, the cookie moves to it, and it is shown once. */
+async function rotateToken(env, request) {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  const token = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  await env.DB.prepare("INSERT INTO settings (key, value) VALUES ('token_hash', ?1) ON CONFLICT (key) DO UPDATE SET value = excluded.value").bind(await sha256(token)).run();
+  const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
+  return respond({ token }, 200, { "set-cookie": `${COOKIE}=${token}; Path=/api/reading; Max-Age=31536000; HttpOnly; SameSite=Strict${secure}` });
 }
 
 /** Same work as a hashed compare: neither the length nor the first wrong byte shows in the timing. */
@@ -834,7 +861,7 @@ async function cardsJson(env, now, only = null) {
     )
     .bind(today, only)
     .all();
-  const dict = await lookup(db, results.map((r) => r.term));
+  const { dict, facts } = await wordFacts(db, results.map((r) => r.term));
   const keys = [...new Set(results.flatMap((r) => [r.term, dict.get(r.term).lemma].filter(Boolean)))];
   const { results: ex } = keys.length
     ? await db.prepare("SELECT word, id, en, tr FROM examples WHERE word IN (SELECT value FROM json_each(?1)) ORDER BY word, id").bind(J(keys)).all()
@@ -845,16 +872,24 @@ async function cardsJson(env, now, only = null) {
     today,
     cards: results.map((r) => {
       const d = dict.get(r.term);
+      const f = facts.get(r.term);
+      const pre = f.pre ?? {};
       const own = examples.get(r.term) ?? [];
       return {
         term: r.term,
         source: r.source,
+        added_at: r.added_at,
         box: r.box,
         due: r.due,
         reviews: r.reviews,
-        ipa: d.ipa,
-        tr: d.tr,
-        def: d.def,
+        // A book list's entry (made for that book) wins over the general dictionary.
+        ipa: d.ipa ?? (pre.ipa ? pre.ipa.replace(/^\/|\/$/g, "") : null),
+        tr: pre.tr || d.tr,
+        def: d.def ?? pre.def ?? null,
+        rank: f.rank,
+        band: band(f.rank),
+        awl: f.awl,
+        lists: pre.books ? [...new Set(pre.books.split("\n"))] : [],
         note: r.note,
         sentence: r.sentence,
         sentence_tr: r.sentence_tr,
@@ -953,25 +988,59 @@ async function audioFor(env, input, now) {
   return { audio: (await cardsJson(env, now, term)).cards[0]?.audio ?? null };
 }
 
-// ---------------------------------------------------------------- notification
+// ---------------------------------------------------------------- notifications and settings
 
-/** The morning push, in English: the point is reading English. */
-function notification(word, current) {
-  const days = current === 1 ? "1 day" : `${current} days`;
-  const line = current > 0 ? `Streak: ${days}.` : "No streak right now. A page today starts one.";
-  if (!word) return { title: "Reading", message: `No words clipped yet.\n${line}` };
-  const head = [word.ipa && `/${word.ipa}/`, word.tr].filter(Boolean).join("  ·  ");
-  return { title: word.term, message: [head, word.def, line].filter(Boolean).join("\n") };
+const SETTINGS = {
+  morning: { on: true, hour: 8 }, // the word of the day, the streak, and a word if syncing has stopped
+  evening: { on: true, hour: 21 }, // only when the streak would break tonight
+  weekly: { on: true, hour: 10 }, // Sundays: the week in numbers
+};
+
+async function getSettings(db) {
+  const rows = (await db.prepare("SELECT key, value FROM settings WHERE key IN ('morning', 'evening', 'weekly')").all()).results;
+  const saved = Object.fromEntries(rows.map((r) => [r.key, JSON.parse(r.value)]));
+  return Object.fromEntries(Object.entries(SETTINGS).map(([k, v]) => [k, { ...v, ...saved[k] }]));
 }
 
-async function notify(env, now) {
-  if (!env.NTFY_TOPIC) return false;
+async function setSettings(env, input) {
+  if (!isRecord(input)) return null;
   const db = env.DB;
-  const today = dayOf(now);
-  if (await db.prepare("SELECT notified FROM daily WHERE day = ?1").bind(today).first("notified")) return false;
-  const [word, days] = await Promise.all([wordOfDay(db, today), readingDays(db)]);
-  const { title, message } = notification(word, streak(days, today).current);
-  // JSON publishing, so Turkish letters and IPA survive (ntfy headers are ASCII).
+  const statements = [];
+  for (const [key, value] of Object.entries(input)) {
+    if (!(key in SETTINGS) || !isRecord(value)) return null;
+    const clean = {};
+    if (value.on !== undefined) {
+      if (typeof value.on !== "boolean") return null;
+      clean.on = value.on;
+    }
+    if (value.hour !== undefined) {
+      if (!Number.isInteger(value.hour) || value.hour < 0 || value.hour > 23) return null;
+      clean.hour = value.hour;
+    }
+    statements.push(
+      db
+        .prepare("INSERT INTO settings (key, value) VALUES (?1, ?2) ON CONFLICT (key) DO UPDATE SET value = json_patch(settings.value, excluded.value)")
+        .bind(key, J(clean)),
+    );
+  }
+  if (statements.length) await db.batch(statements);
+  return getSettings(db);
+}
+
+const hourFormat = new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", hourCycle: "h23" });
+const weekdayFormat = new Intl.DateTimeFormat("en-GB", { timeZone: TZ, weekday: "short" });
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+/** The morning push, in English: the point is reading English. */
+function notification(word, current, health = []) {
+  const line = current > 0 ? `Streak: ${plural(current, "day", "days")}.` : "No streak right now. A page today starts one.";
+  if (!word) return { title: "Reading", message: [`No words clipped yet.`, line, ...health].join("\n") };
+  const head = [word.ipa && `/${word.ipa}/`, word.tr].filter(Boolean).join("  ·  ");
+  return { title: word.term, message: [head, word.def, line, ...health].filter(Boolean).join("\n") };
+}
+
+/** JSON publishing, so Turkish letters and IPA survive (ntfy headers are ASCII). */
+async function push(env, title, message) {
   const res = await fetch(env.NTFY_URL || "https://ntfy.sh", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -979,8 +1048,319 @@ async function notify(env, now) {
     signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`ntfy: HTTP ${res.status}`);
+}
+
+/** Once a day: sets the flag and reports whether this call was the one that set it. */
+async function once(db, today, flag) {
+  const row = await db
+    .prepare(`INSERT INTO daily (day, ${flag}) VALUES (?1, 1) ON CONFLICT (day) DO UPDATE SET ${flag} = 1 WHERE daily.${flag} = 0 RETURNING day`)
+    .bind(today)
+    .first();
+  return Boolean(row);
+}
+
+/** Lines the morning push adds when the reader or the pull has gone quiet. */
+async function healthLines(db, now) {
+  const today = dayOf(now);
+  const [lastRead, lastOk] = await Promise.all([
+    db.prepare("SELECT MAX(day) AS day FROM days WHERE syncs > 0").first("day"),
+    db.prepare("SELECT MAX(at) AS at FROM sync_log WHERE ok = 1").first("at"),
+  ]);
+  const lines = [];
+  if (lastRead && between(lastRead, today) >= 3) lines.push(`Nothing synced from the reader for ${plural(between(lastRead, today), "day", "days")}.`);
+  if (lastOk && now / 1000 - lastOk > 86_400) lines.push("The pull from CrossPoint Sync has been failing for over a day.");
+  return lines;
+}
+
+async function notify(env, now) {
+  if (!env.NTFY_TOPIC) return false;
+  const db = env.DB;
+  const today = dayOf(now);
+  if (await db.prepare("SELECT notified FROM daily WHERE day = ?1").bind(today).first("notified")) return false;
+  const [word, days, health] = await Promise.all([wordOfDay(db, today), readingDays(db), healthLines(db, now)]);
+  const { title, message } = notification(word, streak(days, today).current, health);
+  await push(env, title, message);
   await db.prepare("INSERT INTO daily (day, notified) VALUES (?1, 1) ON CONFLICT (day) DO UPDATE SET notified = 1").bind(today).run();
   return true;
+}
+
+/** The evening push, only when there is a streak and nothing has been read today. */
+async function eveningPush(env, now) {
+  const db = env.DB;
+  const today = dayOf(now);
+  const days = await readingDays(db);
+  const current = streak(days, today).current;
+  if (!current || days.includes(today) || !(await once(db, today, "evening"))) return false;
+  await push(env, "Streak at risk", `${plural(current, "day", "days")} in a row. A page before midnight keeps it.`);
+  return true;
+}
+
+/** Sunday's push: the last seven days in numbers. */
+async function weeklyPush(env, now) {
+  const db = env.DB;
+  const today = dayOf(now);
+  const from = addDays(today, -6);
+  const since = Math.floor(Date.parse(`${from}T00:00:00+03:00`) / 1000);
+  const [read, added, reviewed, matured] = await Promise.all([
+    db.prepare("SELECT COUNT(*) AS days, COALESCE(SUM(pages), 0) AS pages FROM days WHERE day >= ?1 AND (syncs > 0 OR pages > 0)").bind(from).first(),
+    db.prepare("SELECT COUNT(*) AS n FROM cards WHERE added_at >= ?1").bind(since).first("n"),
+    db.prepare("SELECT COUNT(*) AS n, COALESCE(SUM(grade = 'good'), 0) AS good FROM reviews WHERE day >= ?1").bind(from).first(),
+    db.prepare("SELECT COUNT(*) AS n FROM cards WHERE matured_at >= ?1").bind(since).first("n"),
+  ]);
+  if (!(await once(db, today, "weekly"))) return false;
+  const accuracy = reviewed.n ? `, ${Math.round((reviewed.good / reviewed.n) * 100)}% right` : "";
+  await push(
+    env,
+    "The week",
+    [
+      `${plural(read.days, "day", "days")} read, ${plural(read.pages, "page", "pages")}.`,
+      `${plural(added, "word", "words")} added, ${plural(reviewed.n, "review", "reviews")}${accuracy}.`,
+      `${plural(matured, "word", "words")} learned.`,
+    ].join("\n"),
+  );
+  return true;
+}
+
+/** On the hour: whichever pushes are switched on for this hour. */
+async function notifications(env, now) {
+  if (!env.NTFY_TOPIC) return [];
+  const settings = await getSettings(env.DB);
+  const hour = Number(hourFormat.format(now));
+  const sent = [];
+  if (settings.morning.on && hour === settings.morning.hour && (await notify(env, now))) sent.push("morning");
+  if (settings.evening.on && hour === settings.evening.hour && (await eveningPush(env, now))) sent.push("evening");
+  if (settings.weekly.on && hour === settings.weekly.hour && weekdayFormat.format(now) === "Sun" && (await weeklyPush(env, now))) sent.push("weekly");
+  return sent;
+}
+
+/** The pull, logged with its outcome; the log keeps the last 200 rows. */
+async function pull(env, now, trigger) {
+  const started = Date.now();
+  const log = (ok, result, error) =>
+    env.DB.batch([
+      env.DB.prepare("INSERT INTO sync_log (at, trigger, ok, result, error, ms) VALUES (?1, ?2, ?3, ?4, ?5, ?6)").bind(
+        Math.floor(now / 1000),
+        trigger,
+        ok ? 1 : 0,
+        result,
+        error,
+        Date.now() - started,
+      ),
+      env.DB.prepare("DELETE FROM sync_log WHERE id <= (SELECT MAX(id) - 200 FROM sync_log)"),
+    ]);
+  try {
+    const result = await ingest(env, now);
+    await log(true, J(result), null);
+    return result;
+  } catch (error) {
+    await log(false, null, String(error?.message ?? error).slice(0, 500)).catch(() => {});
+    throw error;
+  }
+}
+
+// ---------------------------------------------------------------- the private app's data
+
+/** Rank and Academic Word List membership for terms: the book lists first, then Tatoeba's frequencies. */
+async function wordFacts(db, terms) {
+  const dict = await lookup(db, terms);
+  const keys = [...new Set(terms.flatMap((t) => [t, dict.get(t)?.lemma].filter(Boolean)))];
+  if (!keys.length) return { dict, facts: new Map() };
+  const [pre, ranks] = await db.batch([
+    db
+      .prepare(
+        `SELECT term, lemma, MIN(rank) AS rank, MAX(awl) AS awl, MAX(awl_headword) AS awl_headword, MAX(ipa) AS ipa, MAX(NULLIF(tr, '')) AS tr, MAX(def) AS def,
+                GROUP_CONCAT(book, char(10)) AS books
+         FROM prestudy WHERE term IN (SELECT value FROM json_each(?1)) OR lemma IN (SELECT value FROM json_each(?1)) GROUP BY term`,
+      )
+      .bind(J(keys)),
+    db.prepare("SELECT word, rank FROM ranks WHERE word IN (SELECT value FROM json_each(?1))").bind(J(keys)),
+  ]);
+  const byKey = new Map();
+  for (const r of pre.results) for (const k of [r.term, r.lemma]) if (k && !byKey.has(k)) byKey.set(k, r);
+  const rank = new Map(ranks.results.map((r) => [r.word, r.rank]));
+  const facts = new Map(
+    terms.map((t) => {
+      const lemma = dict.get(t)?.lemma;
+      const p = byKey.get(t) ?? (lemma && byKey.get(lemma));
+      return [t, { rank: p?.rank ?? rank.get(t) ?? (lemma && rank.get(lemma)) ?? null, awl: p?.awl ? p.awl_headword || lemma || t : null, pre: p ?? null }];
+    }),
+  );
+  return { dict, facts };
+}
+
+const BANDS = [
+  [1000, "1-1000"],
+  [2000, "1001-2000"],
+  [5000, "2001-5000"],
+  [10000, "5001-10000"],
+  [Infinity, "10000+"],
+];
+const band = (rank) => (rank ? BANDS.find(([max]) => rank <= max)[1] : "unranked");
+const RARE = 3000; // a word past the 3000 commonest is worth proposing from a sentence
+
+/** Clipped sentences with their translation and the rare words in each, rarest first (sentence mining). */
+async function sentencesMined(env) {
+  const db = env.DB;
+  const { results } = await db
+    .prepare(
+      `SELECT s.id, s.text, s.translation AS tr, b.title AS book, s.chapter, s.created_at
+       FROM clippings s LEFT JOIN books b ON b.document = s.document
+       WHERE s.kind = 'sentence' AND s.deleted = 0 ORDER BY s.created_at DESC LIMIT 200`,
+    )
+    .all();
+  const tokens = (t) => [...new Set((tidy(t).toLowerCase().match(/\p{L}+(?:['-]\p{L}+)*/gu) ?? []).filter((w) => w.length > 2))];
+  const all = [...new Set(results.flatMap((r) => tokens(r.text)))];
+  const { dict, facts } = await wordFacts(db, all);
+  const cards = new Set(
+    (await db.prepare("SELECT term FROM cards WHERE term IN (SELECT value FROM json_each(?1))").bind(J([...all, ...[...dict.values()].map((d) => d.lemma).filter(Boolean)])).all()).results.map(
+      (r) => r.term,
+    ),
+  );
+  return {
+    items: results.map((r) => ({
+      ...r,
+      words: tokens(r.text)
+        .map((w) => ({ w, d: dict.get(w), f: facts.get(w) }))
+        // A word worth a card: the dictionary knows it, it is rare (or unranked), and it is not a card yet.
+        .filter(({ w, d, f }) => d?.lemma && (!f.rank || f.rank > RARE) && !cards.has(w) && !cards.has(d.lemma))
+        .sort((a, b) => (b.f.rank ?? 1e9) - (a.f.rank ?? 1e9))
+        .slice(0, 5)
+        .map(({ w, d, f }) => ({ word: w, lemma: d.lemma, rank: f.rank, ipa: d.ipa, tr: d.tr })),
+    })),
+  };
+}
+
+/** What the public page cannot show: states over time, accuracy, words added, coverage, books. */
+async function progress(env, now) {
+  const db = env.DB;
+  const today = dayOf(now);
+  const [cardRows, reviewRows, bookRows, preBooks] = (
+    await db.batch([
+      db.prepare(`SELECT term, box, reviews, added_at, source FROM cards WHERE ${LIVE_TERM}`),
+      db.prepare("SELECT term, grade, box_after, day, reviewed_at FROM reviews ORDER BY reviewed_at"),
+      db.prepare(
+        `SELECT COALESCE(b.public_title, b.title, b.filename, w.document) AS book, COUNT(DISTINCT c.term) AS cards, COALESCE(SUM(c.box >= ${LEARNED}), 0) AS learned
+         FROM clippings w JOIN cards c ON c.term = w.term LEFT JOIN books b ON b.document = w.document
+         WHERE w.kind = 'word' AND w.deleted = 0 GROUP BY w.document ORDER BY cards DESC`,
+      ),
+      db.prepare(
+        `SELECT p.book, COUNT(*) AS words, COUNT(c.term) AS cards, COALESCE(SUM(c.box >= ${LEARNED}), 0) AS learned
+         FROM prestudy p LEFT JOIN cards c ON c.term = p.term OR c.term = p.lemma GROUP BY p.book ORDER BY p.book`,
+      ),
+    ])
+  ).map((r) => r.results);
+
+  // Twelve weeks, Monday to Sunday, each counted as it stood at the week's end.
+  const monday = addDays(today, -((new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7));
+  const weeks = Array.from({ length: 12 }, (_, i) => addDays(monday, -7 * (11 - i)));
+  const byTerm = Map.groupBy(reviewRows, (r) => r.term);
+  const series = weeks.map((start) => {
+    const end = addDays(start, 6);
+    const endAt = Date.parse(`${end}T23:59:59+03:00`) / 1000;
+    const startAt = Date.parse(`${start}T00:00:00+03:00`) / 1000;
+    const counts = { week: start, new: 0, learning: 0, review: 0, learned: 0, added: 0, reviews: 0, good: 0 };
+    for (const c of cardRows) {
+      if (c.added_at > endAt) continue;
+      if (c.added_at >= startAt) counts.added++;
+      const last = (byTerm.get(c.term) ?? []).filter((r) => r.day <= end).at(-1);
+      const box = last?.box_after;
+      counts[!last ? "new" : box >= LEARNED ? "learned" : box >= 3 ? "review" : "learning"]++;
+    }
+    for (const r of reviewRows) if (r.day >= start && r.day <= end) (counts.reviews++, r.grade === "good" && counts.good++);
+    return counts;
+  });
+  const since30 = addDays(today, -29);
+  const recent = reviewRows.filter((r) => r.day >= since30);
+  const rate = (rows) => (rows.length ? Math.round((rows.filter((r) => r.grade === "good").length / rows.length) * 100) : null);
+
+  const { facts } = await wordFacts(db, cardRows.map((c) => c.term));
+  const bands = Object.fromEntries([...BANDS.map(([, b]) => [b, 0]), ["unranked", 0]]);
+  const awlMet = new Set();
+  const awlLearned = new Set();
+  for (const c of cardRows) {
+    const f = facts.get(c.term);
+    bands[band(f.rank)]++;
+    if (f.awl) (awlMet.add(f.awl), c.box >= LEARNED && awlLearned.add(f.awl));
+  }
+  const listed = await db.prepare("SELECT COUNT(DISTINCT awl_headword) AS n FROM prestudy WHERE awl = 1").first("n");
+  return {
+    today,
+    weeks: series,
+    accuracy: { all: rate(reviewRows), last30: rate(recent), reviews: reviewRows.length },
+    bands,
+    // The Academic Word List has 570 headword families (Coxhead, 2000).
+    awl: { met: awlMet.size, learned: awlLearned.size, in_lists: listed, families: 570 },
+    books: bookRows,
+    lists: preBooks,
+  };
+}
+
+/** The admin panel: recent pulls, today's quotas, settings. */
+async function adminData(env, now) {
+  const db = env.DB;
+  const today = dayOf(now);
+  const [log, daily, rotated] = await db.batch([
+    db.prepare("SELECT at, trigger, ok, result, error, ms FROM sync_log ORDER BY id DESC LIMIT 20"),
+    db.prepare("SELECT translations, audio FROM daily WHERE day = ?1").bind(today),
+    db.prepare("SELECT 1 FROM settings WHERE key = 'token_hash'"),
+  ]);
+  return {
+    sync: log.results.map((r) => ({ ...r, ok: Boolean(r.ok), result: r.result ? JSON.parse(r.result) : null })),
+    quota: {
+      translations: { used: daily.results[0]?.translations ?? 0, of: TRANSLATE_PER_DAY },
+      audio: { used: daily.results[0]?.audio ?? 0, of: AUDIO_PER_DAY },
+    },
+    settings: await getSettings(db),
+    notifications: Boolean(env.NTFY_TOPIC),
+    token_rotated: rotated.results.length > 0,
+  };
+}
+
+/** Every table that is his: cards, reviews, clippings, books, word lists, settings (never the token hash). */
+async function exportAll(env) {
+  const db = env.DB;
+  const names = ["cards", "reviews", "clippings", "books", "days", "book_days", "prestudy", "audio", "sync_log"];
+  const out = await db.batch([...names.map((n) => db.prepare(`SELECT * FROM ${n}`)), db.prepare("SELECT key, value FROM settings WHERE key <> 'token_hash'")]);
+  return Object.fromEntries([...names, "settings"].map((n, i) => [n, out[i].results]));
+}
+
+/** Replaces one book's pre-study list with the words from its companion file. */
+async function importList(env, input) {
+  if (!isRecord(input) || !text(input.book, 200) || !Array.isArray(input.words) || input.words.length > 5000) return null;
+  const book = text(input.book, 200);
+  const words = [];
+  for (const w of input.words) {
+    if (!isRecord(w)) continue;
+    const term = typeof w.word === "string" ? termOf(w.word) : "";
+    if (!term || term.length > 60 || !/\p{L}/u.test(term)) continue;
+    words.push({
+      term,
+      lemma: termOf(w.lemma) || null,
+      chapter: int(w.chapter, 0, 10_000),
+      chapter_title: text(w.chapter_title, 200),
+      rank: int(w.rank, 1, 10_000_000),
+      ipa: text(w.ipa, 80),
+      tr: text(w.turkish, 300),
+      def: text(w.definition, 500),
+      awl: w.awl === true ? 1 : 0,
+      awl_headword: termOf(w.awl_headword) || null,
+      count: int(w.count, 0, 1_000_000),
+    });
+  }
+  const db = env.DB;
+  await db.batch([
+    db.prepare("DELETE FROM prestudy WHERE book = ?1").bind(book),
+    ...chunks(words, 500).map((part) =>
+      db
+        .prepare(
+          `INSERT OR REPLACE INTO prestudy (book, term, lemma, chapter, chapter_title, rank, ipa, tr, def, awl, awl_headword, count)
+           SELECT ?1, value->>'term', value->>'lemma', value->>'chapter', value->>'chapter_title', value->>'rank', value->>'ipa', value->>'tr',
+                  value->>'def', value->>'awl', value->>'awl_headword', value->>'count' FROM json_each(?2)`,
+        )
+        .bind(book, J(part)),
+    ),
+  ]);
+  return { book, words: words.length, skipped: input.words.length - words.length };
 }
 
 // ---------------------------------------------------------------- HTTP
@@ -991,10 +1371,26 @@ const respond = (body, status, headers = {}) =>
     headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...headers },
   });
 
+// Installs the private page to the phone's home screen. Neutral words only:
+// the manifest is fetched without the cookie, so anyone can read it.
+const MANIFEST = {
+  name: "Reading",
+  short_name: "Reading",
+  start_url: "/api/reading/app#today",
+  scope: "/api/reading/",
+  display: "standalone",
+  background_color: "#ffffff",
+  theme_color: "#ffffff",
+  icons: [
+    { src: "/android-chrome-192x192.png", sizes: "192x192", type: "image/png" },
+    { src: "/android-chrome-512x512.png", sizes: "512x512", type: "image/png" },
+  ],
+};
+
 const PUBLIC = { "/api/reading/summary": summary, "/api/reading/today": todayCard };
 
-const readJson = async (request) => {
-  if (Number(request.headers.get("content-length") ?? 0) > 2000) return null;
+const readJson = async (request, max = 2000) => {
+  if (Number(request.headers.get("content-length") ?? 0) > max) return null;
   try {
     return await request.json();
   } catch {
@@ -1018,8 +1414,16 @@ const PRIVATE = {
   "GET /api/reading/cards.csv": async (env) =>
     respond(await cardsCsv(env), 200, { "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="reading-cards.csv"' }),
   "GET /api/reading/sentences": (env) => sentences(env),
-  "POST /api/reading/sync": (env, request, now) => ingest(env, now),
+  "POST /api/reading/sync": (env, request, now) => pull(env, now, "manual"),
   "POST /api/reading/review": async (env, request, now) => answer(await review(env, await readJson(request), now)),
+  "GET /api/reading/sentences/mined": (env) => sentencesMined(env),
+  "GET /api/reading/progress": (env, request, now) => progress(env, now),
+  "GET /api/reading/admin": (env, request, now) => adminData(env, now),
+  "POST /api/reading/admin/settings": async (env, request) => answer(await setSettings(env, await readJson(request))),
+  "POST /api/reading/admin/token": (env, request) => rotateToken(env, request),
+  "GET /api/reading/export.json": async (env) =>
+    respond(await exportAll(env), 200, { "content-disposition": 'attachment; filename="reading-export.json"' }),
+  "POST /api/reading/prestudy": async (env, request) => answer(await importList(env, await readJson(request, 2_000_000))),
   "GET /api/reading/books": (env) => booksList(env),
   "POST /api/reading/books": async (env, request, now) => answer(await setBook(env, await readJson(request), now)),
 };
@@ -1047,6 +1451,9 @@ async function pageRoute(request, env, path) {
   if (path === "/api/reading/app" && request.method === "GET")
     return (await authorized(request, env)) ? html(appPage(nonce), 200, nonce) : html(loginPage(nonce), 401, nonce);
   if (path === "/api/reading/login" && request.method === "POST") {
+    // Five tries a minute per visitor on top of the general limit; the token is 64 hex characters anyway.
+    if (env.LOGIN && !(await env.LOGIN.limit({ key: request.headers.get("cf-connecting-ip") ?? "unknown" })).success)
+      return html(loginPage(nonce, true), 429, nonce);
     if (Number(request.headers.get("content-length") ?? 0) > 2000) return new Response(null, { status: 413 });
     const token = String((await request.formData().catch(() => null))?.get("token") ?? "");
     if (!(await authorized(request, env, { token, cookie: false }))) return html(loginPage(nonce, true), 401, nonce);
@@ -1075,6 +1482,8 @@ export default {
       const [mine, all] = await Promise.all([env.PER_VISITOR.limit({ key: ip }), env.SITE_WIDE.limit({ key: "site" })]);
       if (!mine.success || !all.success) return respond({ error: "rate" }, 429, cors);
 
+      if (path === "/api/reading/app.webmanifest" && request.method === "GET")
+        return new Response(J(MANIFEST), { headers: { "content-type": "application/manifest+json", "cache-control": "public, max-age=86400", "x-robots-tag": "noindex" } });
       if (["/api/reading/app", "/api/reading/login", "/api/reading/logout"].includes(path))
         return (await pageRoute(request, env, path)) ?? new Response(null, { status: 405 });
 
@@ -1106,9 +1515,15 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(event.cron === MORNING ? notify(env, Date.now()) : ingest(env, Date.now()));
+    const now = event.scheduledTime ?? Date.now();
+    // On the hour the notifications go first, so a slow pull never delays the morning word.
+    const onTheHour = new Date(now).getUTCMinutes() < 30;
+    ctx.waitUntil((async () => {
+      if (onTheHour) await notifications(env, now).catch((error) => console.error(error));
+      await pull(env, now, "cron");
+    })());
   },
 };
 
 // For check.mjs.
-export { addDays, addWord, audioFor, authorized, booksList, buildSummary, candidates, cardsCsv, cardsJson, classify, commonsAudio, dayOf, deleteWord, derive, editWord, ensureAudio, forecast, handTerm, ingest, nextBox, notification, notify, pace, pickRecording, publicTitle, review, sentences, setBook, streak, summary, termOf, todayCard };
+export { addDays, addWord, adminData, audioFor, authorized, band, booksList, buildSummary, candidates, cardsCsv, cardsJson, classify, commonsAudio, dayOf, deleteWord, derive, editWord, ensureAudio, eveningPush, exportAll, forecast, getSettings, handTerm, healthLines, importList, ingest, nextBox, notification, notifications, notify, pace, pickRecording, progress, publicTitle, pull, review, rotateToken, sentences, sentencesMined, setBook, setSettings, streak, summary, termOf, todayCard, weeklyPush, wordFacts };

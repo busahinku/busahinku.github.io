@@ -597,6 +597,156 @@ assert.match(res.headers.get("set-cookie"), /^reading_token=; Path=\/api\/readin
 const publicCard = await (await site("GET", "/api/reading/today")).json();
 assert.deepEqual(Object.keys(publicCard).sort(), ["day", "streak"], "still only the day and streak in public");
 
+// ---- the private app: review log, offline grades, mining, lists, progress, admin
+{
+  const q = (sql) => sqlite.prepare(sql).all();
+  sqlite.exec("UPDATE cards SET due = '2026-11-18', box = 1 WHERE term = 'give up'");
+  sqlite.exec("UPDATE cards SET due = '2026-11-17', box = 1 WHERE term = 'abandoned'");
+  const before = q("SELECT COUNT(*) AS n FROM reviews")[0].n;
+  // An answer is logged once, even when the app sends it again after losing the connection.
+  const first = await w.review(env, { term: "give up", grade: "good", id: "grade-0001-abcd" }, NOW);
+  assert.equal(first.box, 2);
+  const resent = await w.review(env, { term: "give up", grade: "good", id: "grade-0001-abcd" }, NOW + 5_000);
+  assert.equal(resent.duplicate, true);
+  assert.equal(resent.box, 2, "not moved twice");
+  assert.equal(q("SELECT COUNT(*) AS n FROM reviews")[0].n, before + 1);
+  assert.equal(await w.review(env, { term: "give up", grade: "good", id: "bad id!" }, NOW), null);
+  // A grade kept offline counts on the day it was given.
+  const offline = await w.review(env, { term: "abandoned", grade: "again", id: "grade-0002-abcd", at: NOW - 86_400_000 }, NOW);
+  assert.equal(offline.due, "2026-11-18", "given yesterday, due a day later");
+  const log = q("SELECT term, grade, box_before, box_after, day FROM reviews WHERE client_id = 'grade-0002-abcd'")[0];
+  assert.deepEqual({ ...log }, { term: "abandoned", grade: "again", box_before: 1, box_after: 1, day: "2026-11-17" });
+  assert.equal(q("SELECT COUNT(*) AS n FROM reviews WHERE term = 'abandoned'")[0].n, 1);
+  // A refused (not due) answer is not logged.
+  await w.review(env, { term: "give up", grade: "good", id: "grade-0003-abcd" }, NOW);
+  assert.equal(q("SELECT COUNT(*) AS n FROM reviews WHERE client_id = 'grade-0003-abcd'")[0].n, 0);
+
+  // Sentence mining: the rare words in a clipped sentence, rarest first, never a word that is a card already.
+  sqlite.exec(`INSERT OR REPLACE INTO dict (word, ipa, pos, def, tr) VALUES ('hum', 'hʌm', 'noun', 'a low steady sound', 'vızıltı'), ('promise', 'ˈpɹɒmɪs', 'noun', 'a vow', 'söz'), ('settle', 'ˈsɛtl̩', 'verb', 'to come to rest', 'yerleşmek'), ('ceaselessly', NULL, 'adverb', 'without stopping', 'durmaksızın'), ('current', NULL, 'noun', 'a flow', 'akıntı')`);
+  sqlite.exec("INSERT OR REPLACE INTO ranks (word, rank) VALUES ('promise', 900), ('hum', 8000), ('settle', 4200), ('current', 1500)");
+  const mined = await w.sentencesMined(env);
+  const hum = mined.items.find((i) => i.text.includes("hum of the house"));
+  assert.deepEqual(hum.words.map((x) => x.word), ["hum", "settled"], "rare first; ubiquitous is a card, promise is common");
+  assert.equal(hum.words[1].lemma, "settle");
+  assert.equal(hum.tr.startsWith("TR:"), true, "with its translation");
+  assert.deepEqual(mined.items.find((i) => i.text.includes("boats")).words.map((x) => x.word), ["ceaselessly"], "unranked but in the dictionary counts as rare");
+  const added = await w.addWord(env, { term: "hum", sentence: hum.text }, NOW);
+  assert.equal(added.sentence, hum.text, "a mined word keeps the sentence it came from");
+  assert.ok(!(await w.sentencesMined(env)).items.find((i) => i.id === hum.id).words.some((x) => x.word === "hum"), "and is no longer proposed");
+
+  // A book's word list: imported once, it ranks words, flags the Academic Word List, and fills meanings.
+  const list = { book: "The Call of the Wild", words: [
+    { word: "apparent", lemma: "apparent", chapter: 1, chapter_title: "I: Into the Primitive", rank: 8426, ipa: "/əˈpæɹənt/", turkish: "", definition: "Easily seen.", awl: true, awl_headword: "apparent", count: 5 },
+    { word: "Mellow", lemma: "mellow", chapter: 2, chapter_title: "II", rank: 15000, ipa: "/ˈmɛl.oʊ/", turkish: "yumuşak", definition: "Soft and rich.", awl: false, awl_headword: "", count: 1 },
+    null, { word: "" }, { word: 42 },
+  ] };
+  assert.deepEqual(await w.importList(env, list), { book: "The Call of the Wild", words: 2, skipped: 3 });
+  assert.deepEqual(await w.importList(env, list), { book: "The Call of the Wild", words: 2, skipped: 3 }, "importing again replaces, never doubles");
+  assert.equal(q("SELECT COUNT(*) AS n FROM prestudy")[0].n, 2);
+  assert.equal(await w.importList(env, { book: "", words: [] }), null);
+  assert.equal(await w.importList(env, { book: "x", words: new Array(5001).fill({ word: "a" }) }), null);
+  const mellow = (await w.cardsJson(env, NOW, "mellow")).cards[0];
+  assert.deepEqual([mellow.tr, mellow.ipa, mellow.def, mellow.rank, mellow.band, mellow.lists], ["yumuşak", "ˈmɛl.oʊ", "Soft and rich.", 15000, "10000+", ["The Call of the Wild"]], "the book's list fills what WikDict lacks");
+  await w.addWord(env, { term: "apparent" }, NOW);
+  assert.equal((await w.cardsJson(env, NOW, "apparent")).cards[0].awl, "apparent");
+
+  // Progress: twelve weeks of states, accuracy, bands, coverage, books.
+  const prog = await w.progress(env, NOW);
+  assert.equal(prog.weeks.length, 12);
+  assert.equal(prog.weeks.at(-1).week, "2026-11-16", "weeks start on Monday");
+  const total = (wk) => wk.new + wk.learning + wk.review + wk.learned;
+  assert.equal(total(prog.weeks.at(-1)), (await w.cardsJson(env, NOW)).cards.length, "every live card is counted once in the current week");
+  assert.ok(prog.weeks.at(-1).reviews >= 2 && prog.accuracy.reviews >= 2);
+  assert.equal(prog.bands["10000+"], 1);
+  assert.deepEqual(prog.awl, { met: 1, learned: 0, in_lists: 1, families: 570 });
+  assert.ok(prog.books.some((b) => b.book === "The Remains of the Day" && b.cards >= 3));
+  assert.deepEqual(prog.lists.map((l) => ({ ...l })), [{ book: "The Call of the Wild", words: 2, cards: 2, learned: 0 }]);
+
+  // The pull's log, with failures and their reason.
+  await w.pull(env, NOW + 20_000_000, "manual");
+  const savedProgress = answers.progress;
+  answers.progress = "{}";
+  await assert.rejects(w.pull(env, NOW + 20_100_000, "cron"));
+  answers.progress = savedProgress;
+  const admin = await w.adminData(env, NOW);
+  assert.deepEqual([admin.sync[0].ok, admin.sync[0].trigger, admin.sync[0].error], [false, "cron", "progress: unexpected answer shape"]);
+  assert.equal(admin.sync[1].ok, true);
+  assert.equal(admin.quota.translations.of, 40);
+  assert.deepEqual(admin.settings.morning, { on: true, hour: 8 });
+
+  // Settings: validated, and they decide which push goes out at which hour.
+  assert.equal(await w.setSettings(env, { morning: { hour: 24 } }), null);
+  assert.equal(await w.setSettings(env, { nope: {} }), null);
+  assert.equal(await w.setSettings(env, { evening: { on: "yes" } }), null);
+  assert.deepEqual((await w.setSettings(env, { morning: { hour: 7 } })).morning, { on: true, hour: 7 }, "a partial change keeps the rest");
+  pushed.length = 0;
+  sqlite.exec("DELETE FROM daily WHERE day >= '2026-11-18'");
+  const istanbul = (day, hour) => Date.parse(`${day}T${String(hour - 3).padStart(2, "0")}:00:00Z`);
+  assert.deepEqual(await w.notifications(env, istanbul("2026-11-18", 8)), [], "the morning push follows its new hour");
+  assert.deepEqual(await w.notifications(env, istanbul("2026-11-18", 7)), ["morning"]);
+  assert.deepEqual(await w.notifications(env, istanbul("2026-11-18", 7)), [], "once a day");
+  assert.deepEqual(await w.notifications(env, istanbul("2026-11-18", 21)), ["evening"], "nothing read today and a streak to lose");
+  assert.equal(pushed.at(-1).title, "Streak at risk");
+  assert.deepEqual(await w.notifications(env, istanbul("2026-11-18", 21)), []);
+  sqlite.exec("INSERT OR REPLACE INTO days (day, pages, syncs) VALUES ('2026-11-19', 4, 1)");
+  assert.deepEqual(await w.notifications(env, istanbul("2026-11-19", 21)), [], "no evening push once today has been read");
+  assert.deepEqual(await w.notifications(env, istanbul("2026-11-21", 10)), [], "the digest waits for Sunday");
+  assert.deepEqual(await w.notifications(env, istanbul("2026-11-22", 10)), ["weekly"]);
+  assert.match(pushed.at(-1).message, /days? read, \d+ pages?\.\n\d+ words? added, \d+ reviews?, \d+% right\.\n\d+ words? learned\./);
+  await w.setSettings(env, { weekly: { on: false } });
+  sqlite.exec("DELETE FROM daily WHERE day = '2026-11-29'");
+  assert.deepEqual(await w.notifications(env, istanbul("2026-11-29", 10)), [], "a switched-off push stays off");
+  // The morning push says so when the reader has been quiet for days.
+  sqlite.exec("DELETE FROM daily WHERE day = '2026-11-25'");
+  assert.deepEqual(await w.notifications(env, istanbul("2026-11-25", 7)), ["morning"]);
+  assert.match(pushed.at(-1).message, /Nothing synced from the reader for 6 days\./);
+
+  // Export: everything that is his, never the token's hash.
+  const all = await w.exportAll(env);
+  assert.ok(all.cards.length && all.reviews.length && all.prestudy.length && all.sync_log.length);
+  assert.ok(!JSON.stringify(all.settings).includes("token_hash"));
+}
+
+// ---- every private route refuses without the token; the manifest is public and neutral
+{
+  for (const [method, path] of [
+    ["GET", "/api/reading/cards"], ["POST", "/api/reading/words"], ["POST", "/api/reading/words/edit"], ["POST", "/api/reading/words/delete"],
+    ["POST", "/api/reading/audio"], ["GET", "/api/reading/sentences/mined"], ["GET", "/api/reading/progress"], ["GET", "/api/reading/admin"],
+    ["POST", "/api/reading/admin/settings"], ["POST", "/api/reading/admin/token"], ["GET", "/api/reading/export.json"], ["POST", "/api/reading/prestudy"],
+    ["GET", "/api/reading/books"], ["POST", "/api/reading/books"], ["GET", "/api/reading/sentences"], ["POST", "/api/reading/sync"],
+  ]) {
+    assert.equal((await call(method, path)).status, 401, `${method} ${path} needs the token`);
+    assert.equal((await call(method, path, "x".repeat(64))).status, 401, `${method} ${path} refuses a wrong token`);
+  }
+  const manifest = await call("GET", "/api/reading/app.webmanifest");
+  assert.equal(manifest.status, 200);
+  const m = await manifest.json();
+  assert.deepEqual([m.name, m.display, m.scope, m.start_url], ["Reading", "standalone", "/api/reading/", "/api/reading/app#today"]);
+  assert.ok(!/word|vocab|learn|english|turkish/i.test(JSON.stringify(m)));
+  // Sign-in attempts have their own, stricter limit.
+  const shut = { limit: async () => ({ success: false }) };
+  const login = await w.default.fetch(
+    new Request("https://busahin.com/api/reading/login", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: `token=${env.READING_TOKEN}` }),
+    { ...env, PER_VISITOR: open, SITE_WIDE: open, LOGIN: shut },
+    { waitUntil() {} },
+  );
+  assert.equal(login.status, 429);
+}
+
+// ---- rotating the token: the new one works, the old secret stops
+{
+  const rotated = await call("POST", "/api/reading/admin/token", env.READING_TOKEN);
+  assert.equal(rotated.status, 200);
+  const { token } = await rotated.json();
+  assert.match(token, /^[0-9a-f]{64}$/);
+  assert.match(rotated.headers.get("set-cookie"), new RegExp(`^reading_token=${token}; Path=/api/reading;.*HttpOnly; SameSite=Strict`));
+  assert.equal((await call("GET", "/api/reading/admin", env.READING_TOKEN)).status, 401, "the old token no longer opens anything");
+  assert.equal((await call("GET", "/api/reading/admin", token)).status, 200);
+  assert.equal((await (await call("GET", "/api/reading/admin", token)).json()).token_rotated, true);
+  sqlite.exec("DELETE FROM settings WHERE key = 'token_hash'");
+  assert.equal((await call("GET", "/api/reading/admin", env.READING_TOKEN)).status, 200, "deleting the row brings the secret back (the documented recovery)");
+}
+
 // ---- no em dashes in what the Worker says
 for (const f of ["index.js", "page.js"]) assert.ok(!fs.readFileSync(new URL(f, here), "utf8").includes("\u2014"), f);
 

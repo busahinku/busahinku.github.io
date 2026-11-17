@@ -8,10 +8,10 @@ preview_urls = false
 # More specific than the assistant's busahin.com/api/*, so it wins for these paths.
 routes = [{ pattern = "busahin.com/api/reading*", zone_name = "busahin.com" }]
 
-# Every thirty minutes: pull from CrossPoint Sync. 05:00 UTC is 08:00 in
-# Istanbul: the word of the day and the streak go to ntfy.
+# Every thirty minutes: pull from CrossPoint Sync; on the hour, also any
+# notification whose hour (Istanbul time, set on the private page) has come.
 [triggers]
-crons = ["*/30 * * * *", "0 5 * * *"]
+crons = ["*/30 * * * *"]
 
 [vars]
 # CrossPoint Sync, or a self-hosted copy of it.
@@ -52,3 +52,9 @@ simple = { limit = 30, period = 60 }
 name = "SITE_WIDE"
 namespace_id = "4977"
 simple = { limit = 300, period = 60 }
+
+# Sign-in attempts on the private page: five a minute per visitor.
+[[ratelimits]]
+name = "LOGIN"
+namespace_id = "4978"
+simple = { limit = 5, period = 60 }
