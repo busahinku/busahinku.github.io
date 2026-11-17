@@ -124,7 +124,25 @@ footer { margin-top: 2.5rem; font-size: .75rem; color: var(--text-secondary); }
 // Pre-paint: the site's own theme choice (same origin, same localStorage), else the system's.
 const THEME = `try{const t=localStorage.getItem("theme");document.documentElement.dataset.theme=t||(matchMedia("(update: slow), (monochrome)").matches?"eink":matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}catch{}`;
 
-const shell = (title, nonce, body, lang = "en", head = "") => `<!doctype html>
+// The sign-in page's own few lines: an anonymous visitor never receives the app's stylesheet.
+const SIGNIN_STYLE = `
+:root { --bg:#ffffff; --fg:#0f172a; --muted:#475569; --line:#e2e8f0; color-scheme: light dark; }
+[data-theme="dark"] { --bg:#0a0a0b; --fg:#fafafa; --muted:#d4d4d8; --line:#27272a; }
+[data-theme="paper"] { --bg:#faf8f1; --fg:#3d3929; --muted:#5c5647; --line:#d6ceb8; }
+[data-theme="eink"] { --bg:#ffffff; --fg:#000000; --muted:#000000; --line:#4a4a4a; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 1rem/1.6 Georgia, serif; }
+main { max-width: 26rem; margin: 0 auto; padding: max(2rem, env(safe-area-inset-top)) 16px; }
+h1 { font-size: 1.5rem; margin: 0 0 1.5rem; }
+form { display: grid; gap: .5rem; }
+input, button { font: inherit; color: inherit; min-height: 2.75rem; padding: .5rem .75rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--bg); }
+button { background: var(--fg); color: var(--bg); border-color: var(--fg); cursor: pointer; }
+:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+p { color: var(--muted); font-size: .875rem; min-height: 1.25rem; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+`;
+
+const shell = (title, nonce, body, lang = "en", head = "", style = STYLE) => `<!doctype html>
 <html lang="${lang}">
 <head>
 <meta charset="utf-8">
@@ -134,7 +152,7 @@ const shell = (title, nonce, body, lang = "en", head = "") => `<!doctype html>
 <title>${esc(title)}</title>
 ${head}
 <script nonce="${nonce}">${THEME}</script>
-<style nonce="${nonce}">${STYLE}</style>
+<style nonce="${nonce}">${style}</style>
 </head>
 <body>${body}</body>
 </html>`;
@@ -144,12 +162,15 @@ export function loginPage(nonce, failed = false) {
     "Sign in",
     nonce,
     `<main><h1>Sign in</h1>
-<form class="form signin" method="post" action="/api/reading/login">
+<form method="post" action="/api/reading/login">
   <label class="sr-only" for="token">Token</label>
   <input id="token" name="token" type="password" autocomplete="current-password" placeholder="Token" required>
-  <button class="ghost primary" type="submit">Sign in</button>
+  <button type="submit">Sign in</button>
 </form>
-<p class="status" role="alert">${failed ? "That did not work. Wait a minute if you tried several times." : ""}</p></main>`,
+<p role="alert">${failed ? "That did not work. Wait a minute if you tried several times." : ""}</p></main>`,
+    "en",
+    "",
+    SIGNIN_STYLE,
   );
 }
 

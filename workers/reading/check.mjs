@@ -598,7 +598,9 @@ const site = (method, path, { cookie, origin, form, json } = {}) => {
 let res = await site("GET", "/api/reading/app");
 assert.equal(res.status, 401);
 let page = await res.text();
-assert.ok(page.includes('name="token"') && !/\b(words?|vocab\w*|turkish|english)\b/i.test(page.replace(/<style[\s\S]*?<\/style>/, "")), "the sign-in page says nothing about what is behind it");
+assert.ok(page.includes('name="token"'), "the sign-in form");
+for (const giveaway of ["word", "vocab", "turkish", "english", ".term", ".ipa", ".def", "cards", ".ex", ".due", ".note", "review"])
+  assert.ok(!page.toLowerCase().includes(giveaway), `the sign-in page, stylesheet included, never says "${giveaway}"`);
 res = await site("POST", "/api/reading/login", { form: { token: "wrong" } });
 assert.equal(res.status, 401);
 res = await site("POST", "/api/reading/login", { form: { token: env.READING_TOKEN } });
