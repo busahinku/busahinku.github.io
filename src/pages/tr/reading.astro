@@ -1,0 +1,15 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import ReadingPage from "../../components/ReadingPage.astro";
+import { type Lang } from "../../i18n/translations";
+
+const lang: Lang = "tr";
+---
+
+<Layout
+  title="Okuma"
+  description="E-okuyucumun eşitledikleri: okuduğum günler, elimdeki kitaplar ve anlamına baktığım kelimeler."
+  lang={lang}
+>
+  <ReadingPage lang={lang} />
+</Layout>

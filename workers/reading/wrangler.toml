@@ -1,0 +1,40 @@
+# Deploy: npx wrangler@4.146.0 deploy --config workers/reading/wrangler.toml
+# First time: follow workers/reading/DEPLOY.md (database, schema, dictionary, secrets).
+name = "busahin-reading"
+main = "index.js"
+compatibility_date = "2026-09-01"
+workers_dev = false
+preview_urls = false
+# More specific than the assistant's busahin.com/api/*, so it wins for these paths.
+routes = [{ pattern = "busahin.com/api/reading*", zone_name = "busahin.com" }]
+
+# Every thirty minutes: pull from CrossPoint Sync. 05:00 UTC is 08:00 in
+# Istanbul: the word of the day and the streak go to ntfy.
+[triggers]
+crons = ["*/30 * * * *", "0 5 * * *"]
+
+[vars]
+# CrossPoint Sync, or a self-hosted copy of it.
+SYNC_URL = "https://sync.crosspointreader.com"
+NTFY_URL = "https://ntfy.sh"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "busahin-reading"
+# Printed by `wrangler d1 create busahin-reading` (DEPLOY.md, step 1).
+database_id = "REPLACE-WITH-THE-ID-FROM-D1-CREATE"
+
+# Sentence translations, capped per day in index.js.
+[ai]
+binding = "AI"
+
+# Thirty requests a minute per visitor, three hundred for the site.
+[[ratelimits]]
+name = "PER_VISITOR"
+namespace_id = "4976"
+simple = { limit = 30, period = 60 }
+
+[[ratelimits]]
+name = "SITE_WIDE"
+namespace_id = "4977"
+simple = { limit = 300, period = 60 }
