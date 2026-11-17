@@ -397,16 +397,16 @@ for (const word of ["word", "vocab", "learn", "english", "ielts"]) assert.ok(!pu
 {
   const doc = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
   const progress = JSON.parse(answers.progress);
-  progress.items.push({ document: doc, title: "Cambridge IELTS 18 Academic", author: "Cambridge", filename: "ielts18.pdf", percentage: 0.3, timestamp: 1794944400, status: "reading" });
+  progress.items.push({ document: doc, title: "Private Notebook Volume 18", author: "Someone", filename: "notebook18.pdf", percentage: 0.3, timestamp: 1794944400, status: "reading" });
   answers.progress = JSON.stringify(progress);
   await w.ingest(env, NOW + 17_000_000);
-  env.HIDE_TITLES = "ielts, toefl";
+  env.HIDE_TITLES = "notebook, journal";
   const shown = async () => {
     await w.ingest(env, NOW + 17_100_000);
     return JSON.stringify(await w.summary(env, NOW + 17_100_000));
   };
   let pub = await shown();
-  assert.ok(!/ielts|klara|\.epub|\.pdf/i.test(pub), "a matching title and a file-name-only book stay off the public page");
+  assert.ok(!/notebook|klara|\.epub|\.pdf/i.test(pub), "a matching title and a file-name-only book stay off the public page");
   const remains = "a1b2c3d4e5f60718293a4b5c6d7e8f90";
   assert.equal((await w.setBook(env, { document: remains, hidden: true }, NOW)).shown_as, null);
   assert.ok(!(await w.summary(env, NOW)).reading.length, "a hidden book disappears at once (the stored summary is rebuilt)");
@@ -420,7 +420,7 @@ for (const word of ["word", "vocab", "learn", "english", "ielts"]) assert.ok(!pu
   assert.equal(await w.setBook(env, { document: "no pe!" }, NOW), null);
   assert.equal(await w.setBook(env, { document: "cccccccccccccccccccccccccccccccc" }, NOW), undefined);
   assert.equal(await w.setBook(env, { document: remains, hidden: "yes" }, NOW), null);
-  assert.ok((await w.booksList(env)).books.some((b) => b.document === doc && b.shown_as === null && b.filename === "ielts18.pdf"), "the private list says what is hidden and why it is there");
+  assert.ok((await w.booksList(env)).books.some((b) => b.document === doc && b.shown_as === null && b.filename === "notebook18.pdf"), "the private list says what is hidden and why it is there");
   delete env.HIDE_TITLES;
 }
 

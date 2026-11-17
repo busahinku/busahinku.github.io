@@ -17,15 +17,12 @@ crons = ["*/30 * * * *", "0 5 * * *"]
 # CrossPoint Sync, or a self-hosted copy of it.
 SYNC_URL = "https://sync.crosspointreader.com"
 NTFY_URL = "https://ntfy.sh"
-# Books whose title contains any of these (comma separated, any case) are left
-# off the public page. Single books are hidden from the private side instead.
-HIDE_TITLES = "ielts,toefl,cambridge english,english grammar,english vocabulary,vocabulary,word power,phrasal verbs,idioms"
+# HIDE_TITLES is a secret (DEPLOY.md, step 4), not a var.
 
 [[d1_databases]]
 binding = "DB"
 database_name = "busahin-reading"
-# Printed by `wrangler d1 create busahin-reading` (DEPLOY.md, step 1).
-database_id = "REPLACE-WITH-THE-ID-FROM-D1-CREATE"
+database_id = "f0ed98f7-1129-4288-bf17-f8c7e08a5bed"
 
 # Sentence translations, capped per day in index.js.
 [ai]

@@ -476,7 +476,8 @@ const sig = (x) => (x > 0 ? (x >= 10 ? Math.round(x * 10) / 10 : Number(x.toPrec
 /**
  * The title a book may show in public, or null to leave it off the page: hidden
  * from the private side, no title of its own (a file name is never published),
- * or a title matching one of HIDE_TITLES. The owner can set a title instead.
+ * or a title matching one of HIDE_TITLES (a secret: comma-separated words, any
+ * case). The owner can set a title instead.
  */
 function publicTitle(book, env) {
   const title = book.public_title ?? book.title;
