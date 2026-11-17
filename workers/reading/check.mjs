@@ -175,23 +175,24 @@ const klara = s.reading[1];
 assert.equal(klara.pages_per_day, null, "no page count, no pages a day");
 assert.equal(klara.percent_per_day, 1.7, "0.05 over the three days since it was started");
 assert.deepEqual(s.finished, [{ title: "Foundryside", author: "Robert Jackson Bennett", started: "2026-10-20", finished: "2026-10-30", days: 11 }]);
-assert.deepEqual(s.words, { collected: 5, learned: 0 });
+assert.deepEqual(Object.keys(s).sort(), ["days", "finished", "reading", "streak", "time", "today", "updated_at"], "nothing about words in public");
 assert.equal(s.time, null, "CrossPoint uploads no reading time");
 assert.ok(s.updated_at > 0);
 const sJson = JSON.stringify(s);
 for (const secret of ["hum of the house", "boats against", "TR:", "Chapter"]) assert.ok(!sJson.includes(secret), `summary leaks "${secret}"`);
 
 // ---- word of the day: chosen once, kept all day, rotates the next
-const day1 = await w.todayCard(env, NOW);
+assert.deepEqual(await w.todayCard(env, NOW), { day: "2026-11-18", streak: 8 }, "the public card is the day and the streak only");
+const day1 = await w.todayCard(env, NOW, true);
 assert.equal(day1.streak, 8);
-assert.equal(day1.word.term, s.word.term, "summary and today agree");
-assert.deepEqual(await w.todayCard(env, NOW + 3_600_000), day1);
-const day2 = await w.todayCard(env, NOW + 86_400_000);
+assert.deepEqual(day1.words, { collected: 5, learned: 0 });
+assert.deepEqual(await w.todayCard(env, NOW + 3_600_000, true), day1);
+const day2 = await w.todayCard(env, NOW + 86_400_000, true);
 assert.notEqual(day2.word.term, day1.word.term, "a new day shows a word not shown yet");
 // "abandoned" is looked up under its headword.
 sqlite.exec("UPDATE daily SET term = 'abandoned' WHERE day = '2026-11-21'");
 sqlite.exec("INSERT OR IGNORE INTO daily (day, term) VALUES ('2026-11-21', 'abandoned')");
-const abandoned = await w.todayCard(env, Date.parse("2026-11-21T07:00:00Z"));
+const abandoned = await w.todayCard(env, Date.parse("2026-11-21T07:00:00Z"), true);
 assert.deepEqual(abandoned.word, { term: "abandoned", ipa: "əˈbæn.dən", tr: "bırakmak, kovmak", def: "to give up control of, surrender" });
 
 // ---- reviews
@@ -203,7 +204,9 @@ assert.deepEqual({ ...card }, { term: "mellow", box: 2, due: "2026-11-20", revie
 for (let i = 0; i < 3; i++) card = await w.review(env, { term: "mellow", grade: "good" }, NOW);
 assert.equal(card.box, 5);
 assert.equal(card.due, "2026-12-04");
-assert.equal((await w.summary(env, NOW)).words.learned, 1);
+assert.equal((await w.todayCard(env, NOW, true)).words.learned, 1);
+const times = sqlite.prepare("SELECT first_reviewed_at, matured_at FROM cards WHERE term = 'mellow'").get();
+assert.deepEqual({ ...times }, { first_reviewed_at: NOW / 1000, matured_at: NOW / 1000 }, "first review and maturity are recorded");
 card = await w.review(env, { term: "mellow", grade: "again" }, NOW);
 assert.deepEqual([card.box, card.due, card.lapses], [1, "2026-11-19", 1]);
 
@@ -228,7 +231,7 @@ answers.clippings = JSON.stringify(fewer);
 const third = await w.ingest(env, NOW + 3_600_000);
 assert.deepEqual(third.changed, ["clippings"]);
 assert.equal(sqlite.prepare("SELECT deleted FROM clippings WHERE text = 'Running'").get().deleted, 1);
-assert.equal((await w.summary(env, NOW)).words.collected, 4);
+assert.equal((await w.todayCard(env, NOW, true)).words.collected, 4);
 assert.ok(!(await w.cardsCsv(env)).includes('"running"'));
 
 // ---- an error from Sync writes nothing
@@ -265,6 +268,30 @@ assert.equal(await ask(`Bearer ${env.READING_TOKEN}`), true);
 assert.equal(await ask(`Bearer ${env.READING_TOKEN}x`), false);
 assert.equal(await ask(""), false);
 assert.equal(await w.authorized(new Request("https://x/", { headers: { authorization: "Bearer short" } }), { READING_TOKEN: "short" }), false, "a short token is never accepted");
+
+// ---- routing: one token check for every private route; today is public without one
+const open = { limit: async () => ({ success: true }) };
+const call = (method, path, auth, body) =>
+  w.default.fetch(
+    new Request(`https://busahin.com${path}`, { method, headers: { ...(auth ? { authorization: `Bearer ${auth}` } : {}), ...(body ? { "content-type": "application/json" } : {}) }, body }),
+    { ...env, PER_VISITOR: open, SITE_WIDE: open },
+    { waitUntil() {} },
+  );
+const publicToday = await (await call("GET", "/api/reading/today")).json();
+assert.deepEqual(Object.keys(publicToday).sort(), ["day", "streak"]);
+const privateToday = await (await call("GET", "/api/reading/today", env.READING_TOKEN)).json();
+assert.ok(privateToday.word && privateToday.words);
+assert.equal((await call("GET", "/api/reading/today", "wrong")).status, 401, "a wrong token is refused, not served the public card");
+for (const [method, path] of [["GET", "/api/reading/cards.csv"], ["GET", "/api/reading/sentences"], ["POST", "/api/reading/sync"], ["POST", "/api/reading/review"]])
+  assert.equal((await call(method, path)).status, 401, `${method} ${path} needs the token`);
+assert.equal((await call("GET", "/api/reading/cards.csv", env.READING_TOKEN)).headers.get("content-type"), "text/csv; charset=utf-8");
+assert.equal((await call("POST", "/api/reading/review", env.READING_TOKEN, '{"term":"give up","grade":"good"}')).status, 200);
+assert.equal((await call("POST", "/api/reading/review", env.READING_TOKEN, "not json")).status, 400);
+assert.equal((await call("GET", "/api/reading/review", env.READING_TOKEN)).status, 405);
+assert.equal((await call("DELETE", "/api/reading/summary")).status, 405);
+assert.equal((await call("GET", "/api/reading/nope")).status, 404);
+const publicSummary = await (await call("GET", "/api/reading/summary")).text();
+for (const word of ["word", "vocab", "learn", "english", "ielts"]) assert.ok(!publicSummary.toLowerCase().includes(word), `public summary mentions "${word}"`);
 
 // ---- no em dashes in what the Worker says
 assert.ok(!fs.readFileSync(new URL("index.js", here), "utf8").includes("\u2014"));

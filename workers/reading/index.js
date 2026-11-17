@@ -5,9 +5,9 @@
 // plugin events. Workers free plan, D1 and Workers AI: running out of the daily
 // allowance ends in an error, never a charge.
 //
-// Public:  GET  /api/reading/summary   streak, activity, books, word counts
-//          GET  /api/reading/today     word of the day and the streak
-// Private (Authorization: Bearer READING_TOKEN):
+// Public:  GET  /api/reading/summary   streak, activity, books in progress and finished
+//          GET  /api/reading/today     the day and the streak (with the token: word of the day too)
+// Private (Authorization: Bearer READING_TOKEN), the vocabulary side:
 //          GET  /api/reading/cards.csv Anki import of the vocabulary
 //          GET  /api/reading/sentences clipped sentences with translations
 //          POST /api/reading/review    {"term", "grade": "good" | "again"}
@@ -366,12 +366,11 @@ async function summary(env, now) {
   const db = env.DB;
   const today = dayOf(now);
   const since = addDays(today, -370);
-  const [books, days, recent, words, meta] = (
+  const [books, days, recent, meta] = (
     await db.batch([
       db.prepare("SELECT * FROM books"),
       db.prepare("SELECT day, pages, syncs FROM days WHERE day >= ?1 AND (syncs > 0 OR pages > 0) ORDER BY day").bind(since),
       db.prepare("SELECT day, document, from_pct, to_pct FROM book_days WHERE day >= ?1").bind(addDays(today, 1 - PACE_WINDOW)),
-      db.prepare(`SELECT COUNT(*) AS collected, COALESCE(SUM(box >= ${LEARNED}), 0) AS learned FROM cards WHERE ${LIVE_TERM}`),
       db.prepare("SELECT MAX(fetched_at) AS updated, (SELECT body FROM raw WHERE endpoint = 'overview') AS overview FROM raw"),
     ])
   ).map((r) => r.results);
@@ -379,7 +378,6 @@ async function summary(env, now) {
   try {
     overview = JSON.parse(meta[0]?.overview ?? "{}");
   } catch {}
-  const word = await wordOfDay(db, today);
   const day = (s) => (s ? dayOf(s * 1000) : null);
 
   const reading = books
@@ -411,17 +409,26 @@ async function summary(env, now) {
     days: days.map((d) => [d.day, d.pages]),
     reading,
     finished,
-    words: { collected: words[0].collected, learned: words[0].learned },
-    word: word && { term: word.term, ipa: word.ipa, tr: word.tr },
     // Reading time exists only when some device uploads stats; CrossPoint 2.0.0 does not.
     time: overview.seconds > 0 ? { seconds: overview.seconds, week_seconds: overview.week_seconds ?? 0 } : null,
   };
 }
 
-async function todayCard(env, now) {
+/**
+ * The day and the streak, small enough for a widget. With the token it also
+ * carries the word of the day and the card counts: the vocabulary side of this
+ * Worker stays private, and nothing public mentions it.
+ */
+async function todayCard(env, now, mine = false) {
+  const db = env.DB;
   const today = dayOf(now);
-  const [word, days] = await Promise.all([wordOfDay(env.DB, today), readingDays(env.DB)]);
-  return { day: today, streak: streak(days, today).current, word: word && { term: word.term, ipa: word.ipa, tr: word.tr, def: word.def } };
+  const card = { day: today, streak: streak(await readingDays(db), today).current };
+  if (!mine) return card;
+  const [word, counts] = await Promise.all([
+    wordOfDay(db, today),
+    db.prepare(`SELECT COUNT(*) AS collected, COALESCE(SUM(box >= ${LEARNED}), 0) AS learned FROM cards WHERE ${LIVE_TERM}`).first(),
+  ]);
+  return { ...card, word: word && { term: word.term, ipa: word.ipa, tr: word.tr, def: word.def }, words: { collected: counts.collected, learned: counts.learned } };
 }
 
 // ---------------------------------------------------------------- private
@@ -470,8 +477,12 @@ async function review(env, input, now) {
   if (!card) return undefined;
   const box = nextBox(card.box, input.grade);
   return db
-    .prepare("UPDATE cards SET box = ?1, due = ?2, reviews = reviews + 1, lapses = lapses + ?3 WHERE term = ?4 RETURNING term, box, due, reviews, lapses")
-    .bind(box, addDays(dayOf(now), INTERVALS[box - 1]), input.grade === "again" ? 1 : 0, term)
+    .prepare(
+      `UPDATE cards SET box = ?1, due = ?2, reviews = reviews + 1, lapses = lapses + ?3,
+         first_reviewed_at = COALESCE(first_reviewed_at, ?5), matured_at = COALESCE(matured_at, CASE WHEN ?1 >= ${LEARNED} THEN ?5 END)
+       WHERE term = ?4 RETURNING term, box, due, reviews, lapses`,
+    )
+    .bind(box, addDays(dayOf(now), INTERVALS[box - 1]), input.grade === "again" ? 1 : 0, term, Math.floor(now / 1000))
     .first();
 }
 
@@ -528,6 +539,31 @@ const respond = (body, status, headers = {}) =>
 
 const PUBLIC = { "/api/reading/summary": summary, "/api/reading/today": todayCard };
 
+const readJson = async (request) => {
+  if (Number(request.headers.get("content-length") ?? 0) > 2000) return null;
+  try {
+    return await request.json();
+  } catch {
+    return null;
+  }
+};
+
+// Every private route, keyed "METHOD path". They all pass the one token check
+// in fetch() below, so a later private page only adds a line here.
+const PRIVATE = {
+  "GET /api/reading/today": (env, request, now) => todayCard(env, now, true),
+  "GET /api/reading/cards.csv": async (env) =>
+    respond(await cardsCsv(env), 200, { "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="reading-cards.csv"' }),
+  "GET /api/reading/sentences": (env) => sentences(env),
+  "POST /api/reading/sync": (env, request, now) => ingest(env, now),
+  "POST /api/reading/review": async (env, request, now) => {
+    const card = await review(env, await readJson(request), now);
+    if (card === null) return respond({ error: "bad" }, 400);
+    if (card === undefined) return respond({ error: "unknown term" }, 404);
+    return card;
+  },
+};
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -543,6 +579,14 @@ export default {
       const [mine, all] = await Promise.all([env.PER_VISITOR.limit({ key: ip }), env.SITE_WIDE.limit({ key: "site" })]);
       if (!mine.success || !all.success) return respond({ error: "rate" }, 429, cors);
 
+      const route = PRIVATE[`${request.method} ${path}`];
+      // A private route that is also public (today) is private only with a token.
+      if (route && (!PUBLIC[path] || request.headers.has("authorization"))) {
+        if (!(await authorized(request, env))) return respond({ error: "auth" }, 401);
+        const out = await route(env, request, Date.now());
+        return out instanceof Response ? out : respond(out, 200);
+      }
+
       if (PUBLIC[path]) {
         if (request.method !== "GET") return new Response(null, { status: 405 });
         // Five minutes at the edge: the data changes at most every thirty.
@@ -554,27 +598,7 @@ export default {
         if (cache) ctx.waitUntil(cache.put(key, res.clone()));
         return new Response(res.body, { headers: { ...Object.fromEntries(res.headers), ...cors } });
       }
-
-      const routes = ["/api/reading/cards.csv", "/api/reading/sentences", "/api/reading/review", "/api/reading/sync"];
-      if (!routes.includes(path)) return new Response(null, { status: 404 });
-      if (!(await authorized(request, env))) return respond({ error: "auth" }, 401);
-      const now = Date.now();
-      if (request.method === "GET" && path === "/api/reading/cards.csv")
-        return respond(await cardsCsv(env), 200, { "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="reading-cards.csv"' });
-      if (request.method === "GET" && path === "/api/reading/sentences") return respond(await sentences(env), 200);
-      if (request.method !== "POST") return new Response(null, { status: 405 });
-      if (path === "/api/reading/sync") return respond(await ingest(env, now), 200);
-      if (Number(request.headers.get("content-length") ?? 0) > 2000) return respond({ error: "length" }, 413);
-      let input;
-      try {
-        input = await request.json();
-      } catch {
-        return respond({ error: "bad" }, 400);
-      }
-      const card = await review(env, input, now);
-      if (card === null) return respond({ error: "bad" }, 400);
-      if (card === undefined) return respond({ error: "unknown term" }, 404);
-      return respond(card, 200);
+      return new Response(null, { status: Object.keys(PRIVATE).some((k) => k.endsWith(` ${path}`)) ? 405 : 404 });
     } catch (error) {
       // Most likely a free daily allowance is spent, or CrossPoint Sync is down.
       console.error(error);

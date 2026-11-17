@@ -63,7 +63,13 @@ CREATE TABLE IF NOT EXISTS clippings (
 CREATE INDEX IF NOT EXISTS clippings_by_kind ON clippings (kind, deleted);
 
 -- Leitner boxes 1 to 5 for each vocabulary term (intervals in index.js).
--- `shown` is the last day the term was the word of the day.
+-- `shown` is the last day the term was the word of the day. The review times
+-- are kept from the start because they cannot be rebuilt later.
+-- Planned additions are all additive (ALTER TABLE ADD COLUMN or a new table,
+-- never a rebuild): `source` ('clipping' or 'generated') and `sentence_id` on
+-- cards, a frequency `rank`, a `card_lists (term, list)` table for word lists,
+-- a `sentence_terms (clip_id, term)` table for words found in a sentence, and a
+-- `prestudy (document, term, chapter, rank)` table imported from files.
 CREATE TABLE IF NOT EXISTS cards (
   term TEXT PRIMARY KEY,
   box INTEGER NOT NULL DEFAULT 1,
@@ -71,7 +77,9 @@ CREATE TABLE IF NOT EXISTS cards (
   reviews INTEGER NOT NULL DEFAULT 0,
   lapses INTEGER NOT NULL DEFAULT 0,
   shown TEXT,
-  added_at INTEGER NOT NULL
+  added_at INTEGER NOT NULL,
+  first_reviewed_at INTEGER,
+  matured_at INTEGER
 );
 
 -- Per Istanbul day: the word of the day, how many sentences were translated

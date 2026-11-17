@@ -43,7 +43,7 @@ The first command downloads WikDict's English to Turkish StarDict (CC BY-SA 4.0)
 |---|---|
 | `SYNC_USER` | The CrossPoint Sync username the reader signs in with. |
 | `SYNC_KEY` | The lowercase MD5 hex of that account's password: what the reader itself sends as `x-auth-key`. Not the password. |
-| `READING_TOKEN` | A random string of at least 32 characters. It opens the private routes (`cards.csv`, `sentences`, `review`, `sync`). Keep it in your password manager. |
+| `READING_TOKEN` | A random string of at least 32 characters. It opens the private routes (`today` with the word of the day, `cards.csv`, `sentences`, `review`, `sync`). Keep it in your password manager. |
 | `NTFY_TOPIC` | The ntfy topic the morning notification goes to. Anyone who knows the name can read it, so make it unguessable. |
 
 Each command reads the value from the terminal, so it never lands in shell history:
@@ -90,6 +90,12 @@ curl -s https://busahin.com/api/reading/summary
 
 ```bash
 curl -s https://busahin.com/api/reading/today
+```
+
+That one is the day and the streak only. With the token it also carries the word of the day (word, IPA, Turkish, definition) and the card counts, which is what a phone widget would read:
+
+```bash
+curl -s -H "authorization: Bearer $TOKEN" https://busahin.com/api/reading/today
 ```
 
 ```bash
