@@ -190,8 +190,10 @@ function derive({ progress, activity, clippings }) {
 async function get(env, path, auth = true) {
   const headers = { accept: "application/json", "user-agent": "reading-worker" };
   if (auth) Object.assign(headers, { "x-auth-user": env.SYNC_USER, "x-auth-key": env.SYNC_KEY });
-  // redirect: "error", so the credentials never follow a redirect to another host.
-  const res = await fetch(new URL(path, env.SYNC_URL), { headers, redirect: "error", signal: AbortSignal.timeout(20_000) });
+  // A redirect is refused, so the credentials never follow one to another host.
+  // (Workers do not implement redirect: "error"; "manual" hands back the 3xx.)
+  const res = await fetch(new URL(path, env.SYNC_URL), { headers, redirect: "manual", signal: AbortSignal.timeout(20_000) });
+  if (res.status >= 300 && res.status < 400) throw new Error(`${path}: refused a redirect (HTTP ${res.status})`);
   if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
   return res.text();
 }

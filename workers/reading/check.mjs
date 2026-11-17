@@ -354,6 +354,17 @@ for (const word of ["word", "vocab", "learn", "english", "ielts"]) assert.ok(!pu
   assert.equal(counts().b, before.b, "the broken book goes once the full list no longer has it");
 }
 
+// ---- a redirect from Sync is refused, so the credentials never follow it
+{
+  const real = globalThis.fetch;
+  let init;
+  globalThis.fetch = async (input, options = {}) =>
+    new URL(input).pathname === "/api/v1/clippings" ? ((init = options), new Response(null, { status: 302, headers: { location: "https://elsewhere.example/" } })) : real(input, options);
+  await assert.rejects(w.ingest(env, NOW + 15_500_000), /refused a redirect/);
+  assert.equal(init.redirect, "manual", "Workers only accept follow or manual");
+  globalThis.fetch = real;
+}
+
 // ---- R4: a health check that is not JSON never stops a pull
 {
   const saved = answers.healthz;
