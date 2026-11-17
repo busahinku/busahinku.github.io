@@ -88,7 +88,7 @@ Deploy the Worker **before** merging the site change that adds `/reading/`. Unti
 npx wrangler@4.146.0 deploy --config workers/reading/wrangler.toml
 ```
 
-It takes `busahin.com/api/reading*`, which is more specific than the assistant's `busahin.com/api/*`, so it wins for those paths. It adds two cron triggers; Workers Free allows five per account.
+It takes `busahin.com/api/reading*`, which is more specific than the assistant's `busahin.com/api/*`, so it wins for those paths. It adds one cron trigger (every thirty minutes: the pull, and on the hour any notification due); Workers Free allows five per account.
 
 ## 6. Check it
 
@@ -138,15 +138,36 @@ curl -s -X POST -H "authorization: Bearer $TOKEN" -H "content-type: application/
 
 `"title": null` goes back to the book's own title, `"hidden": false` shows it again. The public page changes at once (its stored answer is rebuilt), give or take the five-minute edge cache.
 
-## 8. The private words page
+## 8. The private app
 
-Open https://busahin.com/api/reading/app on the phone, type the token, and add it to the home screen. Each card shows the word, its pronunciation (a human recording from Wikimedia Commons when one exists, otherwise the phone's own voice), the Turkish meaning, a definition, the sentence it was clipped from with its Turkish, and up to three Tatoeba examples. Again and Good review it; words you add by hand can be edited and deleted there. The page is served by the Worker, never by the static site, so nothing about it is public.
+Open https://busahin.com/api/reading/app on the phone, type the token once, and add it to the home screen (Chrome: menu, Add to home screen; it opens standalone). Nothing links to it and it is `noindex`; it is served by the Worker, never by the static site, so no public page, script or search index mentions it. It has six screens, in English or Turkish (the language button is on Admin):
+
+- **Today:** the streak, what is due, whether you have read today, the word of the day, and one button for what to do next.
+- **Review:** one card at a time, Show, then Again or Good with the thumb. Answers are kept on the phone until the Worker has them, so a dropped connection loses nothing; a card answered Again comes back once more as practice.
+- **Words:** every card, searchable and filtered by state, source, book and list (the Academic Word List, frequency bands, a book's word list), with add, edit and delete.
+- **Sentences:** clipped sentences with their translation. Rare words are underlined; tap any word to add it as a card with the sentence it came from.
+- **Progress:** cards by state over twelve weeks, accuracy, words added, frequency bands, Academic Word List coverage, and each book's words.
+- **Admin:** the last pulls and their errors, Pull now, today's translation and recording quotas, the three notifications and their hours, exports (JSON, and CSV for Anki), rotating the token, sign out.
+
+**Access.** The token is checked in constant time against `READING_TOKEN` (or a rotated token's hash, below). The sign-in form sets an `HttpOnly`, `SameSite=Strict`, `Secure` cookie scoped to `/api/reading` for a year; page scripts cannot read it, other sites cannot send it, and a cookie-carrying POST from another origin is refused. Sign-in attempts are limited to five a minute per visitor (`LOGIN`), on top of the 30 a minute every route has. Sign out on Admin. Cloudflare Access would add a second login (an emailed code) for no gain here, since only one person ever signs in; it can still be put in front of `busahin.com/api/reading/app*` from the Zero Trust dashboard (Access, Applications, Self-hosted, that path, a policy allowing your email) without any code change.
+
+**Rotating the token** (Admin, Rotate the token) makes a new one, shows it once, moves this browser's cookie to it, and stores its hash in D1; `READING_TOKEN` and the old cookies stop working everywhere. If the new one is lost, delete the row and the secret works again:
+
+```bash
+npx wrangler@4.146.0 d1 execute busahin-reading --remote --command "DELETE FROM settings WHERE key = 'token_hash'" --config workers/reading/wrangler.toml
+```
+
+**Book word lists.** The companion files on this Mac (`~/Documents/xteink-x4pro/companions/*/* - Words.json`) give each book's words with rank, IPA, Turkish, definition and Academic Word List flags. Upload them (again whenever they change; a book's list is replaced, never doubled):
+
+```bash
+READING_TOKEN=... node scripts/reading-companions.mjs
+```
 
 Recordings are copied once into the `busahin-files` bucket under `reading/audio/` with random names and served by the files Worker at files.busahin.com; at most 100 new ones a day. The Worker identifies itself to Wikimedia as `busahin-reading/1 (https://busahin.com/)`, as Wikimedia's API policy asks.
 
 ## 9. Phone and watch
 
-Install the ntfy app, add a subscription on the default server (ntfy.sh) with the `NTFY_TOPIC` name, and allow its notifications on the watch in the Galaxy Wearable app. The first one arrives at 08:00 Istanbul time.
+Install the ntfy app, add a subscription on the default server (ntfy.sh) with the `NTFY_TOPIC` name, and allow its notifications on the watch in the Galaxy Wearable app. Three pushes, each switched on or off and given its hour (Istanbul time) on Admin: the morning word with the streak (08:00 by default; it also says when nothing has synced from the reader for three days, or when the pull has failed for a day), the evening streak-at-risk (21:00, only when there is a streak and nothing was read that day), and the Sunday digest (10:00).
 
 ## Using it
 

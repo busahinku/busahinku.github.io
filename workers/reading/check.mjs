@@ -355,6 +355,17 @@ for (const word of ["word", "vocab", "learn", "english", "ielts"]) assert.ok(!pu
   assert.equal(counts().b, before.b, "the broken book goes once the full list no longer has it");
 }
 
+// ---- a redirect from Sync is refused, so the credentials never follow it
+{
+  const real = globalThis.fetch;
+  let init;
+  globalThis.fetch = async (input, options = {}) =>
+    new URL(input).pathname === "/api/v1/clippings" ? ((init = options), new Response(null, { status: 302, headers: { location: "https://elsewhere.example/" } })) : real(input, options);
+  await assert.rejects(w.ingest(env, NOW + 15_500_000), /refused a redirect/);
+  assert.equal(init.redirect, "manual", "Workers only accept follow or manual");
+  globalThis.fetch = real;
+}
+
 // ---- R4: a health check that is not JSON never stops a pull
 {
   const saved = answers.healthz;
@@ -630,6 +641,9 @@ assert.deepEqual(Object.keys(publicCard).sort(), ["day", "streak"], "still only 
   assert.equal(hum.words[1].lemma, "settle");
   assert.equal(hum.tr.startsWith("TR:"), true, "with its translation");
   assert.deepEqual(mined.items.find((i) => i.text.includes("boats")).words.map((x) => x.word), ["ceaselessly"], "unranked but in the dictionary counts as rare");
+  sqlite.exec("INSERT OR REPLACE INTO dict (word, ipa, pos, def, tr) VALUES ('boats', NULL, 'noun', 'a vessel', 'tekneler')");
+  sqlite.exec("INSERT OR REPLACE INTO ranks (word, rank) VALUES ('boat', 700), ('boats', 5799)");
+  assert.ok(!(await w.sentencesMined(env)).items.find((i) => i.text.includes("boats")).words.some((x) => x.word === "boats"), "a plural takes its singular's rank");
   const added = await w.addWord(env, { term: "hum", sentence: hum.text }, NOW);
   assert.equal(added.sentence, hum.text, "a mined word keeps the sentence it came from");
   assert.ok(!(await w.sentencesMined(env)).items.find((i) => i.id === hum.id).words.some((x) => x.word === "hum"), "and is no longer proposed");
@@ -749,5 +763,8 @@ assert.deepEqual(Object.keys(publicCard).sort(), ["day", "streak"], "still only 
 
 // ---- no em dashes in what the Worker says
 for (const f of ["index.js", "page.js"]) assert.ok(!fs.readFileSync(new URL(f, here), "utf8").includes("\u2014"), f);
+// ...and no leftover merge conflict anywhere in the Worker.
+for (const f of fs.readdirSync(here).filter((f) => /\.(js|mjs|toml|sql|md)$/.test(f) && !/^(dict|examples)\.sql$/.test(f)))
+  assert.ok(!/^(<{7}|>{7}) /m.test(fs.readFileSync(new URL(f, here), "utf8")), `conflict marker in ${f}`);
 
 console.log("reading checks pass");

@@ -206,8 +206,10 @@ function derive({ progress, activity, clippings }) {
 async function get(env, path, auth = true) {
   const headers = { accept: "application/json", "user-agent": "reading-worker" };
   if (auth) Object.assign(headers, { "x-auth-user": env.SYNC_USER, "x-auth-key": env.SYNC_KEY });
-  // redirect: "error", so the credentials never follow a redirect to another host.
-  const res = await fetch(new URL(path, env.SYNC_URL), { headers, redirect: "error", signal: AbortSignal.timeout(20_000) });
+  // A redirect is refused, so the credentials never follow one to another host.
+  // (Workers do not implement redirect: "error"; "manual" hands back the 3xx.)
+  const res = await fetch(new URL(path, env.SYNC_URL), { headers, redirect: "manual", signal: AbortSignal.timeout(20_000) });
+  if (res.status >= 300 && res.status < 400) throw new Error(`${path}: refused a redirect (HTTP ${res.status})`);
   if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
   return res.text();
 }
@@ -1163,7 +1165,9 @@ async function pull(env, now, trigger) {
 /** Rank and Academic Word List membership for terms: the book lists first, then Tatoeba's frequencies. */
 async function wordFacts(db, terms) {
   const dict = await lookup(db, terms);
-  const keys = [...new Set(terms.flatMap((t) => [t, dict.get(t)?.lemma].filter(Boolean)))];
+  // Every form a word might be ranked or listed under: itself, its dictionary entry, its plain stems.
+  const forms = new Map(terms.map((t) => [t, [...new Set([t, dict.get(t)?.lemma, ...candidates(t)].filter(Boolean))]]));
+  const keys = [...new Set([...forms.values()].flat())];
   if (!keys.length) return { dict, facts: new Map() };
   const [pre, ranks] = await db.batch([
     db
@@ -1181,8 +1185,11 @@ async function wordFacts(db, terms) {
   const facts = new Map(
     terms.map((t) => {
       const lemma = dict.get(t)?.lemma;
-      const p = byKey.get(t) ?? (lemma && byKey.get(lemma));
-      return [t, { rank: p?.rank ?? rank.get(t) ?? (lemma && rank.get(lemma)) ?? null, awl: p?.awl ? p.awl_headword || lemma || t : null, pre: p ?? null }];
+      const p = forms.get(t).map((f) => byKey.get(f)).find(Boolean);
+      // A word is as common as its commonest form: "boats" ranks with "boat".
+      const found = forms.get(t).map((f) => rank.get(f)).filter(Boolean);
+      const r = found.length ? Math.min(...found) : null;
+      return [t, { rank: p?.rank ?? r ?? null, awl: p?.awl ? p.awl_headword || lemma || t : null, pre: p ?? null }];
     }),
   );
   return { dict, facts };
@@ -1439,7 +1446,7 @@ function html(body, status, nonce, extra = {}) {
       "x-robots-tag": "noindex, nofollow",
       "referrer-policy": "same-origin",
       "x-frame-options": "DENY",
-      "content-security-policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; font-src 'self'; connect-src 'self'; media-src https://files.busahin.com; img-src 'self' data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'`,
+      "content-security-policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; font-src 'self'; connect-src 'self'; media-src https://files.busahin.com; img-src 'self' data:; manifest-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'`,
       ...extra,
     },
   });

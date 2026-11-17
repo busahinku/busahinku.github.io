@@ -1,5 +1,7 @@
 // Builds workers/reading/examples.sql: a few short English example sentences
-// with their Turkish translation for each dictionary word, from Tatoeba
+// with their Turkish translation for each dictionary word, and the frequency
+// rank of the 15,000 commonest English words (counted over every English
+// sentence), both from Tatoeba
 // (https://tatoeba.org, CC BY 2.0 FR; the private words page credits it and
 // links each sentence). Run scripts/reading-dict.mjs first: only words in the
 // dictionary get examples. Neither the downloads nor the SQL are committed.
@@ -23,6 +25,7 @@ const PER_WORD = 3;
 // D1's free plan writes 100,000 rows a day; the dictionary takes about half of a
 // day on its own, so the examples stay under this on a day of their own.
 const MAX_ROWS = 40_000;
+const RANKED = 15_000; // plus these frequency ranks: 55,000 rows on the day they load
 
 async function source(arg) {
   if (arg) return arg;
@@ -69,9 +72,12 @@ const wantTr = new Set([...pairs.values()].flat());
 for await (const [id, , text] of lines(file(FILES[2]))) if (wantTr.has(id) && text && text.length <= 120) turkish.set(id, text.trim());
 
 // Candidates per word: the word itself, as written, in a clean sentence that has a Turkish translation.
+// Every English sentence also counts towards each word's frequency.
 const byWord = new Map();
+const frequency = new Map();
 let usable = 0;
 for await (const [id, , text] of lines(file(FILES[1]))) {
+  if (text) for (const tok of new Set(tokens(text))) frequency.set(tok, (frequency.get(tok) ?? 0) + 1);
   const trIds = pairs.get(id);
   if (!trIds || !text || !clean(text)) continue;
   const tr = trIds.map((t) => turkish.get(t)).filter(Boolean).sort((a, b) => a.length - b.length)[0];
@@ -113,7 +119,11 @@ for (let i = 0; i < flat.length; i += 500)
   out.push(
     "INSERT OR REPLACE INTO examples (word, id, en, tr) VALUES\n" + flat.slice(i, i + 500).map(([w, e]) => `(${q(w)}, ${e.id}, ${q(e.en)}, ${q(e.tr)})`).join(",\n") + ";",
   );
+const ranked = [...frequency].sort((a, b) => b[1] - a[1]).slice(0, RANKED);
+out.push("DELETE FROM ranks;");
+for (let i = 0; i < ranked.length; i += 1000)
+  out.push("INSERT OR REPLACE INTO ranks (word, rank) VALUES\n" + ranked.slice(i, i + 1000).map(([w], j) => `(${q(w)}, ${i + j + 1})`).join(",\n") + ";");
 fs.writeFileSync(OUT, out.join("\n") + "\n");
 console.log(
-  `${usable} usable sentence pairs; ${picked.length} words get ${flat.length} examples (${dropped} most frequent words dropped for the cap), ${(fs.statSync(OUT).size / 1e6).toFixed(1)} MB -> workers/reading/examples.sql`,
+  `${usable} usable sentence pairs; ${picked.length} words get ${flat.length} examples (${dropped} most frequent words dropped for the cap); ${ranked.length} frequency ranks; ${(fs.statSync(OUT).size / 1e6).toFixed(1)} MB -> workers/reading/examples.sql`,
 );
