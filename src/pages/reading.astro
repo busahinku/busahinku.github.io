@@ -1,0 +1,15 @@
+---
+import Layout from "../layouts/Layout.astro";
+import ReadingPage from "../components/ReadingPage.astro";
+import { type Lang } from "../i18n/translations";
+
+const lang: Lang = "en";
+---
+
+<Layout
+  title="Reading"
+  description="The days I read, the books I have open, and the ones I have finished."
+  lang={lang}
+>
+  <ReadingPage lang={lang} />
+</Layout>

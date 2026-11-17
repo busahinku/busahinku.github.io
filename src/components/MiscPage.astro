@@ -36,6 +36,7 @@ const copy = {
     ? "Düşünme ya da çalışma şeklimi değiştiren kitaplar."
     : "Books that changed how I think or work.",
   allBooks: tr ? "Tüm kitaplar" : "All books",
+  reading: tr ? "Şu an okuduklarım" : "What I'm reading now",
   photos: tr ? "Fotoğraflar" : "Photographs",
   photosDesc: tr
     ? "Yürüyüşlerde ve uzun yollarda çektiklerim."
@@ -221,6 +222,8 @@ const playlists = [
       }
     </ul>
     <a class="more-link" href={`${basePath}/misc/books/`}>{copy.allBooks}</a>
+    <span class="index-sep" aria-hidden="true">·</span>
+    <a class="more-link" href={`${basePath}/reading/`}>{copy.reading}</a>
   </section>
 
 
@@ -444,6 +447,10 @@ const playlists = [
     transition:
       color 0.2s ease,
       text-decoration-color 0.2s ease;
+  }
+
+  .more-link + .index-sep {
+    margin: 0 0.5rem;
   }
 
   .more-link:hover {
