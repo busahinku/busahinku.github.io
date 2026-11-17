@@ -1,62 +1,48 @@
 ---
+import { Flag, RotateCw } from "@lucide/astro";
 import type { Lang } from "../i18n/translations";
 
 interface Props {
   lang: Lang;
 }
 
-// The numbers come live from workers/reading (/api/reading/summary), which pulls
-// them from the e-reader's sync service. The page itself ships only the words:
-// every block that needs data stays hidden until the data is there, so a failed
-// request or no JavaScript leaves an honest page, never an empty chart.
+// Live numbers from workers/reading (/api/reading/summary). The page ships
+// only its headings: every block that needs data stays hidden until the data
+// is there, so a failed request or no JavaScript never shows an empty chart.
 const { lang } = Astro.props;
 const tr = lang === "tr";
 const copy = tr
-  ? {
-      title: "Okuma",
-      intro:
-        "İngilizce kitapları bir e-mürekkep okuyucuda okuyorum; biraz hikâyeler için, biraz da İngilizcemi ilerletmek için. Bu sayfa okuyucunun eşitlediklerini gösteriyor: okuduğum günleri, yarıda kalan kitapları ve durup anlamına baktığım kelimeleri.",
-      noscript: "Bu sayfadaki sayılar JavaScript ile yükleniyor.",
-      year: "Yıl",
-      yearNote: "Her kare bir gün, en eskisi solda. Dolu kare okuduğum bir gün; ne kadar koyuysa o gün o kadar çok sayfa.",
-      now: "Şu an okuduklarım",
-      finished: "Bitirdiklerim",
-      words: "Kelimeler",
-      wordsNote: "Öğrendim saydıklarım, art arda dört tekrarda doğru bildiklerim.",
-      credit: "Türkçe anlamlar ve telaffuz:",
-      how: "Bir gün, okuyucu o gün kitapta yeni bir konum eşitlediğinde sayılıyor. Kullandığım okuyucu kitabın neresinde olduğumu bildiriyor, ne kadar süre okuduğumu değil; bu yüzden bu sayfa dakikaları değil sayfaları sayıyor.",
-    }
-  : {
-      title: "Reading",
-      intro:
-        "I read English books on an e-ink reader, partly for the stories and partly to keep pushing my English. This page shows what the reader syncs: the days I read, the books I am in the middle of, and the words I stopped to look up.",
-      noscript: "The numbers on this page load with JavaScript.",
-      year: "The year",
-      yearNote: "One square per day, oldest on the left. A filled square is a day I read; the darker it is, the more pages.",
-      now: "Reading now",
-      finished: "Finished",
-      words: "Words",
-      wordsNote: "Learned means I got it right four reviews in a row.",
-      credit: "Turkish meanings and pronunciation from",
-      how: "A day counts when the reader syncs a new position in a book that day. The reader I use reports where I am in a book, not how long I sat with it, so this page counts pages rather than minutes.",
-    };
+  ? { title: "Okuma", year: "Yıl", now: "Şu an okuduklarım", finished: "Bitirdiklerim", less: "Az", more: "Çok", retry: "Yeniden dene", noscript: "Sayılar JavaScript ile yükleniyor." }
+  : { title: "Reading", year: "The year", now: "Reading now", finished: "Finished", less: "Less", more: "More", retry: "Try again", noscript: "The numbers load with JavaScript." };
 ---
 
 <div class="reading-page" data-reading={lang} data-pagefind-body>
   <header class="page-head">
     <h1>{copy.title}</h1>
-    <p class="page-intro">{copy.intro}</p>
-    <p class="status" data-status data-pagefind-ignore hidden></p>
+    <p class="status" data-status data-pagefind-ignore aria-live="polite" hidden>
+      <span data-status-text></span>
+      <button class="retry" type="button" data-retry hidden><RotateCw size={14} aria-hidden="true" />{copy.retry}</button>
+    </p>
     <noscript><p class="status">{copy.noscript}</p></noscript>
   </header>
 
+  <dl class="figures" data-block hidden></dl>
+
   <section class="reading-section" data-block="year" hidden>
     <div class="section-head"><h2>{copy.year}</h2></div>
-    <ul class="leader-list" data-list="streak"></ul>
     <div class="year-scroll" data-scroll>
-      <div class="year-grid" data-grid role="img"></div>
+      <div class="year" data-year>
+        <div class="months" data-months aria-hidden="true"></div>
+        <div class="year-grid" data-grid role="img"></div>
+      </div>
     </div>
-    <p class="section-note">{copy.yearNote}</p>
+    <div class="legend" aria-hidden="true">
+      <span>{copy.less}</span>
+      <span class="day" data-level="0"></span><span class="day" data-level="1"></span><span class="day" data-level="2"></span><span
+        class="day"
+        data-level="3"></span><span class="day" data-level="4"></span>
+      <span>{copy.more}</span>
+    </div>
   </section>
 
   <section class="reading-section" data-block="now" hidden>
@@ -69,24 +55,14 @@ const copy = tr
     <ul class="leader-list" data-list="finished"></ul>
   </section>
 
-  <section class="reading-section" data-block="words" hidden>
-    <div class="section-head"><h2>{copy.words}</h2></div>
-    <ul class="leader-list" data-list="words"></ul>
-    <p class="section-note">
-      {copy.wordsNote}
-      {copy.credit} <a href="https://www.wikdict.com/" target="_blank" rel="noreferrer">WikDict</a>, <a
-        href="https://creativecommons.org/licenses/by-sa/4.0/"
-        target="_blank"
-        rel="noreferrer">CC BY-SA 4.0</a
-      >.
-    </p>
-  </section>
-
-  <p class="how">{copy.how}</p>
+  <template data-icon="flag"><Flag size={13} aria-hidden="true" /></template>
 </div>
 
 <script>
+  import { canAnimate } from "../lib/motion";
+
   const ENDPOINT = import.meta.env.DEV ? "https://busahin.com/api/reading/summary" : "/api/reading/summary";
+  const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)"; // the site's one motion curve (ArchiveList, BaseHead)
 
   type Book = { title: string; author: string | null; percent: number; percent_per_day: number; pages_per_day: number | null; forecast: string | null };
   type Done = { title: string; author: string | null; finished: string | null; days: number | null };
@@ -97,62 +73,56 @@ const copy = tr
     days: [string, number][];
     reading: Book[];
     finished: Done[];
-    words: { collected: number; learned: number };
-    word: { term: string; ipa: string | null; tr: string | null } | null;
     time: { seconds: number; week_seconds: number } | null;
   };
 
   const text = {
     en: {
-      loading: "Fetching the latest from the reader.",
-      failed: "The reading numbers are not reachable right now. Try again in a bit.",
-      synced: (when: string) => `Last synced ${when}.`,
-      never: "The reader has not synced anything yet.",
+      locale: "en-GB",
+      loading: "Loading…",
+      failed: "Couldn't load the numbers.",
+      synced: (when: string) => `Synced ${when}`,
+      never: "Nothing synced yet",
+      day: (n: number) => (n === 1 ? "day" : "days"),
       current: "Current streak",
       longest: "Longest streak",
-      days: (n: number) => (n === 1 ? "1 day" : `${n} days`),
-      readingDays: "Days read, past year",
-      time: "Time read",
-      hours: (n: string) => `${n} hours`,
-      grid: (n: number) => `A year of reading: ${n} days read.`,
-      cell: (day: string, pages: number | undefined) => (pages === undefined ? day : `${day}: ${pages === 1 ? "1 page" : `${pages} pages`}`),
-      pace: (pages: string | null, pct: string, by: string | null) =>
-        [pages ? `${pages} pages a day` : `${pct}% a day`, by && `likely done by ${by}`].filter(Boolean).join(", "),
-      stalled: "No progress in the last two weeks",
-      in: (n: number) => (n === 1 ? "in a day" : `in ${n} days`),
-      nothingNow: "Nothing open at the moment.",
-      nothingDone: "Nothing finished yet.",
-      collected: "Words and phrases saved",
-      learned: "Learned",
-      today: "Today's word",
-      locale: "en-GB",
+      daysRead: "Days read, last 12 months",
+      pages: "Pages, last 12 months",
+      hours: "Hours read",
+      grid: (n: number, p: number) => `Reading days over the last 12 months: ${n} days, ${p} pages.`,
+      cell: (day: string, pages: number | undefined) => (pages === undefined ? day : `${day}, ${pages === 1 ? "1 page" : `${pages} pages`}`),
+      perDay: (v: string, pages: boolean) => (pages ? `${v} pages a day` : `${v}% a day`),
+      by: "Expected to finish",
+      stalled: "No progress in two weeks",
+      took: (n: number, s: string) => (n === 1 ? "1 day" : `${s} days`),
+      nothingNow: "Nothing open right now.",
+      nothingDone: "None yet.",
     },
     tr: {
-      loading: "Okuyucudan son veriler alınıyor.",
-      failed: "Okuma verilerine şu an ulaşılamıyor. Biraz sonra yeniden dene.",
-      synced: (when: string) => `Son eşitleme: ${when}.`,
-      never: "Okuyucu henüz bir şey eşitlemedi.",
+      locale: "tr-TR",
+      loading: "Yükleniyor…",
+      failed: "Sayılar yüklenemedi.",
+      synced: (when: string) => `Eşitleme: ${when}`,
+      never: "Henüz eşitleme yok",
+      day: () => "gün",
       current: "Şu anki seri",
       longest: "En uzun seri",
-      days: (n: number) => `${n} gün`,
-      readingDays: "Son bir yılda okuduğum gün",
-      time: "Okuma süresi",
-      hours: (n: string) => `${n} saat`,
-      grid: (n: number) => `Bir yıllık okuma: ${n} gün okudum.`,
-      cell: (day: string, pages: number | undefined) => (pages === undefined ? day : `${day}: ${pages} sayfa`),
-      pace: (pages: string | null, pct: string, by: string | null) =>
-        [pages ? `günde ${pages} sayfa` : `günde %${pct}`, by && `bitiş tahmini ${by}`].filter(Boolean).join(", "),
-      stalled: "Son iki haftada ilerleme yok",
-      in: (n: number) => `${n} günde`,
+      daysRead: "Son 12 ayda okuduğum gün",
+      pages: "Son 12 ayda okuduğum sayfa",
+      hours: "Okuma saati",
+      grid: (n: number, p: number) => `Son 12 ayın okuma günleri: ${n} gün, ${p} sayfa.`,
+      cell: (day: string, pages: number | undefined) => (pages === undefined ? day : `${day}, ${pages} sayfa`),
+      perDay: (v: string, pages: boolean) => (pages ? `günde ${v} sayfa` : `günde %${v}`),
+      by: "Tahmini bitiş",
+      stalled: "İki haftadır ilerleme yok",
+      took: (n: number, s: string) => `${s} gün`,
       nothingNow: "Şu an açık bir kitap yok.",
-      nothingDone: "Henüz bitirdiğim bir kitap yok.",
-      collected: "Kaydettiğim kelime ve ifadeler",
-      learned: "Öğrendiklerim",
-      today: "Günün kelimesi",
-      locale: "tr-TR",
+      nothingDone: "Henüz yok.",
     },
   };
+  type Text = (typeof text)["en"];
 
+  const DAY_MS = 86_400_000;
   const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, content?: string) => {
     const node = document.createElement(tag);
     if (cls) node.className = cls;
@@ -160,55 +130,78 @@ const copy = tr
     return node;
   };
 
-  // A leader row: title (and a quieter second part), dotted leader, value; an optional line under it.
-  function row(title: string, sub: string | null, value: string, note?: string, percent?: number) {
+  // A leader row: title (and author), dotted leader, value; optional bar and a quiet line under it.
+  function row(title: string, sub: string | null, value: string, under?: Node[], percent?: number) {
     const li = el("li");
     const line = el("div", "leader-row");
     const t = el("span", "row-title", title);
     if (sub) t.append(el("span", "row-sub", `, ${sub}`));
-    line.append(t, el("span", "row-leader"), el("span", "row-meta", value));
-    line.children[1].setAttribute("aria-hidden", "true");
+    const leader = el("span", "row-leader");
+    leader.setAttribute("aria-hidden", "true");
+    line.append(t, leader, el("span", "row-meta", value));
     li.append(line);
     if (percent !== undefined) {
       const bar = el("span", "bar");
       bar.setAttribute("aria-hidden", "true");
       const fill = el("span");
-      fill.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+      fill.style.transform = `scaleX(${Math.min(100, Math.max(0, percent)) / 100})`;
       bar.append(fill);
       li.append(bar);
     }
-    if (note) li.append(el("p", "row-note", note));
+    if (under?.length) {
+      const note = el("p", "row-note");
+      note.append(...under);
+      li.append(note);
+    }
     return li;
   }
 
-  function render(root: HTMLElement, data: Summary, t: (typeof text)["en"]) {
+  function figure(value: string, unit: string | null, label: string) {
+    const wrap = el("div", "figure");
+    const dd = el("dd", "figure-value", value);
+    if (unit) dd.append(el("span", "figure-unit", ` ${unit}`));
+    wrap.append(el("dt", "figure-label", label), dd);
+    return wrap;
+  }
+
+  function render(root: HTMLElement, data: Summary, t: Text) {
     const num = new Intl.NumberFormat(t.locale, { maximumFractionDigits: 1 });
     const thisYear = data.today.slice(0, 4);
-    const date = (day: string) =>
-      new Intl.DateTimeFormat(t.locale, { day: "numeric", month: "short", year: day.slice(0, 4) === thisYear ? undefined : "numeric", timeZone: "UTC" }).format(
-        new Date(`${day}T12:00:00Z`),
-      );
+    const fmt = (day: string, opts: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(t.locale, { ...opts, timeZone: "UTC" }).format(new Date(`${day}T12:00:00Z`));
+    const date = (day: string) => fmt(day, { day: "numeric", month: "short", year: day.slice(0, 4) === thisYear ? undefined : "numeric" });
+    const block = (name: string) => root.querySelector<HTMLElement>(`[data-block="${name}"]`)!;
     const list = (name: string) => root.querySelector<HTMLElement>(`[data-list="${name}"]`)!;
-    const show = (name: string) => (root.querySelector<HTMLElement>(`[data-block="${name}"]`)!.hidden = false);
 
-    // Streak and the year.
-    const pages = new Map(data.days);
-    const yearAgo = new Date(Date.parse(`${data.today}T00:00:00Z`) - 364 * 86_400_000).toISOString().slice(0, 10);
-    const daysRead = data.days.filter(([d]) => d >= yearAgo).length;
-    const streak = list("streak");
-    streak.append(row(t.current, null, t.days(data.streak.current)), row(t.longest, null, t.days(data.streak.longest)), row(t.readingDays, null, String(daysRead)));
-    if (data.time) streak.append(row(t.time, null, t.hours(num.format(data.time.seconds / 3600))));
-
-    // 53 weeks, Monday to Sunday down each column, ending with this week.
-    const grid = root.querySelector<HTMLElement>("[data-grid]")!;
-    grid.setAttribute("aria-label", t.grid(daysRead));
+    // The figures.
     const today = Date.parse(`${data.today}T00:00:00Z`);
+    const yearAgo = new Date(today - 364 * DAY_MS).toISOString().slice(0, 10);
+    const lastYear = data.days.filter(([d]) => d >= yearAgo);
+    const pagesYear = lastYear.reduce((s, [, p]) => s + p, 0);
+    const figures = root.querySelector<HTMLElement>("dl.figures")!;
+    figures.replaceChildren(
+      figure(num.format(data.streak.current), t.day(data.streak.current), t.current),
+      figure(num.format(data.streak.longest), t.day(data.streak.longest), t.longest),
+      figure(num.format(lastYear.length), null, t.daysRead),
+      data.time ? figure(num.format(Math.round(data.time.seconds / 3600)), null, t.hours) : figure(num.format(pagesYear), null, t.pages),
+    );
+
+    // The year: 53 weeks, Monday to Sunday down each column, ending with this week.
+    const pages = new Map(data.days);
+    const grid = root.querySelector<HTMLElement>("[data-grid]")!;
+    const months = root.querySelector<HTMLElement>("[data-months]")!;
+    grid.setAttribute("aria-label", t.grid(lastYear.length, pagesYear));
     const weekday = (new Date(today).getUTCDay() + 6) % 7;
-    const start = today - (52 * 7 + weekday) * 86_400_000;
+    const start = today - (52 * 7 + weekday) * DAY_MS;
     const cells = document.createDocumentFragment();
+    const labels = document.createDocumentFragment();
     for (let i = 0; i < 53 * 7; i++) {
-      const at = start + i * 86_400_000;
+      const at = start + i * DAY_MS;
       const day = new Date(at).toISOString().slice(0, 10);
+      if (day.endsWith("-01") && i / 7 < 51) {
+        const label = el("span", undefined, fmt(day, { month: "short" }));
+        label.style.gridColumn = String(Math.floor(i / 7) + 1);
+        labels.append(label);
+      }
       const cell = el("span", "day");
       if (at > today) cell.classList.add("future");
       else {
@@ -218,61 +211,83 @@ const copy = tr
       }
       cells.append(cell);
     }
-    grid.append(cells);
-    show("year");
+    grid.replaceChildren(cells);
+    months.replaceChildren(labels);
+
+    // Books.
+    const flag = root.querySelector<HTMLTemplateElement>('template[data-icon="flag"]')!;
+    const now = list("now");
+    now.replaceChildren(
+      ...data.reading.map((b) => {
+        const under: Node[] = [];
+        if (b.percent_per_day > 0) {
+          under.push(document.createTextNode(t.perDay(num.format(b.pages_per_day ?? b.percent_per_day), b.pages_per_day != null)));
+          if (b.forecast) {
+            const by = el("span", "forecast");
+            by.title = t.by;
+            by.append(flag.content.cloneNode(true), el("span", "sr-only", `${t.by}: `), document.createTextNode(date(b.forecast)));
+            under.push(by);
+          }
+        } else under.push(document.createTextNode(t.stalled));
+        return row(b.title, b.author, `${num.format(b.percent)}%`, under, b.percent);
+      }),
+    );
+    if (!data.reading.length) now.append(el("li", "empty", t.nothingNow));
+
+    const done = list("finished");
+    done.replaceChildren(
+      ...data.finished.map((b) => row(b.title, b.author, b.finished ? date(b.finished) : "", b.days ? [document.createTextNode(t.took(b.days, num.format(b.days)))] : undefined)),
+    );
+    if (!data.finished.length) done.append(el("li", "empty", t.nothingDone));
+
+    const shown = [figures, ...["year", "now", "finished"].map(block)];
+    for (const b of shown) b.hidden = false;
     const scroll = root.querySelector<HTMLElement>("[data-scroll]")!;
     scroll.scrollLeft = scroll.scrollWidth; // the newest weeks first on a narrow screen
 
-    // Books.
-    const now = list("now");
-    for (const b of data.reading)
-      now.append(
-        row(
-          b.title,
-          b.author,
-          `${num.format(b.percent)}%`,
-          b.percent_per_day > 0
-            ? t.pace(b.pages_per_day ? num.format(b.pages_per_day) : null, num.format(b.percent_per_day), b.forecast && date(b.forecast))
-            : t.stalled,
-          b.percent,
-        ),
-      );
-    if (!data.reading.length) now.append(el("li", "empty", t.nothingNow));
-    show("now");
-
-    const done = list("finished");
-    for (const b of data.finished) done.append(row(b.title, b.author, b.finished ? date(b.finished) : "", b.days ? t.in(b.days) : undefined));
-    if (!data.finished.length) done.append(el("li", "empty", t.nothingDone));
-    show("finished");
-
-    // Words.
-    const words = list("words");
-    words.append(row(t.collected, null, String(data.words.collected)), row(t.learned, null, String(data.words.learned)));
-    if (data.word) words.append(row(t.today, null, data.word.term, [data.word.ipa && `/${data.word.ipa}/`, data.word.tr].filter(Boolean).join(" · ") || undefined));
-    show("words");
+    // Motion: the blocks settle in where the loading line was, and each bar
+    // grows to its value once, so the eye reads progress rather than a jump.
+    if (!canAnimate()) return;
+    shown.forEach((b, i) =>
+      b.animate([{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], { duration: 320, delay: i * 40, easing: EASE, fill: "backwards" }),
+    );
+    for (const fill of root.querySelectorAll<HTMLElement>(".bar > span"))
+      fill.animate([{ transform: "scaleX(0)" }, { transform: fill.style.transform }], { duration: 480, delay: 120, easing: EASE, fill: "backwards" });
   }
 
-  async function initReading() {
+  function initReading() {
     const root = document.querySelector<HTMLElement>("[data-reading]");
     if (!root || root.dataset.ready) return;
     root.dataset.ready = "true";
     const t = text[root.dataset.reading === "tr" ? "tr" : "en"];
     const status = root.querySelector<HTMLElement>("[data-status]")!;
-    status.textContent = t.loading;
-    status.hidden = false;
-    let data: Summary;
-    try {
-      const res = await fetch(ENDPOINT);
-      if (!res.ok) throw new Error(String(res.status));
-      data = await res.json();
-    } catch {
-      status.textContent = t.failed;
-      return;
-    }
-    render(root, data, t);
-    status.textContent = data.updated_at
-      ? t.synced(new Intl.DateTimeFormat(t.locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Istanbul" }).format(data.updated_at * 1000))
-      : t.never;
+    const label = root.querySelector<HTMLElement>("[data-status-text]")!;
+    const retry = root.querySelector<HTMLButtonElement>("[data-retry]")!;
+
+    const load = async () => {
+      label.textContent = t.loading;
+      retry.hidden = true;
+      status.hidden = false;
+      status.setAttribute("aria-busy", "true");
+      let data: Summary;
+      try {
+        const res = await fetch(ENDPOINT);
+        if (!res.ok) throw new Error(String(res.status));
+        data = await res.json();
+      } catch {
+        label.textContent = t.failed;
+        retry.hidden = false;
+        return;
+      } finally {
+        status.removeAttribute("aria-busy");
+      }
+      render(root, data, t);
+      label.textContent = data.updated_at
+        ? t.synced(new Intl.DateTimeFormat(t.locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" }).format(data.updated_at * 1000))
+        : t.never;
+    };
+    retry.addEventListener("click", load);
+    load();
   }
 
   initReading();
@@ -292,30 +307,99 @@ const copy = tr
     font-weight: 600;
     font-size: var(--page-title);
     line-height: 1.1;
-    margin: 0 0 0.75rem;
+    margin: 0 0 0.5rem;
     color: var(--text-primary);
   }
 
-  .page-intro {
-    font-size: 1.0625rem;
-    line-height: 1.7;
+  .status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+    min-height: 1.75rem;
+    font-size: 0.875rem;
     color: var(--text-secondary);
-    margin: 0 0 1rem;
-    max-width: 54ch;
+    margin: 0;
+    font-variant-numeric: tabular-nums;
   }
 
-  .status {
-    font-size: 0.875rem;
-    color: var(--text-muted);
+  .status[hidden],
+  .retry[hidden],
+  [data-block][hidden] {
+    display: none;
+  }
+
+  .retry {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 2rem;
+    padding: 0 0.75rem;
+    font: inherit;
+    color: var(--text-primary);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      border-color 0.2s ease,
+      transform 0.16s ease-out;
+  }
+
+  .retry:active {
+    transform: scale(0.97);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .retry:hover {
+      border-color: var(--accent);
+    }
+  }
+
+  /* The four figures */
+  .figures {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1.5rem 1rem;
+    margin: 2.5rem 0 0;
+    padding: 1.25rem 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .figures :global(.figure) {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  .figures :global(.figure-value) {
     margin: 0;
+    font-family: "Merriweather", Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(1.5rem, 4.5vw, 2rem);
+    line-height: 1.1;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  .figures :global(.figure-unit) {
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+  }
+
+  .figures :global(.figure-label) {
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    color: var(--text-secondary);
   }
 
   .reading-section {
     margin-top: 3.5rem;
-  }
-
-  .reading-section[hidden] {
-    display: none;
   }
 
   .section-head {
@@ -342,32 +426,6 @@ const copy = tr
     vertical-align: 0.35em;
   }
 
-  .section-note,
-  .how {
-    font-size: 0.875rem;
-    line-height: 1.6;
-    color: var(--text-secondary);
-    margin: 0.875rem 0 0;
-  }
-
-  .how {
-    margin-top: 3.5rem;
-    max-width: 54ch;
-    color: var(--text-muted);
-  }
-
-  .section-note a {
-    color: inherit;
-    text-decoration: underline;
-    text-decoration-color: var(--border);
-    text-underline-offset: 3px;
-  }
-
-  .section-note a:hover {
-    color: var(--accent);
-    text-decoration-color: var(--accent);
-  }
-
   /* Leader rows, as on the misc pages */
   .leader-list {
     list-style: none;
@@ -377,7 +435,7 @@ const copy = tr
 
   .leader-list > :global(li) {
     border-bottom: 1px dashed color-mix(in srgb, var(--border) 70%, transparent);
-    padding: 0.75rem 0;
+    padding: 0.875rem 0;
   }
 
   .leader-list > :global(li:last-child) {
@@ -396,6 +454,7 @@ const copy = tr
     color: var(--text-primary);
     min-width: 0;
     overflow-wrap: anywhere;
+    text-wrap: pretty;
   }
 
   .leader-list :global(.row-sub) {
@@ -418,21 +477,35 @@ const copy = tr
   }
 
   .leader-list :global(.row-note) {
-    margin: 0.375rem 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    margin: 0.5rem 0 0;
     font-size: 0.8125rem;
-    color: var(--text-muted);
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .leader-list :global(.forecast) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+  }
+
+  .leader-list :global(.forecast svg) {
+    flex: none;
   }
 
   .leader-list :global(.empty) {
     font-size: 0.9375rem;
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
-  /* Progress under a book: the percentage is in the text too. */
+  /* Progress under a book; the percentage is in the row as text too. */
   .leader-list :global(.bar) {
     display: block;
     height: 3px;
-    margin-top: 0.5rem;
+    margin-top: 0.625rem;
     background: color-mix(in srgb, var(--border) 60%, transparent);
     border-radius: 2px;
     overflow: hidden;
@@ -442,26 +515,54 @@ const copy = tr
     display: block;
     height: 100%;
     background: var(--accent);
+    transform-origin: left;
   }
 
   /* The year */
   .year-scroll {
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     margin-top: 1.25rem;
-    padding-bottom: 0.25rem;
+    padding-bottom: 0.375rem;
+    scrollbar-width: thin;
   }
 
-  .year-grid {
+  .year {
     --cell: 10px;
-    display: grid;
-    grid-auto-flow: column;
-    grid-template-rows: repeat(7, var(--cell));
-    grid-auto-columns: var(--cell);
-    gap: 2px;
+    --gap: 2px;
     width: max-content;
   }
 
-  .year-grid :global(.day) {
+  .months,
+  .year-grid {
+    display: grid;
+    grid-template-columns: repeat(53, var(--cell));
+    column-gap: var(--gap);
+  }
+
+  .months {
+    height: 1.125rem;
+    font-size: 0.6875rem;
+    line-height: 1;
+    color: var(--text-secondary);
+  }
+
+  .months :global(span) {
+    grid-row: 1;
+    white-space: nowrap;
+  }
+
+  .year-grid {
+    grid-auto-flow: column;
+    grid-template-rows: repeat(7, var(--cell));
+    grid-template-columns: none;
+    grid-auto-columns: var(--cell);
+    gap: var(--gap);
+  }
+
+  .reading-page :global(.day) {
+    width: var(--cell, 10px);
+    height: var(--cell, 10px);
     border-radius: 2px;
     border: 1px solid var(--border);
   }
@@ -470,29 +571,53 @@ const copy = tr
     visibility: hidden;
   }
 
-  .year-grid :global(.day[data-level="1"]) {
+  .reading-page :global(.day[data-level="1"]) {
     border-color: transparent;
-    background: color-mix(in srgb, var(--accent) 35%, var(--bg-primary));
+    background: color-mix(in srgb, var(--accent) 30%, var(--bg-primary));
   }
 
-  .year-grid :global(.day[data-level="2"]) {
+  .reading-page :global(.day[data-level="2"]) {
     border-color: transparent;
-    background: color-mix(in srgb, var(--accent) 55%, var(--bg-primary));
+    background: color-mix(in srgb, var(--accent) 52%, var(--bg-primary));
   }
 
-  .year-grid :global(.day[data-level="3"]) {
+  .reading-page :global(.day[data-level="3"]) {
     border-color: transparent;
     background: color-mix(in srgb, var(--accent) 75%, var(--bg-primary));
   }
 
-  .year-grid :global(.day[data-level="4"]) {
+  .reading-page :global(.day[data-level="4"]) {
     border-color: transparent;
     background: var(--accent);
   }
 
+  .legend {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 3px;
+    margin-top: 0.625rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+
+  .legend span:first-child {
+    margin-right: 0.375rem;
+  }
+
+  .legend span:last-child {
+    margin-left: 0.375rem;
+  }
+
   /* E-ink has no shades: a day read is a filled square, a day missed an outline. */
-  :global([data-theme="eink"]) .year-grid :global(.day:not([data-level="0"])) {
+  :global([data-theme="eink"]) .reading-page :global(.day:not([data-level="0"])) {
     background: var(--text-primary);
+  }
+
+  :global([data-theme="eink"]) .legend .day[data-level="1"],
+  :global([data-theme="eink"]) .legend .day[data-level="2"],
+  :global([data-theme="eink"]) .legend .day[data-level="3"] {
+    display: none;
   }
 
   :global([data-theme="eink"]) .leader-list :global(.bar) {
@@ -506,12 +631,16 @@ const copy = tr
   }
 
   @media (min-width: 720px) {
-    .year-grid {
+    .year {
       --cell: 10.5px;
     }
   }
 
   @media (max-width: 640px) {
+    .figures {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .reading-section {
       margin-top: 3rem;
     }
