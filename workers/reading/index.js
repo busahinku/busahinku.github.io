@@ -45,7 +45,10 @@ const MODEL = "@cf/meta/m2m100-1.2b"; // open-source (MIT) translation model, ch
 const AUDIO_PER_DAY = 100;
 const AUDIO_PER_RUN = 5;
 const AUDIO_RETRY = 30 * 86_400;
-const AUDIO_MAX_BYTES = 1_000_000;
+const AUDIO_MAX_BYTES = 200_000; // a spoken word is 10 to 40 KB
+// R2 bills past its free 10 GB; this many recordings at most (under 1 GB at the size cap), then no more copies.
+const AUDIO_MAX_OBJECTS = 5000;
+const AUDIO_ERROR_RETRY = 86_400; // a lookup that failed is tried again after a day, not every pull
 const WIKI_HEADERS = { accept: "application/json", "user-agent": "busahin-reading/1 (https://busahin.com/)" };
 const COOKIE = "reading_session";
 const SESSION_DAYS = 60;
@@ -867,9 +870,11 @@ async function editWord(env, input, now) {
     )
     .bind(term, name, note !== undefined ? 1 : 0, note ?? null, sentence !== undefined ? 1 : 0, sentence ?? null, Math.floor(now / 1000))
     .run();
-  if (name !== term)
-    // ponytail: the old recording's R2 object stays behind (a few KB); sweep reading/audio/ if renames ever pile up.
+  if (name !== term) {
+    const old = await db.prepare("SELECT r2_key FROM audio WHERE term = ?1").bind(term).first("r2_key");
     await db.batch([db.prepare("UPDATE daily SET term = ?2 WHERE term = ?1").bind(term, name), db.prepare("DELETE FROM audio WHERE term = ?1").bind(term)]);
+    if (old && env.FILES) await env.FILES.delete(old).catch(() => {}); // the recording was of the old word
+  }
   await translateCardSentence(env, name, dayOf(now));
   return (await cardsJson(env, now, name)).cards[0];
 }
@@ -968,7 +973,8 @@ function pickRecording(files) {
 /** A human recording of the term from the English Wiktionary page's audio on Wikimedia Commons, or null. */
 async function commonsAudio(term) {
   const get = async (url) => {
-    const res = await fetch(url, { headers: WIKI_HEADERS, signal: AbortSignal.timeout(10_000) });
+    // redirect "manual" (Workers have no "error"): a 3xx is not ok, so nothing is followed off the pinned hosts.
+    const res = await fetch(url, { headers: WIKI_HEADERS, redirect: "manual", signal: AbortSignal.timeout(10_000) });
     if (!res.ok) throw new Error(`${new URL(url).host}: HTTP ${res.status}`);
     return res.json();
   };
@@ -989,7 +995,9 @@ async function commonsAudio(term) {
     file: file.replace(/^File:/, ""),
     author: stripTags(meta.extmetadata?.Artist?.value),
     license: text(meta.extmetadata?.LicenseShortName?.value, 60),
-    license_url: text(meta.extmetadata?.LicenseUrl?.value, 200),
+    license_url: /^https?:\/\/creativecommons\.org\/|^https:\/\//.test(meta.extmetadata?.LicenseUrl?.value ?? "")
+      ? text(meta.extmetadata.LicenseUrl.value.replace(/^http:/, "https:"), 200)
+      : null,
   };
 }
 
@@ -1004,31 +1012,50 @@ async function ensureAudio(env, term, now) {
   if (row && (row.r2_key || seconds - row.checked_at < AUDIO_RETRY)) return row;
   if (!env.FILES) return row;
   const today = dayOf(now);
+  const stored = await db.prepare("SELECT COUNT(*) AS n FROM audio WHERE r2_key IS NOT NULL").first("n");
+  if (stored >= AUDIO_MAX_OBJECTS) return row;
   const room = await db
     .prepare("INSERT INTO daily (day, audio) VALUES (?1, 1) ON CONFLICT (day) DO UPDATE SET audio = audio + 1 WHERE daily.audio < ?2 RETURNING audio")
     .bind(today, AUDIO_PER_DAY)
     .first();
   if (!room) return row;
-  const found = await commonsAudio(term);
+  let found = null;
   let key = null;
-  if (found) {
-    const res = await fetch(found.mp3, { headers: { "user-agent": WIKI_HEADERS["user-agent"] }, signal: AbortSignal.timeout(15_000) });
-    const bytes = res.ok ? await res.arrayBuffer() : null;
-    if (bytes && bytes.byteLength > 0 && bytes.byteLength <= AUDIO_MAX_BYTES) {
+  let failed = false;
+  try {
+    found = await commonsAudio(term);
+    if (found) {
+      const res = await fetch(found.mp3, { headers: { "user-agent": WIKI_HEADERS["user-agent"] }, redirect: "manual", signal: AbortSignal.timeout(15_000) });
+      // Judged before reading: an answer that is not audio, has no size, or is too big is never read.
+      const size = Number(res.headers.get("content-length"));
+      if (!res.ok || !(res.headers.get("content-type") ?? "").startsWith("audio/") || !(size > 0) || size > AUDIO_MAX_BYTES)
+        throw new Error(`recording: HTTP ${res.status}, ${res.headers.get("content-type")}, ${size} bytes`);
+      const bytes = await res.arrayBuffer();
+      if (bytes.byteLength > AUDIO_MAX_BYTES) throw new Error("recording: larger than it said");
       // A random name: the files Worker serves anything in the bucket, and this way no URL names the word.
       key = `reading/audio/${crypto.randomUUID()}.mp3`;
       await env.FILES.put(key, bytes, { httpMetadata: { contentType: "audio/mpeg", cacheControl: "public, max-age=31536000, immutable" } });
     }
+  } catch (error) {
+    console.error(error);
+    failed = true;
+  } finally {
+    // Always a row, so a failing word waits (a day after an error, AUDIO_RETRY with no recording)
+    // instead of spending the daily lookups again on every pull.
+    const kept = key ? found : {};
+    const saved = await db
+      .prepare(
+        `INSERT INTO audio (term, r2_key, file, author, license, license_url, checked_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+         ON CONFLICT (term) DO UPDATE SET r2_key = excluded.r2_key, file = excluded.file, author = excluded.author,
+           license = excluded.license, license_url = excluded.license_url, checked_at = excluded.checked_at
+         WHERE audio.r2_key IS NULL
+         RETURNING term`,
+      )
+      .bind(term, key, kept.file ?? null, kept.author ?? null, kept.license ?? null, kept.license_url ?? null, failed ? seconds - AUDIO_RETRY + AUDIO_ERROR_RETRY : seconds)
+      .first();
+    // A concurrent lookup stored its recording first: ours is an orphan, so it goes.
+    if (key && !saved) await env.FILES.delete(key).catch(() => {});
   }
-  const kept = key ? found : {};
-  await db
-    .prepare(
-      `INSERT INTO audio (term, r2_key, file, author, license, license_url, checked_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-       ON CONFLICT (term) DO UPDATE SET r2_key = excluded.r2_key, file = excluded.file, author = excluded.author,
-         license = excluded.license, license_url = excluded.license_url, checked_at = excluded.checked_at`,
-    )
-    .bind(term, key, kept.file ?? null, kept.author ?? null, kept.license ?? null, kept.license_url ?? null, seconds)
-    .run();
   return db.prepare("SELECT * FROM audio WHERE term = ?1").bind(term).first();
 }
 

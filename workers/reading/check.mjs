@@ -552,10 +552,11 @@ function wiki(url, init) {
       }),
     );
   }
-  return new Response(new Uint8Array([0x49, 0x44, 0x33, 1, 2, 3]), { headers: { "content-type": "audio/mpeg" } });
+  return recordingAnswer();
 }
+let recordingAnswer = () => new Response(new Uint8Array([0x49, 0x44, 0x33, 1, 2, 3]), { headers: { "content-type": "audio/mpeg", "content-length": "6" } });
 const bucket = new Map();
-env.FILES = { put: async (key, bytes, opts) => bucket.set(key, { bytes, opts }) };
+env.FILES = { put: async (key, bytes, opts) => bucket.set(key, { bytes, opts }), delete: async (key) => bucket.delete(key) };
 
 let audio = (await w.audioFor(env, { term: "ubiquitous" }, NOW)).audio;
 assert.match(audio.url, /^https:\/\/files\.busahin\.com\/reading\/audio\/[0-9a-f-]{36}\.mp3$/, "served by the files Worker under a name that does not give the word away");
@@ -574,6 +575,56 @@ assert.equal(wikiCalls.length, 4, "and not again for thirty days");
 await w.audioFor(env, { term: "give up" }, NOW + 86_400_000 * 31);
 assert.equal(wikiCalls.length, 5, "but after them");
 assert.equal(await w.audioFor(env, { term: "not a card" }, NOW), undefined, "only cards get recordings");
+
+// Guards on the copy: judged by its headers before a byte is read, and a failure waits a day.
+{
+  const log = console.error;
+  console.error = () => {};
+  const tryWith = async (answer, day) => {
+    recordingAnswer = answer;
+    sqlite.exec("DELETE FROM audio WHERE term = 'ubiquitous'");
+    const before = bucket.size;
+    const out = (await w.audioFor(env, { term: "ubiquitous" }, NOW + day * 86_400_000)).audio;
+    return { out, stored: bucket.size - before, row: sqlite.prepare("SELECT r2_key, checked_at FROM audio WHERE term = 'ubiquitous'").get() };
+  };
+  let read = false;
+  const huge = { headers: new Headers({ "content-type": "audio/mpeg", "content-length": String(30_000_000) }), ok: true, status: 200, arrayBuffer: async () => ((read = true), new ArrayBuffer(8)) };
+  let r = await tryWith(() => huge, 40);
+  assert.deepEqual([r.out, r.stored, read], [null, 0, false], "30 MB is refused without reading it");
+  assert.ok(r.row && r.row.r2_key === null, "and a row is kept, so the word is not looked up again on every pull");
+  r = await tryWith(() => new Response("<html>", { headers: { "content-type": "text/html", "content-length": "6" } }), 41);
+  assert.deepEqual([r.out, r.stored], [null, 0], "not audio, not stored");
+  r = await tryWith(() => new Response(null, { status: 302, headers: { location: "https://elsewhere.example/" } }), 42);
+  assert.deepEqual([r.out, r.stored], [null, 0], "a redirect is not followed");
+  const calls = wikiCalls.length;
+  await w.audioFor(env, { term: "ubiquitous" }, NOW + 42 * 86_400_000 + 3_600_000);
+  assert.equal(wikiCalls.length, calls, "a failed word waits");
+  await w.audioFor(env, { term: "ubiquitous" }, NOW + 43 * 86_400_000 + 60_000);
+  assert.ok(wikiCalls.length > calls, "for a day, not thirty");
+  recordingAnswer = () => new Response(new Uint8Array([0x49, 0x44, 0x33, 1, 2, 3]), { headers: { "content-type": "audio/mpeg", "content-length": "6" } });
+  r = await tryWith(recordingAnswer, 44);
+  assert.equal(r.stored, 1);
+  assert.equal(sqlite.prepare("SELECT license_url FROM audio WHERE term = 'ubiquitous'").get().license_url, "https://creativecommons.org/licenses/by-sa/3.0/", "licence links are https");
+  // R2 has a hard stop: past AUDIO_MAX_OBJECTS recordings no more copies are made.
+  sqlite.exec("BEGIN");
+  const fill = sqlite.prepare("INSERT INTO audio (term, r2_key, checked_at) VALUES (?, ?, 1)");
+  for (let i = 0; i < 5000; i++) fill.run(`filler${i}`, `reading/audio/filler${i}.mp3`);
+  sqlite.exec("COMMIT");
+  r = await tryWith(recordingAnswer, 45);
+  assert.deepEqual([r.out, r.stored], [null, 0], "the object cap holds");
+  sqlite.exec("DELETE FROM audio WHERE term LIKE 'filler%'");
+  console.error = log;
+}
+
+// Renaming a word added by hand deletes its old recording from R2.
+{
+  await w.addWord(env, { term: "zest" }, NOW);
+  bucket.set("reading/audio/old-zest.mp3", {});
+  sqlite.exec("INSERT OR REPLACE INTO audio (term, r2_key, checked_at) VALUES ('zest', 'reading/audio/old-zest.mp3', 1)");
+  await w.editWord(env, { term: "zest", new_term: "zeal" }, NOW);
+  assert.ok(!bucket.has("reading/audio/old-zest.mp3"), "no orphan left behind");
+  await w.deleteWord(env, { term: "zeal" });
+}
 
 sqlite.exec("DELETE FROM audio WHERE term = 'mellow'");
 sqlite.exec(`UPDATE daily SET audio = 100 WHERE day = '2026-11-18'`);
