@@ -191,7 +191,7 @@ async function get(env, path, auth = true) {
   const headers = { accept: "application/json", "user-agent": "reading-worker" };
   if (auth) Object.assign(headers, { "x-auth-user": env.SYNC_USER, "x-auth-key": env.SYNC_KEY });
   // A redirect is refused, so the credentials never follow one to another host.
-  // (Workers do not implement redirect: "error"; "manual" hands back the 3xx.)
+  // (Workers only accept "follow" or "manual"; "manual" hands back the 3xx.)
   const res = await fetch(new URL(path, env.SYNC_URL), { headers, redirect: "manual", signal: AbortSignal.timeout(20_000) });
   if (res.status >= 300 && res.status < 400) throw new Error(`${path}: refused a redirect (HTTP ${res.status})`);
   if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
@@ -235,7 +235,16 @@ async function ingest(env, now = Date.now()) {
   const hashes = Object.fromEntries(await Promise.all(Object.entries(bodies).map(async ([k, v]) => [k, await sha256(v)])));
   const changed = Object.keys(bodies).filter((k) => stored.get(k) !== hashes[k]);
   const booksChanged = changed.includes("progress") || changed.includes("activity");
-  const parse = (k, keys) => shape(k, JSON.parse(bodies[k]), keys);
+  // Errors name the endpoint and what was wrong, never the answer's contents.
+  const parse = (k, keys) => {
+    let body;
+    try {
+      body = JSON.parse(bodies[k]);
+    } catch {
+      throw new Error(`${k}: not JSON`);
+    }
+    return shape(k, body, keys);
+  };
   const parsed = {
     progress: booksChanged ? parse("progress", ["items"]) : null,
     activity: booksChanged ? parse("activity", ["books", "days"]) : null,
@@ -342,6 +351,22 @@ async function ingest(env, now = Date.now()) {
   // The public answer is rebuilt every pull (the day may have turned) and read back as one row.
   await storeSummary(env, now);
   return { changed, ...counts, translated };
+}
+
+/** A pull with its outcome kept in meta ('last_pull'), for the private routes. */
+async function pull(env, now) {
+  let outcome;
+  try {
+    outcome = { ok: true, result: await ingest(env, now) };
+  } catch (error) {
+    outcome = { ok: false, error: String(error?.message ?? error).slice(0, 300) };
+  }
+  await env.DB.prepare("INSERT INTO meta (key, value, updated_at) VALUES ('last_pull', ?1, ?2) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at")
+    .bind(J({ at: Math.floor(now / 1000), ...outcome }), Math.floor(now / 1000))
+    .run()
+    .catch(() => {});
+  if (!outcome.ok) console.error(outcome.error);
+  return outcome;
 }
 
 const TRANSLATE_TRIES = 5;
@@ -582,7 +607,13 @@ async function todayCard(env, now, mine = false) {
     wordOfDay(db, today),
     db.prepare(`SELECT COUNT(*) AS collected, COALESCE(SUM(box >= ${LEARNED}), 0) AS learned FROM cards WHERE ${LIVE_TERM}`).first(),
   ]);
-  return { ...card, word: word && { term: word.term, ipa: word.ipa, tr: word.tr, def: word.def }, words: { collected: counts.collected, learned: counts.learned } };
+  const last = await db.prepare("SELECT value FROM meta WHERE key = 'last_pull'").first("value");
+  return {
+    ...card,
+    word: word && { term: word.term, ipa: word.ipa, tr: word.tr, def: word.def },
+    words: { collected: counts.collected, learned: counts.learned },
+    last_pull: last ? JSON.parse(last) : null,
+  };
 }
 
 // ---------------------------------------------------------------- private
@@ -721,7 +752,12 @@ const PRIVATE = {
   "GET /api/reading/cards.csv": async (env) =>
     respond(await cardsCsv(env), 200, { "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="reading-cards.csv"' }),
   "GET /api/reading/sentences": (env) => sentences(env),
-  "POST /api/reading/sync": (env, request, now) => ingest(env, now),
+  // The reason a pull failed goes back to the owner (endpoint, status or shape;
+  // never credentials or answer data), so production is diagnosable without logs.
+  "POST /api/reading/sync": async (env, request, now) => {
+    const out = await pull(env, now);
+    return out.ok ? out.result : respond({ error: "pull failed", reason: out.error }, 502);
+  },
   "POST /api/reading/review": async (env, request, now) => answer(await review(env, await readJson(request), now)),
   "GET /api/reading/books": (env) => booksList(env),
   "POST /api/reading/books": async (env, request, now) => answer(await setBook(env, await readJson(request), now)),
@@ -770,9 +806,9 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(event.cron === MORNING ? notify(env, Date.now()) : ingest(env, Date.now()));
+    ctx.waitUntil(event.cron === MORNING ? notify(env, Date.now()) : pull(env, Date.now()));
   },
 };
 
 // For check.mjs.
-export { addDays, authorized, booksList, buildSummary, publicTitle, setBook, termOf, candidates, cardsCsv, classify, dayOf, derive, forecast, ingest, nextBox, notification, notify, pace, review, sentences, streak, summary, todayCard };
+export { addDays, authorized, booksList, buildSummary, candidates, cardsCsv, classify, dayOf, derive, forecast, ingest, nextBox, notification, notify, pace, publicTitle, pull, review, sentences, setBook, streak, summary, termOf, todayCard };

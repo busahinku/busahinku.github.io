@@ -365,6 +365,24 @@ for (const word of ["word", "vocab", "learn", "english", "ielts"]) assert.ok(!pu
   globalThis.fetch = real;
 }
 
+// ---- a failed pull tells the owner why (endpoint and status or shape, no answer data), and is kept
+{
+  const saved = answers.activity;
+  answers.activity = "<html>secret page</html>";
+  const res = await call("POST", "/api/reading/sync", env.READING_TOKEN);
+  assert.equal(res.status, 502);
+  const body = await res.json();
+  assert.deepEqual(body, { error: "pull failed", reason: "activity: not JSON" });
+  answers.activity = saved;
+  const last = (await w.todayCard(env, NOW, true)).last_pull;
+  assert.deepEqual([last.ok, last.error], [false, "activity: not JSON"]);
+  assert.equal((await call("POST", "/api/reading/sync")).status, 401, "never without the token");
+  const ok = await (await call("POST", "/api/reading/sync", env.READING_TOKEN)).json();
+  assert.ok(Array.isArray(ok.changed));
+  assert.equal((await w.todayCard(env, NOW, true)).last_pull.ok, true);
+  assert.deepEqual(Object.keys(await w.todayCard(env, NOW)).sort(), ["day", "streak"], "the public card is unchanged");
+}
+
 // ---- R4: a health check that is not JSON never stops a pull
 {
   const saved = answers.healthz;
@@ -456,6 +474,10 @@ for (const word of ["word", "vocab", "learn", "english", "ielts"]) assert.ok(!pu
   for (const [method, path] of [["GET", "/api/reading/books"], ["POST", "/api/reading/books"]])
     assert.equal((await call(method, path)).status, 401, `${method} ${path} needs the token`);
 }
+
+// ---- Workers reject fetch redirect "error" (Node accepts it, so only this catches it)
+for (const f of fs.readdirSync(here).filter((f) => f.endsWith(".js")))
+  assert.ok(!/redirect:\s*["']error["']/.test(fs.readFileSync(new URL(f, here), "utf8")), `${f} uses redirect "error"`);
 
 // ---- no em dashes in what the Worker says
 assert.ok(!fs.readFileSync(new URL("index.js", here), "utf8").includes("\u2014"));
