@@ -798,6 +798,7 @@ assert.deepEqual(Object.keys(publicCard).sort(), ["day", "streak"], "still only 
   // Settings: validated, and they decide which push goes out at which hour.
   assert.equal(await w.setSettings(env, { morning: { hour: 24 } }), null);
   assert.equal(await w.setSettings(env, { nope: {} }), null);
+  for (const key of ["__proto__", "toString", "constructor"]) assert.equal(await w.setSettings(env, JSON.parse(`{"${key}": {"on": true}}`)), null, key);
   assert.equal(await w.setSettings(env, { evening: { on: "yes" } }), null);
   assert.deepEqual((await w.setSettings(env, { morning: { hour: 7 } })).morning, { on: true, hour: 7 }, "a partial change keeps the rest");
   pushed.length = 0;

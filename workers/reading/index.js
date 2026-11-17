@@ -1086,7 +1086,7 @@ async function setSettings(env, input) {
   const db = env.DB;
   const statements = [];
   for (const [key, value] of Object.entries(input)) {
-    if (!(key in SETTINGS) || !isRecord(value)) return null;
+    if (!Object.hasOwn(SETTINGS, key) || !isRecord(value)) return null; // never "__proto__" or "toString"
     const clean = {};
     if (value.on !== undefined) {
       if (typeof value.on !== "boolean") return null;
