@@ -12,6 +12,12 @@
 //          GET  /api/reading/sentences clipped sentences with translations
 //          POST /api/reading/review    {"term", "grade": "good" | "again"}
 //          POST /api/reading/sync      pull from CrossPoint Sync now
+//          GET  /api/reading/cards     every card with meaning, examples, audio
+//          POST /api/reading/words     add a word by hand ({term, note?, sentence?}); /edit and /delete
+//          POST /api/reading/audio     find and keep a human recording for {term}
+//          GET  /api/reading/app       the private words page (sign in with the token at POST /login)
+import { appPage, loginPage } from "./page.js";
+
 const SITE = "https://busahin.com";
 const ORIGINS = new Set([SITE, "http://localhost:4321"]);
 const TZ = "Europe/Istanbul";
@@ -29,7 +35,16 @@ const LEARNED = INTERVALS.length;
 const PACE_WINDOW = 14; // days of reading a book's pace is measured over
 const TRANSLATE_PER_RUN = 10;
 const TRANSLATE_PER_DAY = 40;
-const MODEL = "@cf/meta/m2m100-1.2b";
+const MODEL = "@cf/meta/m2m100-1.2b"; // open-source (MIT) translation model, checked in the Workers AI catalogue 2026-11-18
+// Recordings: each lookup is three small requests to Wikimedia and at most one
+// R2 write, so this caps both per day; 30 days before a word with no recording
+// is asked about again.
+const AUDIO_PER_DAY = 100;
+const AUDIO_PER_RUN = 5;
+const AUDIO_RETRY = 30 * 86_400;
+const AUDIO_MAX_BYTES = 1_000_000;
+const WIKI_HEADERS = { accept: "application/json", "user-agent": "busahin-reading/1 (https://busahin.com/)" };
+const COOKIE = "reading_token";
 const CLIPPINGS_MAX = 5000; // GET /api/v1/clippings returns at most this many
 const KEEP_RAW = 900_000; // characters of an answer worth keeping; D1 rows stop at 2 MB
 
@@ -276,7 +291,43 @@ async function ingest(env, now = Date.now()) {
 
   await db.batch(statements);
   const translated = await translate(env, today, seconds);
-  return { changed, books: rows.books.length, days: rows.days.length, clippings: rows.clippings.length, translated };
+  // New words get their recording ahead of time, so the play button is instant.
+  const { results: fresh } = await db
+    .prepare(`SELECT term FROM cards WHERE ${LIVE_TERM} AND term NOT IN (SELECT term FROM audio) ORDER BY added_at DESC LIMIT ?1`)
+    .bind(AUDIO_PER_RUN)
+    .all();
+  let recorded = 0;
+  for (const { term } of fresh) {
+    try {
+      if ((await ensureAudio(env, term, now))?.r2_key) recorded++;
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  return { changed, books: rows.books.length, days: rows.days.length, clippings: rows.clippings.length, translated, recorded };
+}
+
+/** Reserves one translation from today's cap; false when it is spent. */
+async function takeTranslation(db, today) {
+  const row = await db
+    .prepare(
+      `INSERT INTO daily (day, translations) VALUES (?1, 1) ON CONFLICT (day) DO UPDATE SET translations = translations + 1
+       WHERE daily.translations < ?2 RETURNING translations`,
+    )
+    .bind(today, TRANSLATE_PER_DAY)
+    .first();
+  return Boolean(row);
+}
+
+/** One sentence into Turkish with M2M100, or null (no binding, cap spent, model error). */
+async function translateOne(env, sentence, today) {
+  if (!env.AI || !(await takeTranslation(env.DB, today))) return null;
+  try {
+    return text((await env.AI.run(MODEL, { text: sentence, source_lang: "en", target_lang: "tr" }))?.translated_text, 8000);
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
 }
 
 /** Translates the newest untranslated sentences, within the daily cap. Attempts count, so a failing model cannot eat the allowance. */
@@ -320,7 +371,8 @@ async function translate(env, today, seconds) {
 
 // ---------------------------------------------------------------- reading back
 
-const LIVE_TERM = "EXISTS (SELECT 1 FROM clippings w WHERE w.kind = 'word' AND w.deleted = 0 AND w.term = cards.term)";
+// A card counts while its clipping is on the reader, or always when it was added by hand.
+const LIVE_TERM = "(cards.source = 'manual' OR EXISTS (SELECT 1 FROM clippings w WHERE w.kind = 'word' AND w.deleted = 0 AND w.term = cards.term))";
 
 async function readingDays(db) {
   return (await db.prepare("SELECT day FROM days WHERE syncs > 0 OR pages > 0 ORDER BY day").all()).results.map((r) => r.day);
@@ -486,17 +538,259 @@ async function review(env, input, now) {
     .first();
 }
 
-/** Same work as a hashed compare: neither the length nor the first wrong byte shows in the timing. */
-async function authorized(request, env) {
+function givenToken(request) {
+  const bearer = (request.headers.get("authorization") ?? "").match(/^Bearer\s+(.+)$/i)?.[1];
+  if (bearer) return { token: bearer, cookie: false };
+  const cookie = (request.headers.get("cookie") ?? "").match(new RegExp(`(?:^|;\\s*)${COOKIE}=([^;]*)`))?.[1];
+  return { token: cookie ? decodeURIComponent(cookie) : "", cookie: Boolean(cookie) };
+}
+
+/**
+ * The one check every private route and page goes through: the token as a
+ * bearer header (scripts, a widget) or as the cookie the sign-in form sets
+ * (the private page). A cookie on a POST from another origin never counts,
+ * on top of SameSite=Strict.
+ */
+async function authorized(request, env, given = givenToken(request)) {
   const token = env.READING_TOKEN;
   if (!token || token.length < 32) return false;
-  const given = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
+  if (given.cookie && request.method === "POST") {
+    const origin = request.headers.get("origin");
+    if (origin && origin !== new URL(request.url).origin) return false;
+  }
+  return sameToken(given.token, token);
+}
+
+/** Same work as a hashed compare: neither the length nor the first wrong byte shows in the timing. */
+async function sameToken(given, token) {
   const [a, b] = await Promise.all([given, token].map((s) => crypto.subtle.digest("SHA-256", new TextEncoder().encode(s))));
   const x = new Uint8Array(a);
   const y = new Uint8Array(b);
   let diff = 0;
   for (let i = 0; i < x.length; i++) diff |= x[i] ^ y[i];
   return diff === 0;
+}
+
+// ---------------------------------------------------------------- words by hand, cards, audio
+
+/** A word or phrase typed by hand: the clipping rules, plus up to six words for phrases. */
+function handTerm(v) {
+  const clean = String(v ?? "").replace(/\s+/g, " ").replace(EDGES, "").toLowerCase().replace(/[‘’]/g, "'");
+  return clean && clean.length <= 60 && clean.split(" ").length <= 6 && /\p{L}/u.test(clean) ? clean : null;
+}
+const optional = (v, max) => (v === undefined ? undefined : text(v, max)); // undefined: leave alone; null: clear
+
+async function addWord(env, input, now) {
+  const term = handTerm(input?.term);
+  if (!term) return null;
+  const note = optional(input.note, 500) ?? null;
+  const sentence = optional(input.sentence, 1000) ?? null;
+  const today = dayOf(now);
+  const seconds = Math.floor(now / 1000);
+  // A word that is already a card (from a clipping) keeps its schedule and source; the note and sentence are added to it.
+  await env.DB.prepare(
+    `INSERT INTO cards (term, due, added_at, source, note, sentence, updated_at) VALUES (?1, ?2, ?3, 'manual', ?4, ?5, ?3)
+     ON CONFLICT (term) DO UPDATE SET note = COALESCE(excluded.note, cards.note),
+       sentence = COALESCE(excluded.sentence, cards.sentence),
+       sentence_tr = CASE WHEN excluded.sentence IS NULL OR excluded.sentence = cards.sentence THEN cards.sentence_tr END,
+       updated_at = excluded.updated_at`,
+  )
+    .bind(term, today, seconds, note, sentence)
+    .run();
+  await translateCardSentence(env, term, today);
+  return (await cardsJson(env, now, term)).cards[0];
+}
+
+async function editWord(env, input, now) {
+  const term = handTerm(input?.term);
+  if (!term) return null;
+  const db = env.DB;
+  const card = await db.prepare("SELECT source, sentence FROM cards WHERE term = ?1").bind(term).first();
+  if (!card) return undefined;
+  let name = term;
+  if (input.new_term !== undefined && input.new_term !== null && input.new_term !== "") {
+    name = handTerm(input.new_term);
+    if (!name) return null;
+    // Only a word added by hand can be renamed: a clipped word is named by the reader.
+    if (name !== term && card.source !== "manual") return { error: "clipped" };
+    if (name !== term && (await db.prepare("SELECT 1 FROM cards WHERE term = ?1").bind(name).first())) return { error: "exists" };
+  }
+  const note = optional(input.note, 500);
+  const sentence = optional(input.sentence, 1000);
+  await db
+    .prepare(
+      `UPDATE cards SET term = ?2,
+         note = CASE WHEN ?3 THEN ?4 ELSE note END,
+         sentence = CASE WHEN ?5 THEN ?6 ELSE sentence END,
+         sentence_tr = CASE WHEN ?5 AND ?6 IS NOT sentence THEN NULL ELSE sentence_tr END,
+         updated_at = ?7
+       WHERE term = ?1`,
+    )
+    .bind(term, name, note !== undefined ? 1 : 0, note ?? null, sentence !== undefined ? 1 : 0, sentence ?? null, Math.floor(now / 1000))
+    .run();
+  if (name !== term)
+    // ponytail: the old recording's R2 object stays behind (a few KB); sweep reading/audio/ if renames ever pile up.
+    await db.batch([db.prepare("UPDATE daily SET term = ?2 WHERE term = ?1").bind(term, name), db.prepare("DELETE FROM audio WHERE term = ?1").bind(term)]);
+  await translateCardSentence(env, name, dayOf(now));
+  return (await cardsJson(env, now, name)).cards[0];
+}
+
+async function deleteWord(env, input) {
+  const term = handTerm(input?.term);
+  if (!term) return null;
+  const card = await env.DB.prepare("SELECT source FROM cards WHERE term = ?1").bind(term).first();
+  if (!card) return undefined;
+  // A clipped word goes when its clipping is deleted on the reader, not here.
+  if (card.source !== "manual") return { error: "clipped" };
+  await env.DB.prepare("DELETE FROM cards WHERE term = ?1 AND source = 'manual'").bind(term).run();
+  return { term, deleted: true };
+}
+
+async function translateCardSentence(env, term, today) {
+  const row = await env.DB.prepare("SELECT sentence FROM cards WHERE term = ?1 AND sentence IS NOT NULL AND sentence_tr IS NULL").bind(term).first();
+  if (!row) return;
+  const tr = await translateOne(env, row.sentence, today);
+  if (tr) await env.DB.prepare("UPDATE cards SET sentence_tr = ?2 WHERE term = ?1").bind(term, tr).run();
+}
+
+/** Every live card, due first, with meaning, IPA, examples, its clipped sentence and its recording. */
+async function cardsJson(env, now, only = null) {
+  const db = env.DB;
+  const today = dayOf(now);
+  const { results } = await db
+    .prepare(
+      `SELECT c.term, c.source, c.box, c.due, c.reviews, c.note, c.sentence, c.sentence_tr, c.added_at,
+         b.title AS book, s.text AS clipped, s.translation AS clipped_tr,
+         a.r2_key, a.file, a.author, a.license, a.license_url
+       FROM cards c
+       LEFT JOIN clippings w ON w.id = (SELECT id FROM clippings WHERE kind = 'word' AND deleted = 0 AND term = c.term ORDER BY created_at LIMIT 1)
+       LEFT JOIN books b ON b.document = w.document
+       LEFT JOIN clippings s ON s.id = (SELECT s2.id FROM clippings s2 WHERE s2.kind = 'sentence' AND s2.deleted = 0 AND s2.document = w.document
+                                          AND instr(lower(s2.text), c.term) > 0 ORDER BY abs(s2.created_at - w.created_at) LIMIT 1)
+       LEFT JOIN audio a ON a.term = c.term
+       WHERE (c.source = 'manual' OR w.id IS NOT NULL) AND (?2 IS NULL OR c.term = ?2)
+       ORDER BY c.due <= ?1 DESC, c.due, c.added_at DESC, c.term
+       LIMIT 2000`,
+    )
+    .bind(today, only)
+    .all();
+  const dict = await lookup(db, results.map((r) => r.term));
+  const keys = [...new Set(results.flatMap((r) => [r.term, dict.get(r.term).lemma].filter(Boolean)))];
+  const { results: ex } = keys.length
+    ? await db.prepare("SELECT word, id, en, tr FROM examples WHERE word IN (SELECT value FROM json_each(?1)) ORDER BY word, id").bind(J(keys)).all()
+    : { results: [] };
+  const examples = Map.groupBy(ex, (e) => e.word);
+  const files = (env.FILES_URL ?? "https://files.busahin.com").replace(/\/$/, "");
+  return {
+    today,
+    cards: results.map((r) => {
+      const d = dict.get(r.term);
+      const own = examples.get(r.term) ?? [];
+      return {
+        term: r.term,
+        source: r.source,
+        box: r.box,
+        due: r.due,
+        reviews: r.reviews,
+        ipa: d.ipa,
+        tr: d.tr,
+        def: d.def,
+        note: r.note,
+        sentence: r.sentence,
+        sentence_tr: r.sentence_tr,
+        book: r.book,
+        clipped: r.clipped,
+        clipped_tr: r.clipped_tr,
+        // The word as written first, then its headword's.
+        examples: [...own, ...(d.lemma && d.lemma !== r.term ? (examples.get(d.lemma) ?? []) : [])].slice(0, 3).map(({ id, en, tr }) => ({ id, en, tr })),
+        audio: r.r2_key ? { url: `${files}/${r.r2_key}`, file: r.file, author: r.author, license: r.license, license_url: r.license_url } : null,
+      };
+    }),
+  };
+}
+
+const stripTags = (html) => text(String(html ?? "").replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&#039;|&#39;/g, "'").replace(/&quot;/g, '"'), 200);
+
+/** English recordings, best first: American, British, Australian, then Lingua Libre and any other English file. */
+function pickRecording(files) {
+  const rank = (f) =>
+    /^File:En-us-/i.test(f) ? 0 : /^File:En-(uk|gb)-/i.test(f) ? 1 : /^File:En-au-/i.test(f) ? 2 : /^File:LL-Q1860 \(eng\)-/i.test(f) ? 3 : /^File:En-[a-z]{2}-/i.test(f) ? 4 : 9;
+  return files.filter((f) => /\.(ogg|oga|opus|wav|mp3|flac)$/i.test(f) && rank(f) < 9).sort((a, b) => rank(a) - rank(b))[0] ?? null;
+}
+
+/** A human recording of the term from the English Wiktionary page's audio on Wikimedia Commons, or null. */
+async function commonsAudio(term) {
+  const get = async (url) => {
+    const res = await fetch(url, { headers: WIKI_HEADERS, signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) throw new Error(`${new URL(url).host}: HTTP ${res.status}`);
+    return res.json();
+  };
+  const page = (await get(`https://en.wiktionary.org/w/api.php?action=query&format=json&formatversion=2&redirects=1&prop=images&imlimit=100&titles=${encodeURIComponent(term)}`))
+    .query?.pages?.[0];
+  const file = pickRecording((page?.images ?? []).map((i) => i.title));
+  if (!file) return null;
+  const info = (
+    await get(
+      `https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&prop=imageinfo|videoinfo&iiprop=url|extmetadata&iiextmetadatafilter=Artist|LicenseShortName|LicenseUrl&viprop=derivatives&titles=${encodeURIComponent(file)}`,
+    )
+  ).query?.pages?.[0];
+  const meta = info?.imageinfo?.[0];
+  const mp3 = info?.videoinfo?.[0]?.derivatives?.find((d) => d.type === "audio/mpeg")?.src ?? (/\.mp3(\?|$)/i.test(meta?.url ?? "") ? meta.url : null);
+  if (!mp3 || !/^https:\/\/upload\.wikimedia\.org\//.test(mp3)) return null;
+  return {
+    mp3,
+    file: file.replace(/^File:/, ""),
+    author: stripTags(meta.extmetadata?.Artist?.value),
+    license: text(meta.extmetadata?.LicenseShortName?.value, 60),
+    license_url: text(meta.extmetadata?.LicenseUrl?.value, 200),
+  };
+}
+
+/**
+ * The term's recording: kept in R2 once found, so it is fetched from Wikimedia
+ * once ever. A term with none is asked about again after AUDIO_RETRY.
+ */
+async function ensureAudio(env, term, now) {
+  const db = env.DB;
+  const seconds = Math.floor(now / 1000);
+  const row = await db.prepare("SELECT * FROM audio WHERE term = ?1").bind(term).first();
+  if (row && (row.r2_key || seconds - row.checked_at < AUDIO_RETRY)) return row;
+  if (!env.FILES) return row;
+  const today = dayOf(now);
+  const room = await db
+    .prepare("INSERT INTO daily (day, audio) VALUES (?1, 1) ON CONFLICT (day) DO UPDATE SET audio = audio + 1 WHERE daily.audio < ?2 RETURNING audio")
+    .bind(today, AUDIO_PER_DAY)
+    .first();
+  if (!room) return row;
+  const found = await commonsAudio(term);
+  let key = null;
+  if (found) {
+    const res = await fetch(found.mp3, { headers: { "user-agent": WIKI_HEADERS["user-agent"] }, signal: AbortSignal.timeout(15_000) });
+    const bytes = res.ok ? await res.arrayBuffer() : null;
+    if (bytes && bytes.byteLength > 0 && bytes.byteLength <= AUDIO_MAX_BYTES) {
+      // A random name: the files Worker serves anything in the bucket, and this way no URL names the word.
+      key = `reading/audio/${crypto.randomUUID()}.mp3`;
+      await env.FILES.put(key, bytes, { httpMetadata: { contentType: "audio/mpeg", cacheControl: "public, max-age=31536000, immutable" } });
+    }
+  }
+  const kept = key ? found : {};
+  await db
+    .prepare(
+      `INSERT INTO audio (term, r2_key, file, author, license, license_url, checked_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+       ON CONFLICT (term) DO UPDATE SET r2_key = excluded.r2_key, file = excluded.file, author = excluded.author,
+         license = excluded.license, license_url = excluded.license_url, checked_at = excluded.checked_at`,
+    )
+    .bind(term, key, kept.file ?? null, kept.author ?? null, kept.license ?? null, kept.license_url ?? null, seconds)
+    .run();
+  return db.prepare("SELECT * FROM audio WHERE term = ?1").bind(term).first();
+}
+
+async function audioFor(env, input, now) {
+  const term = handTerm(input?.term);
+  if (!term) return null;
+  if (!(await env.DB.prepare("SELECT 1 FROM cards WHERE term = ?1").bind(term).first())) return undefined;
+  await ensureAudio(env, term, now);
+  return { audio: (await cardsJson(env, now, term)).cards[0]?.audio ?? null };
 }
 
 // ---------------------------------------------------------------- notification
@@ -548,21 +842,61 @@ const readJson = async (request) => {
   }
 };
 
+// null: the input was bad; undefined: no such card; {error}: refused as it stands.
+const answer = (out) =>
+  out === null ? respond({ error: "bad" }, 400) : out === undefined ? respond({ error: "unknown term" }, 404) : out.error ? respond(out, 409) : out;
+
 // Every private route, keyed "METHOD path". They all pass the one token check
 // in fetch() below, so a later private page only adds a line here.
 const PRIVATE = {
+  "GET /api/reading/cards": (env, request, now) => cardsJson(env, now),
+  "POST /api/reading/words": async (env, request, now) => answer(await addWord(env, await readJson(request), now)),
+  "POST /api/reading/words/edit": async (env, request, now) => answer(await editWord(env, await readJson(request), now)),
+  "POST /api/reading/words/delete": async (env, request) => answer(await deleteWord(env, await readJson(request))),
+  "POST /api/reading/audio": async (env, request, now) => answer(await audioFor(env, await readJson(request), now)),
   "GET /api/reading/today": (env, request, now) => todayCard(env, now, true),
   "GET /api/reading/cards.csv": async (env) =>
     respond(await cardsCsv(env), 200, { "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="reading-cards.csv"' }),
   "GET /api/reading/sentences": (env) => sentences(env),
   "POST /api/reading/sync": (env, request, now) => ingest(env, now),
-  "POST /api/reading/review": async (env, request, now) => {
-    const card = await review(env, await readJson(request), now);
-    if (card === null) return respond({ error: "bad" }, 400);
-    if (card === undefined) return respond({ error: "unknown term" }, 404);
-    return card;
-  },
+  "POST /api/reading/review": async (env, request, now) => answer(await review(env, await readJson(request), now)),
 };
+
+// The private page and its sign-in. Strict headers: no framing, no indexing,
+// scripts and styles only with this response's nonce.
+function html(body, status, nonce, extra = {}) {
+  return new Response(body, {
+    status,
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      "x-robots-tag": "noindex, nofollow",
+      "referrer-policy": "same-origin",
+      "x-frame-options": "DENY",
+      "content-security-policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; font-src 'self'; connect-src 'self'; media-src https://files.busahin.com; img-src 'self' data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'`,
+      ...extra,
+    },
+  });
+}
+
+async function pageRoute(request, env, path) {
+  const nonce = crypto.randomUUID().replace(/-/g, "");
+  const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
+  if (path === "/api/reading/app" && request.method === "GET")
+    return (await authorized(request, env)) ? html(appPage(nonce), 200, nonce) : html(loginPage(nonce), 401, nonce);
+  if (path === "/api/reading/login" && request.method === "POST") {
+    if (Number(request.headers.get("content-length") ?? 0) > 2000) return new Response(null, { status: 413 });
+    const token = String((await request.formData().catch(() => null))?.get("token") ?? "");
+    if (!(await authorized(request, env, { token, cookie: false }))) return html(loginPage(nonce, true), 401, nonce);
+    return new Response(null, {
+      status: 303,
+      headers: { location: "/api/reading/app", "set-cookie": `${COOKIE}=${encodeURIComponent(token)}; Path=/api/reading; Max-Age=31536000; HttpOnly; SameSite=Strict${secure}` },
+    });
+  }
+  if (path === "/api/reading/logout" && request.method === "POST")
+    return new Response(null, { status: 303, headers: { location: "/api/reading/app", "set-cookie": `${COOKIE}=; Path=/api/reading; Max-Age=0; HttpOnly; SameSite=Strict${secure}` } });
+  return null;
+}
 
 export default {
   async fetch(request, env, ctx) {
@@ -579,11 +913,14 @@ export default {
       const [mine, all] = await Promise.all([env.PER_VISITOR.limit({ key: ip }), env.SITE_WIDE.limit({ key: "site" })]);
       if (!mine.success || !all.success) return respond({ error: "rate" }, 429, cors);
 
+      if (["/api/reading/app", "/api/reading/login", "/api/reading/logout"].includes(path))
+        return (await pageRoute(request, env, path)) ?? new Response(null, { status: 405 });
+
       const route = PRIVATE[`${request.method} ${path}`];
       // A private route that is also public (today) is private only with a token.
-      if (route && (!PUBLIC[path] || request.headers.has("authorization"))) {
+      if (route && (!PUBLIC[path] || givenToken(request).token)) {
         if (!(await authorized(request, env))) return respond({ error: "auth" }, 401);
-        const out = await route(env, request, Date.now());
+        const out = await route(env, request, Date.now(), ctx);
         return out instanceof Response ? out : respond(out, 200);
       }
 
@@ -612,4 +949,4 @@ export default {
 };
 
 // For check.mjs.
-export { addDays, authorized, candidates, cardsCsv, classify, dayOf, derive, forecast, ingest, nextBox, notification, notify, pace, review, sentences, streak, summary, todayCard };
+export { addDays, addWord, audioFor, authorized, cardsJson, commonsAudio, deleteWord, editWord, ensureAudio, handTerm, pickRecording, candidates, cardsCsv, classify, dayOf, derive, forecast, ingest, nextBox, notification, notify, pace, review, sentences, streak, summary, todayCard };

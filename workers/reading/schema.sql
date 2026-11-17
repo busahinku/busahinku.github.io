@@ -65,11 +65,13 @@ CREATE INDEX IF NOT EXISTS clippings_by_kind ON clippings (kind, deleted);
 -- Leitner boxes 1 to 5 for each vocabulary term (intervals in index.js).
 -- `shown` is the last day the term was the word of the day. The review times
 -- are kept from the start because they cannot be rebuilt later.
+-- `source` is 'clipping' (made by the pull from a clipping) or 'manual' (added
+-- by hand on the private page, with an optional note and sentence).
 -- Planned additions are all additive (ALTER TABLE ADD COLUMN or a new table,
--- never a rebuild): `source` ('clipping' or 'generated') and `sentence_id` on
--- cards, a frequency `rank`, a `card_lists (term, list)` table for word lists,
--- a `sentence_terms (clip_id, term)` table for words found in a sentence, and a
--- `prestudy (document, term, chapter, rank)` table imported from files.
+-- never a rebuild): `sentence_id` on cards, a frequency `rank`, a
+-- `card_lists (term, list)` table for word lists, a `sentence_terms (clip_id,
+-- term)` table for words found in a sentence, and a `prestudy (document, term,
+-- chapter, rank)` table imported from files.
 CREATE TABLE IF NOT EXISTS cards (
   term TEXT PRIMARY KEY,
   box INTEGER NOT NULL DEFAULT 1,
@@ -79,7 +81,12 @@ CREATE TABLE IF NOT EXISTS cards (
   shown TEXT,
   added_at INTEGER NOT NULL,
   first_reviewed_at INTEGER,
-  matured_at INTEGER
+  matured_at INTEGER,
+  source TEXT NOT NULL DEFAULT 'clipping',
+  note TEXT,
+  sentence TEXT,
+  sentence_tr TEXT,
+  updated_at INTEGER
 );
 
 -- Per Istanbul day: the word of the day, how many sentences were translated
@@ -88,7 +95,8 @@ CREATE TABLE IF NOT EXISTS daily (
   day TEXT PRIMARY KEY,
   term TEXT,
   translations INTEGER NOT NULL DEFAULT 0,
-  notified INTEGER NOT NULL DEFAULT 0
+  notified INTEGER NOT NULL DEFAULT 0,
+  audio INTEGER NOT NULL DEFAULT 0
 );
 
 -- English to Turkish from WikDict (CC BY-SA 4.0), loaded by
@@ -100,3 +108,28 @@ CREATE TABLE IF NOT EXISTS dict (
   def TEXT,
   tr TEXT NOT NULL
 ) WITHOUT ROWID;
+
+-- Example sentences with their Turkish, from Tatoeba (CC BY 2.0 FR), loaded by
+-- scripts/reading-examples.mjs. `id` is the English sentence's Tatoeba id, for
+-- the link the private page shows.
+CREATE TABLE IF NOT EXISTS examples (
+  word TEXT NOT NULL,
+  id INTEGER NOT NULL,
+  en TEXT NOT NULL,
+  tr TEXT NOT NULL,
+  PRIMARY KEY (word, id)
+) WITHOUT ROWID;
+
+-- Pronunciation of a term: a human recording from Wikimedia Commons, copied
+-- into R2 under a random key and served by the files Worker. A term with no
+-- recording keeps a row with key NULL, so Commons is asked again only after
+-- 30 days. The page falls back to the browser's own speech for those.
+CREATE TABLE IF NOT EXISTS audio (
+  term TEXT PRIMARY KEY,
+  r2_key TEXT,
+  file TEXT,
+  author TEXT,
+  license TEXT,
+  license_url TEXT,
+  checked_at INTEGER NOT NULL
+);

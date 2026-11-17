@@ -102,6 +102,7 @@ globalThis.fetch = async (input, init = {}) => {
     pushed.push(JSON.parse(init.body));
     return new Response("{}");
   }
+  if (url.host.endsWith("wikimedia.org") || url.host === "en.wiktionary.org") return wiki(url, init);
   requests.push({ url, headers: init.headers });
   const name = { "/healthz": "healthz", "/api/v1/progress": "progress", "/api/v1/stats/activity": "activity", "/api/v1/stats/overview": "overview", "/api/v1/clippings": "clippings" }[url.pathname];
   return name ? new Response(answers[name]) : new Response('{"code":2001,"message":"Unauthorized"}', { status: 401 });
@@ -293,7 +294,157 @@ assert.equal((await call("GET", "/api/reading/nope")).status, 404);
 const publicSummary = await (await call("GET", "/api/reading/summary")).text();
 for (const word of ["word", "vocab", "learn", "english", "ielts"]) assert.ok(!publicSummary.toLowerCase().includes(word), `public summary mentions "${word}"`);
 
+// ---- words added by hand
+assert.equal(w.handTerm("  Serendipity! "), "serendipity");
+assert.equal(w.handTerm("take something for granted"), "take something for granted");
+for (const bad of ["", "  ...  ", "1234", "one two three four five six seven", "x".repeat(61), null, 42]) assert.equal(w.handTerm(bad), null, `refuses ${bad}`);
+
+sqlite.exec(`INSERT INTO dict (word, ipa, pos, def, tr) VALUES ('serendipity', 'ˌsɛɹ.ənˈdɪp.ɪ.ti', 'noun', 'a combination of events which have come together by chance', 'şans eseri bulma')`);
+sqlite.exec(`INSERT INTO examples (word, id, en, tr) VALUES
+  ('ubiquitous', 5379449, 'Cellphones are now ubiquitous.', 'Cep telefonları artık her yerde vardır.'),
+  ('abandon', 255842, 'I was forced to abandon the plan.', 'Plandan vazgeçmek zorunda kaldım.'),
+  ('abandon', 634991, 'He decided to abandon law for art.', 'O sanat için hukuku terk etmeye karar verdi.'),
+  ('abandon', 690265, 'We were obliged to abandon our plan.', 'Planımızdan vazgeçmek zorunda kaldık.'),
+  ('abandon', 700000, 'A fourth one is never shown.', 'Dördüncü hiç gösterilmez.')`);
+
+const calls = aiCalls;
+sqlite.exec("UPDATE daily SET translations = 0");
+const added = await w.addWord(env, { term: "Serendipity", note: "from a podcast", sentence: "It was pure serendipity that we met." }, NOW);
+assert.equal(added.source, "manual");
+assert.equal(added.due, "2026-11-18", "a new word is due the day it is added");
+assert.deepEqual([added.ipa, added.tr, added.note], ["ˌsɛɹ.ənˈdɪp.ɪ.ti", "şans eseri bulma", "from a podcast"]);
+assert.equal(added.sentence_tr, "TR: It was pure serendipity that we met.", "his sentence is translated once");
+assert.equal(aiCalls, calls + 1);
+assert.equal((await w.todayCard(env, NOW, true)).words.collected, 5, "a manual word counts like a clipped one");
+const merged = await w.addWord(env, { term: "ubiquitous", note: "everywhere at once" }, NOW);
+assert.deepEqual([merged.source, merged.note], ["clipping", "everywhere at once"], "adding a word that is already a card keeps it a clipped card");
+assert.equal(await w.addWord(env, { term: "   " }, NOW), null);
+
+// Examples: the word's own first, then its headword's, three at most.
+const cardsNow = await w.cardsJson(env, NOW);
+const byTerm = Object.fromEntries(cardsNow.cards.map((c) => [c.term, c]));
+assert.deepEqual(byTerm.ubiquitous.examples, [{ id: 5379449, en: "Cellphones are now ubiquitous.", tr: "Cep telefonları artık her yerde vardır." }]);
+assert.equal(byTerm.ubiquitous.clipped, "The ubiquitous hum of the house had settled into something like a promise, and I found I did not mind it.");
+assert.equal(byTerm.ubiquitous.book, "The Remains of the Day");
+assert.deepEqual(byTerm.abandoned.examples.map((e) => e.id), [255842, 634991, 690265], "abandoned borrows abandon's examples");
+assert.ok(!("running" in byTerm), "a card whose clipping was deleted is left out");
+
+// Editing and deleting.
+assert.deepEqual(await w.editWord(env, { term: "ubiquitous", new_term: "omnipresent" }, NOW), { error: "clipped" }, "a clipped word keeps its name");
+assert.deepEqual(await w.editWord(env, { term: "serendipity", new_term: "ubiquitous" }, NOW), { error: "exists" });
+let edited = await w.editWord(env, { term: "serendipity", new_term: "Serendipitous", note: "", sentence: "A serendipitous find." }, NOW);
+assert.deepEqual([edited.term, edited.note, edited.sentence, edited.sentence_tr], ["serendipitous", null, "A serendipitous find.", "TR: A serendipitous find."]);
+edited = await w.editWord(env, { term: "serendipitous", note: "kept" }, NOW);
+assert.deepEqual([edited.note, edited.sentence], ["kept", "A serendipitous find."], "fields left out stay as they were");
+assert.equal(await w.editWord(env, { term: "nope" }, NOW), undefined);
+assert.deepEqual(await w.deleteWord(env, { term: "ubiquitous" }), { error: "clipped" }, "a clipped word is deleted on the reader");
+assert.deepEqual(await w.deleteWord(env, { term: "serendipitous" }), { term: "serendipitous", deleted: true });
+assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM cards WHERE term = 'serendipitous'").get().n, 0);
+
+// ---- recordings from Wikimedia Commons, kept in R2
+assert.equal(w.pickRecording(["File:Cat.jpg", "File:LL-Q1860 (eng)-X-word.wav", "File:En-uk-word.ogg", "File:En-us-word.ogg", "File:De-word.ogg"]), "File:En-us-word.ogg");
+assert.equal(w.pickRecording(["File:LL-Q1860 (eng)-X-word.wav", "File:Fr-word.ogg"]), "File:LL-Q1860 (eng)-X-word.wav");
+assert.equal(w.pickRecording(["File:Cat.jpg", "File:Fr-word.ogg"]), null);
+
+const wikiCalls = [];
+function wiki(url, init) {
+  wikiCalls.push(url.host);
+  assert.match(init.headers["user-agent"], /^busahin-reading\/1 /, "Wikimedia asks for an identifying user agent");
+  if (url.host === "en.wiktionary.org") {
+    const title = url.searchParams.get("titles");
+    const images = title === "ubiquitous" ? [{ title: "File:En-au-ubiquitous.ogg" }, { title: "File:En-us-ubiquitous.ogg" }] : [{ title: "File:Some-picture.jpg" }];
+    return new Response(JSON.stringify({ query: { pages: [{ title, images }] } }));
+  }
+  if (url.host === "commons.wikimedia.org") {
+    assert.equal(url.searchParams.get("titles"), "File:En-us-ubiquitous.ogg");
+    return new Response(
+      JSON.stringify({
+        query: {
+          pages: [
+            {
+              imageinfo: [{ url: "https://upload.wikimedia.org/wikipedia/commons/b/b5/En-us-ubiquitous.ogg", extmetadata: { Artist: { value: '<a href="//commons.wikimedia.org/wiki/User:Dvortygirl">Dvortygirl</a>' }, LicenseShortName: { value: "CC BY-SA 3.0" }, LicenseUrl: { value: "http://creativecommons.org/licenses/by-sa/3.0/" } } }],
+              videoinfo: [{ derivatives: [{ type: "audio/ogg", src: "https://upload.wikimedia.org/x.ogg" }, { type: "audio/mpeg", src: "https://upload.wikimedia.org/wikipedia/commons/transcoded/b/b5/En-us-ubiquitous.ogg/En-us-ubiquitous.ogg.mp3" }] }],
+            },
+          ],
+        },
+      }),
+    );
+  }
+  return new Response(new Uint8Array([0x49, 0x44, 0x33, 1, 2, 3]), { headers: { "content-type": "audio/mpeg" } });
+}
+const bucket = new Map();
+env.FILES = { put: async (key, bytes, opts) => bucket.set(key, { bytes, opts }) };
+
+let audio = (await w.audioFor(env, { term: "ubiquitous" }, NOW)).audio;
+assert.match(audio.url, /^https:\/\/files\.busahin\.com\/reading\/audio\/[0-9a-f-]{36}\.mp3$/, "served by the files Worker under a name that does not give the word away");
+assert.deepEqual([audio.file, audio.author, audio.license], ["En-us-ubiquitous.ogg", "Dvortygirl", "CC BY-SA 3.0"]);
+assert.equal(bucket.size, 1);
+const [stored] = bucket.values();
+assert.equal(stored.opts.httpMetadata.contentType, "audio/mpeg");
+assert.deepEqual(wikiCalls, ["en.wiktionary.org", "commons.wikimedia.org", "upload.wikimedia.org"]);
+assert.deepEqual((await w.audioFor(env, { term: "ubiquitous" }, NOW + 86_400_000 * 90)).audio, audio, "a recording is fetched once, ever");
+assert.equal(wikiCalls.length, 3);
+
+assert.deepEqual(await w.audioFor(env, { term: "give up" }, NOW), { audio: null }, "no recording: the page falls back to the browser's voice");
+assert.equal(wikiCalls.length, 4, "only the Wiktionary page was asked");
+await w.audioFor(env, { term: "give up" }, NOW + 86_400_000);
+assert.equal(wikiCalls.length, 4, "and not again for thirty days");
+await w.audioFor(env, { term: "give up" }, NOW + 86_400_000 * 31);
+assert.equal(wikiCalls.length, 5, "but after them");
+assert.equal(await w.audioFor(env, { term: "not a card" }, NOW), undefined, "only cards get recordings");
+
+sqlite.exec("DELETE FROM audio WHERE term = 'mellow'");
+sqlite.exec(`UPDATE daily SET audio = 100 WHERE day = '2026-11-18'`);
+const before100 = wikiCalls.length;
+await w.audioFor(env, { term: "mellow" }, NOW);
+assert.equal(wikiCalls.length, before100, "nothing past the daily cap");
+assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM audio WHERE term = 'mellow'").get().n, 0, "and the word is tried again tomorrow");
+
+// ---- the private page: sign in with the token, a cookie from then on
+const site = (method, path, { cookie, origin, form, json } = {}) => {
+  const headers = {};
+  if (cookie) headers.cookie = cookie;
+  if (origin) headers.origin = origin;
+  if (form) headers["content-type"] = "application/x-www-form-urlencoded";
+  if (json) headers["content-type"] = "application/json";
+  return w.default.fetch(
+    new Request(`https://busahin.com${path}`, { method, headers, body: form ? new URLSearchParams(form).toString() : json ? JSON.stringify(json) : undefined, redirect: "manual" }),
+    { ...env, PER_VISITOR: open, SITE_WIDE: open },
+    { waitUntil() {} },
+  );
+};
+let res = await site("GET", "/api/reading/app");
+assert.equal(res.status, 401);
+let page = await res.text();
+assert.ok(page.includes('name="token"') && !/\b(words?|vocab\w*|turkish|english)\b/i.test(page.replace(/<style[\s\S]*?<\/style>/, "")), "the sign-in page says nothing about what is behind it");
+res = await site("POST", "/api/reading/login", { form: { token: "wrong" } });
+assert.equal(res.status, 401);
+res = await site("POST", "/api/reading/login", { form: { token: env.READING_TOKEN } });
+assert.equal(res.status, 303);
+const setCookie = res.headers.get("set-cookie");
+assert.match(setCookie, /^reading_token=t{40}; Path=\/api\/reading; Max-Age=31536000; HttpOnly; SameSite=Strict; Secure$/);
+const cookie = setCookie.split(";")[0];
+res = await site("GET", "/api/reading/app", { cookie });
+assert.equal(res.status, 200);
+page = await res.text();
+const csp = res.headers.get("content-security-policy");
+const nonce = csp.match(/script-src 'nonce-([0-9a-f]+)'/)[1];
+assert.equal(page.match(/<script nonce="([0-9a-f]+)">/g).length, 2);
+assert.ok(page.includes(`<script nonce="${nonce}">`) && !csp.includes("unsafe-inline"), "inline code runs only with this response's nonce");
+assert.equal(res.headers.get("x-robots-tag"), "noindex, nofollow");
+assert.ok(!page.includes("—"), "no em dashes on the page");
+assert.equal((await site("GET", "/api/reading/cards", { cookie })).status, 200, "the cookie opens the private routes");
+assert.equal((await site("POST", "/api/reading/words", { cookie, origin: "https://busahin.com", json: { term: "quixotic" } })).status, 200);
+assert.equal((await site("POST", "/api/reading/words", { cookie, origin: "https://evil.example", json: { term: "x" } })).status, 401, "a cookie from another site's form never counts");
+assert.equal((await site("POST", "/api/reading/words/delete", { cookie, json: { term: "ubiquitous" } })).status, 409);
+assert.equal((await site("POST", "/api/reading/words/delete", { cookie, json: { term: "nothing here" } })).status, 404);
+assert.equal((await site("GET", "/api/reading/cards", { cookie: "reading_token=nope" })).status, 401);
+res = await site("POST", "/api/reading/logout", { cookie });
+assert.match(res.headers.get("set-cookie"), /^reading_token=; Path=\/api\/reading; Max-Age=0/);
+const publicCard = await (await site("GET", "/api/reading/today")).json();
+assert.deepEqual(Object.keys(publicCard).sort(), ["day", "streak"], "still only the day and streak in public");
+
 // ---- no em dashes in what the Worker says
-assert.ok(!fs.readFileSync(new URL("index.js", here), "utf8").includes("\u2014"));
+for (const f of ["index.js", "page.js"]) assert.ok(!fs.readFileSync(new URL(f, here), "utf8").includes("\u2014"), f);
 
 console.log("reading checks pass");

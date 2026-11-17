@@ -17,12 +17,20 @@ crons = ["*/30 * * * *", "0 5 * * *"]
 # CrossPoint Sync, or a self-hosted copy of it.
 SYNC_URL = "https://sync.crosspointreader.com"
 NTFY_URL = "https://ntfy.sh"
+# Where the files Worker serves the bucket below; recordings are linked from here.
+FILES_URL = "https://files.busahin.com"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "busahin-reading"
 # Printed by `wrangler d1 create busahin-reading` (DEPLOY.md, step 1).
 database_id = "REPLACE-WITH-THE-ID-FROM-D1-CREATE"
+
+# The existing bucket behind the files Worker. Only pronunciation recordings are
+# written, under reading/audio/, at most AUDIO_PER_DAY a day (index.js).
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "busahin-files"
 
 # Sentence translations, capped per day in index.js.
 [ai]

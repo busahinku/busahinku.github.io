@@ -37,13 +37,27 @@ npx wrangler@4.146.0 d1 execute busahin-reading --remote --file workers/reading/
 
 The first command downloads WikDict's English to Turkish StarDict (CC BY-SA 4.0) to a temporary folder and writes `workers/reading/dict.sql` (about 49,000 rows, 4.6 MB, ignored by git). Loading it writes about 49,000 rows, half of D1's free daily allowance of 100,000, so do it on its own day. Run both again only when you want a newer WikDict.
 
+## 3b. Load the example sentences (another day)
+
+```bash
+node scripts/reading-examples.mjs
+```
+
+```bash
+npx wrangler@4.146.0 d1 execute busahin-reading --remote --file workers/reading/examples.sql --config workers/reading/wrangler.toml
+```
+
+The script downloads three Tatoeba exports (English sentences, Turkish sentences and the links between them, about 38 MB, CC BY 2.0 FR) to a temporary folder and needs `dict.sql` from step 3. It keeps up to three short, clean sentences with their Turkish for each dictionary word, capped at 40,000 rows, so loading them fits in one day's free D1 writes; do it on a different day from the dictionary. `examples.sql` (4.5 MB) is ignored by git.
+
+**Upgrading a database made from the first version** (before manual words, examples and recordings): apply `workers/reading/upgrades/0002-private-words.sql` once, then `schema.sql` again, as its first lines say. A new database needs neither.
+
 ## 4. Set the secrets
 
 | Secret | What it holds |
 |---|---|
 | `SYNC_USER` | The CrossPoint Sync username the reader signs in with. |
 | `SYNC_KEY` | The lowercase MD5 hex of that account's password: what the reader itself sends as `x-auth-key`. Not the password. |
-| `READING_TOKEN` | A random string of at least 32 characters. It opens the private routes (`today` with the word of the day, `cards.csv`, `sentences`, `review`, `sync`). Keep it in your password manager. |
+| `READING_TOKEN` | A random string of at least 32 characters. It opens the private page (`/api/reading/app`, where you type it once and a cookie remembers it for a year on that browser) and the private routes (`today` with the word of the day, `cards`, `words`, `audio`, `cards.csv`, `sentences`, `review`, `sync`). Keep it in your password manager. |
 | `NTFY_TOPIC` | The ntfy topic the morning notification goes to. Anyone who knows the name can read it, so make it unguessable. |
 
 Each command reads the value from the terminal, so it never lands in shell history:
@@ -104,7 +118,13 @@ curl -s -H "authorization: Bearer $TOKEN" -o reading-cards.csv https://busahin.c
 
 Then open https://busahin.com/reading/ and https://busahin.com/tr/reading/. Public answers are cached at the edge for five minutes.
 
-## 7. Phone and watch
+## 7. The private words page
+
+Open https://busahin.com/api/reading/app on the phone, type the token, and add it to the home screen. Each card shows the word, its pronunciation (a human recording from Wikimedia Commons when one exists, otherwise the phone's own voice), the Turkish meaning, a definition, the sentence it was clipped from with its Turkish, and up to three Tatoeba examples. Again and Good review it; words you add by hand can be edited and deleted there. The page is served by the Worker, never by the static site, so nothing about it is public.
+
+Recordings are copied once into the `busahin-files` bucket under `reading/audio/` with random names and served by the files Worker at files.busahin.com; at most 100 new ones a day. The Worker identifies itself to Wikimedia as `busahin-reading/1 (https://busahin.com/)`, as Wikimedia's API policy asks.
+
+## 8. Phone and watch
 
 Install the ntfy app, add a subscription on the default server (ntfy.sh) with the `NTFY_TOPIC` name, and allow its notifications on the watch in the Galaxy Wearable app. The first one arrives at 08:00 Istanbul time.
 
@@ -128,3 +148,5 @@ Install the ntfy app, add a subscription on the default server (ntfy.sh) with th
 | Translations | 10 a run, 40 a day, counted as attempts in the `daily` table. Workers AI's free allowance is shared with the assistant; 40 short sentences use a small part of it. |
 | CrossPoint Sync | Five small GETs per pull, every thirty minutes. The service documents rate limits only for registration and failed sign-ins. |
 | D1 writes | An unchanged answer writes nothing but its fetch time; a changed one rewrites only the rows that changed. |
+| Recordings | 100 Wikimedia lookups a day (three small GETs each) and at most one R2 write each; a word with no recording is asked about again after 30 days. Five per pull are fetched ahead for new words. At a few KB each, a year of new words stays far inside R2's free 10 GB and million writes a month. |
+| Examples | 40,000 rows, loaded once. |
