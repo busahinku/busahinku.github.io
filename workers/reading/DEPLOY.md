@@ -146,7 +146,11 @@ Open https://busahin.com/api/reading/app on the phone, type the token once, and 
 
 **HSTS (dashboard, once).** Cloudflare, busahin.com, SSL/TLS, Edge Certificates, HTTP Strict Transport Security: enable, max-age 6 months, include subdomains only if every subdomain is HTTPS, no preload. With it a browser never makes a plain-http request to the site, so the sign-in form cannot be imitated on a hostile network.
 
-**Rotating the token** (Admin, Rotate the token) makes a new one, shows it once, moves this browser's cookie to it, and stores its hash in D1; `READING_TOKEN` and the old cookies stop working everywhere. If the new one is lost, delete the row and the secret works again:
+**Rotating the token** (Admin, Rotate the token) makes a new one, shows it once, gives this browser a new session, and stores the new token's hash in D1; `READING_TOKEN` and every other session stop working. If the new token is lost, recover in this order. Deleting the row on its own would bring back the old `READING_TOKEN`, which is usually the one you rotated away from, so set a fresh secret first:
+
+```bash
+openssl rand -hex 32 | tee /dev/tty | npx wrangler@4.146.0 secret put READING_TOKEN --config workers/reading/wrangler.toml
+```
 
 ```bash
 npx wrangler@4.146.0 d1 execute busahin-reading --remote --command "DELETE FROM settings WHERE key = 'token_hash'" --config workers/reading/wrangler.toml
