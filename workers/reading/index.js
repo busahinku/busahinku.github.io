@@ -207,7 +207,7 @@ async function get(env, path, auth = true) {
   const headers = { accept: "application/json", "user-agent": "reading-worker" };
   if (auth) Object.assign(headers, { "x-auth-user": env.SYNC_USER, "x-auth-key": env.SYNC_KEY });
   // A redirect is refused, so the credentials never follow one to another host.
-  // (Workers do not implement redirect: "error"; "manual" hands back the 3xx.)
+  // (Workers only accept "follow" or "manual"; "manual" hands back the 3xx.)
   const res = await fetch(new URL(path, env.SYNC_URL), { headers, redirect: "manual", signal: AbortSignal.timeout(20_000) });
   if (res.status >= 300 && res.status < 400) throw new Error(`${path}: refused a redirect (HTTP ${res.status})`);
   if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
@@ -251,7 +251,16 @@ async function ingest(env, now = Date.now()) {
   const hashes = Object.fromEntries(await Promise.all(Object.entries(bodies).map(async ([k, v]) => [k, await sha256(v)])));
   const changed = Object.keys(bodies).filter((k) => stored.get(k) !== hashes[k]);
   const booksChanged = changed.includes("progress") || changed.includes("activity");
-  const parse = (k, keys) => shape(k, JSON.parse(bodies[k]), keys);
+  // Errors name the endpoint and what was wrong, never the answer's contents.
+  const parse = (k, keys) => {
+    let body;
+    try {
+      body = JSON.parse(bodies[k]);
+    } catch {
+      throw new Error(`${k}: not JSON`);
+    }
+    return shape(k, body, keys);
+  };
   const parsed = {
     progress: booksChanged ? parse("progress", ["items"]) : null,
     activity: booksChanged ? parse("activity", ["books", "days"]) : null,
@@ -504,7 +513,8 @@ const sig = (x) => (x > 0 ? (x >= 10 ? Math.round(x * 10) / 10 : Number(x.toPrec
 /**
  * The title a book may show in public, or null to leave it off the page: hidden
  * from the private side, no title of its own (a file name is never published),
- * or a title matching one of HIDE_TITLES. The owner can set a title instead.
+ * or a title matching one of HIDE_TITLES (a secret: comma-separated words, any
+ * case). The owner can set a title instead.
  */
 function publicTitle(book, env) {
   const title = book.public_title ?? book.title;
@@ -635,7 +645,13 @@ async function todayCard(env, now, mine = false) {
     wordOfDay(db, today),
     db.prepare(`SELECT COUNT(*) AS collected, COALESCE(SUM(box >= ${LEARNED}), 0) AS learned FROM cards WHERE ${LIVE_TERM}`).first(),
   ]);
-  return { ...card, word: word && { term: word.term, ipa: word.ipa, tr: word.tr, def: word.def }, words: { collected: counts.collected, learned: counts.learned } };
+  const last = await db.prepare("SELECT value FROM meta WHERE key = 'last_pull'").first("value");
+  return {
+    ...card,
+    word: word && { term: word.term, ipa: word.ipa, tr: word.tr, def: word.def },
+    words: { collected: counts.collected, learned: counts.learned },
+    last_pull: last ? JSON.parse(last) : null,
+  };
 }
 
 // ---------------------------------------------------------------- private
@@ -1135,29 +1151,37 @@ async function notifications(env, now) {
   return sent;
 }
 
-/** The pull, logged with its outcome; the log keeps the last 200 rows. */
-async function pull(env, now, trigger) {
+/**
+ * The pull, with its outcome logged (sync_log keeps the last 200 rows) and the
+ * latest kept in meta ('last_pull'). Never throws: the outcome says why it
+ * failed (endpoint, status or shape; never credentials or answer data).
+ */
+async function pull(env, now, trigger = "manual") {
   const started = Date.now();
-  const log = (ok, result, error) =>
-    env.DB.batch([
-      env.DB.prepare("INSERT INTO sync_log (at, trigger, ok, result, error, ms) VALUES (?1, ?2, ?3, ?4, ?5, ?6)").bind(
-        Math.floor(now / 1000),
-        trigger,
-        ok ? 1 : 0,
-        result,
-        error,
-        Date.now() - started,
-      ),
-      env.DB.prepare("DELETE FROM sync_log WHERE id <= (SELECT MAX(id) - 200 FROM sync_log)"),
-    ]);
+  let outcome;
   try {
-    const result = await ingest(env, now);
-    await log(true, J(result), null);
-    return result;
+    outcome = { ok: true, result: await ingest(env, now) };
   } catch (error) {
-    await log(false, null, String(error?.message ?? error).slice(0, 500)).catch(() => {});
-    throw error;
+    outcome = { ok: false, error: String(error?.message ?? error).slice(0, 300) };
+    console.error(outcome.error);
   }
+  const at = Math.floor(now / 1000);
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO sync_log (at, trigger, ok, result, error, ms) VALUES (?1, ?2, ?3, ?4, ?5, ?6)").bind(
+      at,
+      trigger,
+      outcome.ok ? 1 : 0,
+      outcome.ok ? J(outcome.result) : null,
+      outcome.ok ? null : outcome.error,
+      Date.now() - started,
+    ),
+    env.DB.prepare("DELETE FROM sync_log WHERE id <= (SELECT MAX(id) - 200 FROM sync_log)"),
+    env.DB.prepare("INSERT INTO meta (key, value, updated_at) VALUES ('last_pull', ?1, ?2) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at").bind(
+      J({ at, ...outcome }),
+      at,
+    ),
+  ]).catch((error) => console.error(error));
+  return outcome;
 }
 
 // ---------------------------------------------------------------- the private app's data
@@ -1421,7 +1445,12 @@ const PRIVATE = {
   "GET /api/reading/cards.csv": async (env) =>
     respond(await cardsCsv(env), 200, { "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="reading-cards.csv"' }),
   "GET /api/reading/sentences": (env) => sentences(env),
-  "POST /api/reading/sync": (env, request, now) => pull(env, now, "manual"),
+  // The reason a pull failed goes back to the owner (endpoint, status or shape;
+  // never credentials or answer data), so production is diagnosable without logs.
+  "POST /api/reading/sync": async (env, request, now) => {
+    const out = await pull(env, now, "manual");
+    return out.ok ? out.result : respond({ error: "pull failed", reason: out.error }, 502);
+  },
   "POST /api/reading/review": async (env, request, now) => answer(await review(env, await readJson(request), now)),
   "GET /api/reading/sentences/mined": (env) => sentencesMined(env),
   "GET /api/reading/progress": (env, request, now) => progress(env, now),

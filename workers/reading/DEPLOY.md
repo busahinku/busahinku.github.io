@@ -11,13 +11,9 @@ CrossPoint 2.0.0, Settings → Connectivity → CrossPoint Sync, signed in to th
 
 Then open a book and press Sync once, so the service has something to return.
 
-## 1. Create the database
+## 1. The database (done)
 
-```bash
-npx wrangler@4.146.0 d1 create busahin-reading
-```
-
-Copy the `database_id` it prints into `workers/reading/wrangler.toml`, replacing `REPLACE-WITH-THE-ID-FROM-D1-CREATE`, and commit that change.
+`busahin-reading` exists (region EEUR) and its id is in `workers/reading/wrangler.toml`.
 
 ## 2. Apply the schema
 
@@ -25,17 +21,11 @@ Copy the `database_id` it prints into `workers/reading/wrangler.toml`, replacing
 npx wrangler@4.146.0 d1 execute busahin-reading --remote --file workers/reading/schema.sql --config workers/reading/wrangler.toml
 ```
 
-## 3. Load the dictionary
+Every statement is `CREATE ... IF NOT EXISTS`, so this is safe on the database as it is (with `dict` already loaded) and safe to run again; it never touches existing rows.
 
-```bash
-node scripts/reading-dict.mjs
-```
+## 3. The dictionary (done)
 
-```bash
-npx wrangler@4.146.0 d1 execute busahin-reading --remote --file workers/reading/dict.sql --config workers/reading/wrangler.toml
-```
-
-The first command downloads WikDict's English to Turkish StarDict (CC BY-SA 4.0) to a temporary folder and writes `workers/reading/dict.sql` (about 49,000 rows, 4.6 MB, ignored by git). The first load writes about 49,000 rows, half of D1's free daily allowance of 100,000, so do it on its own day. A reload later costs about twice that (the file deletes every row, then inserts them again, close to the whole day's 100,000), so only reload when you want a newer WikDict, and on a day with nothing else to write.
+`dict` is loaded (49,298 rows from `node scripts/reading-dict.mjs`). Reload it only for a newer WikDict, and on a day with nothing else to write: the file deletes every row and inserts them again, close to D1's free 100,000 writes a day.
 
 ## 3b. Load the example sentences (another day)
 
@@ -59,6 +49,7 @@ The script downloads three Tatoeba exports (English sentences, Turkish sentences
 | `SYNC_KEY` | The lowercase MD5 hex of that account's password: what the reader itself sends as `x-auth-key`. Not the password. |
 | `READING_TOKEN` | A random string of at least 32 characters. It opens the private page (`/api/reading/app`, where you type it once and a cookie remembers it for a year on that browser) and the private routes (`today` with the word of the day, `cards`, `words`, `audio`, `cards.csv`, `sentences`, `review`, `sync`). Keep it in your password manager. |
 | `NTFY_TOPIC` | The ntfy topic the morning notification goes to. Anyone who knows the name can read it, so make it unguessable. |
+| `HIDE_TITLES` | Optional. Comma-separated words; a book whose title contains any of them (any case) stays off the public page. A secret so the list is not in the public repository. |
 
 Each command reads the value from the terminal, so it never lands in shell history:
 
@@ -122,7 +113,7 @@ Then open https://busahin.com/reading/ and https://busahin.com/tr/reading/. Publ
 
 ## 7. Book titles on the public page
 
-The public page shows a book only under a real title: its own metadata title, or one you set. A book synced without metadata is never shown under its file name. Titles containing any of `HIDE_TITLES` (in `wrangler.toml`) stay off the page. To see every book and what the page shows for it, and to hide one or give it a title:
+The public page shows a book only under a real title: its own metadata title, or one you set. A book synced without metadata is never shown under its file name. Titles containing any of the `HIDE_TITLES` secret's words stay off the page. To see every book and what the page shows for it, and to hide one or give it a title:
 
 ```bash
 curl -s -H "authorization: Bearer $TOKEN" https://busahin.com/api/reading/books

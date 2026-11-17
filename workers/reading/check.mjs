@@ -366,6 +366,24 @@ for (const word of ["word", "vocab", "learn", "english", "ielts"]) assert.ok(!pu
   globalThis.fetch = real;
 }
 
+// ---- a failed pull tells the owner why (endpoint and status or shape, no answer data), and is kept
+{
+  const saved = answers.activity;
+  answers.activity = "<html>secret page</html>";
+  const res = await call("POST", "/api/reading/sync", env.READING_TOKEN);
+  assert.equal(res.status, 502);
+  const body = await res.json();
+  assert.deepEqual(body, { error: "pull failed", reason: "activity: not JSON" });
+  answers.activity = saved;
+  const last = (await w.todayCard(env, NOW, true)).last_pull;
+  assert.deepEqual([last.ok, last.error], [false, "activity: not JSON"]);
+  assert.equal((await call("POST", "/api/reading/sync")).status, 401, "never without the token");
+  const ok = await (await call("POST", "/api/reading/sync", env.READING_TOKEN)).json();
+  assert.ok(Array.isArray(ok.changed));
+  assert.equal((await w.todayCard(env, NOW, true)).last_pull.ok, true);
+  assert.deepEqual(Object.keys(await w.todayCard(env, NOW)).sort(), ["day", "streak"], "the public card is unchanged");
+}
+
 // ---- R4: a health check that is not JSON never stops a pull
 {
   const saved = answers.healthz;
@@ -380,16 +398,16 @@ for (const word of ["word", "vocab", "learn", "english", "ielts"]) assert.ok(!pu
 {
   const doc = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
   const progress = JSON.parse(answers.progress);
-  progress.items.push({ document: doc, title: "Cambridge IELTS 18 Academic", author: "Cambridge", filename: "ielts18.pdf", percentage: 0.3, timestamp: 1794944400, status: "reading" });
+  progress.items.push({ document: doc, title: "Private Notebook Volume 18", author: "Someone", filename: "notebook18.pdf", percentage: 0.3, timestamp: 1794944400, status: "reading" });
   answers.progress = JSON.stringify(progress);
   await w.ingest(env, NOW + 17_000_000);
-  env.HIDE_TITLES = "ielts, toefl";
+  env.HIDE_TITLES = "notebook, journal";
   const shown = async () => {
     await w.ingest(env, NOW + 17_100_000);
     return JSON.stringify(await w.summary(env, NOW + 17_100_000));
   };
   let pub = await shown();
-  assert.ok(!/ielts|klara|\.epub|\.pdf/i.test(pub), "a matching title and a file-name-only book stay off the public page");
+  assert.ok(!/notebook|klara|\.epub|\.pdf/i.test(pub), "a matching title and a file-name-only book stay off the public page");
   const remains = "a1b2c3d4e5f60718293a4b5c6d7e8f90";
   assert.equal((await w.setBook(env, { document: remains, hidden: true }, NOW)).shown_as, null);
   assert.ok(!(await w.summary(env, NOW)).reading.length, "a hidden book disappears at once (the stored summary is rebuilt)");
@@ -403,7 +421,7 @@ for (const word of ["word", "vocab", "learn", "english", "ielts"]) assert.ok(!pu
   assert.equal(await w.setBook(env, { document: "no pe!" }, NOW), null);
   assert.equal(await w.setBook(env, { document: "cccccccccccccccccccccccccccccccc" }, NOW), undefined);
   assert.equal(await w.setBook(env, { document: remains, hidden: "yes" }, NOW), null);
-  assert.ok((await w.booksList(env)).books.some((b) => b.document === doc && b.shown_as === null && b.filename === "ielts18.pdf"), "the private list says what is hidden and why it is there");
+  assert.ok((await w.booksList(env)).books.some((b) => b.document === doc && b.shown_as === null && b.filename === "notebook18.pdf"), "the private list says what is hidden and why it is there");
   delete env.HIDE_TITLES;
 }
 
@@ -680,7 +698,7 @@ assert.deepEqual(Object.keys(publicCard).sort(), ["day", "streak"], "still only 
   await w.pull(env, NOW + 20_000_000, "manual");
   const savedProgress = answers.progress;
   answers.progress = "{}";
-  await assert.rejects(w.pull(env, NOW + 20_100_000, "cron"));
+  assert.deepEqual(await w.pull(env, NOW + 20_100_000, "cron"), { ok: false, error: "progress: unexpected answer shape" });
   answers.progress = savedProgress;
   const admin = await w.adminData(env, NOW);
   assert.deepEqual([admin.sync[0].ok, admin.sync[0].trigger, admin.sync[0].error], [false, "cron", "progress: unexpected answer shape"]);
@@ -760,6 +778,10 @@ assert.deepEqual(Object.keys(publicCard).sort(), ["day", "streak"], "still only 
   sqlite.exec("DELETE FROM settings WHERE key = 'token_hash'");
   assert.equal((await call("GET", "/api/reading/admin", env.READING_TOKEN)).status, 200, "deleting the row brings the secret back (the documented recovery)");
 }
+
+// ---- Workers reject fetch redirect "error" (Node accepts it, so only this catches it)
+for (const f of fs.readdirSync(here).filter((f) => f.endsWith(".js")))
+  assert.ok(!/redirect:\s*["']error["']/.test(fs.readFileSync(new URL(f, here), "utf8")), `${f} uses redirect "error"`);
 
 // ---- no em dashes in what the Worker says
 for (const f of ["index.js", "page.js"]) assert.ok(!fs.readFileSync(new URL(f, here), "utf8").includes("\u2014"), f);
