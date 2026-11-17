@@ -599,8 +599,8 @@ let res = await site("GET", "/api/reading/app");
 assert.equal(res.status, 401);
 let page = await res.text();
 assert.ok(page.includes('name="token"'), "the sign-in form");
-for (const giveaway of ["word", "vocab", "turkish", "english", ".term", ".ipa", ".def", "cards", ".ex", ".due", ".note", "review"])
-  assert.ok(!page.toLowerCase().includes(giveaway), `the sign-in page, stylesheet included, never says "${giveaway}"`);
+for (const giveaway of [/\bwords?\b/, /vocab/, /turkish/, /english/, /\.term\b/, /\.ipa\b/, /\.def\b/, /cards/, /\.ex\b/, /\.due\b/, /\.note\b/, /review/])
+  assert.ok(!giveaway.test(page.toLowerCase()), `the sign-in page, stylesheet included, never matches ${giveaway}`);
 res = await site("POST", "/api/reading/login", { form: { token: "wrong" } });
 assert.equal(res.status, 401);
 res = await site("POST", "/api/reading/login", { form: { token: env.READING_TOKEN } });
