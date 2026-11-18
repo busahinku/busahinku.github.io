@@ -159,6 +159,20 @@ assert.deepEqual(tables(), t1);
 assert.equal(changes() - before, 5, "only the four raw rows' fetched_at and the stored summary");
 assert.ok(sqlite.prepare("SELECT COUNT(*) AS n FROM raw WHERE server_version = '0.1.0'").get().n === 4);
 
+// ---- a database ingested by older code is re-derived once, even when Sync's answers are unchanged
+{
+  const meta = () => sqlite.prepare("SELECT cover_url, release_year, genres FROM books WHERE document = 'a1b2c3d4e5f60718293a4b5c6d7e8f90'").get();
+  const filled = meta();
+  assert.equal(filled.cover_url, "https://assets.hardcover.app/edition/30373948/remains.jpeg");
+  // As the live database stood after upgrades/0003: new columns empty, hashes current, no version.
+  sqlite.exec("UPDATE books SET cover_url = NULL, release_year = NULL, genres = NULL; DELETE FROM meta WHERE key = 'derive_version'");
+  const backfill = await w.ingest(env, NOW);
+  assert.deepEqual(backfill.changed.sort(), ["activity", "clippings", "overview", "progress"], "an older derivation re-reads every answer");
+  assert.deepEqual(meta(), filled, "cover_url and the metadata are filled on the first pull");
+  assert.equal(sqlite.prepare("SELECT value FROM meta WHERE key = 'derive_version'").get().value, "2");
+  assert.deepEqual((await w.ingest(env, NOW)).changed, [], "and only once");
+}
+
 // ---- a re-derive from the stored raw answers gives the same rows
 const raw = Object.fromEntries(sqlite.prepare("SELECT endpoint, body FROM raw").all().map((r) => [r.endpoint, JSON.parse(r.body)]));
 assert.deepEqual(w.derive(raw), w.derive(Object.fromEntries(["progress", "activity", "clippings"].map((n) => [n, JSON.parse(answers[n])]))));
