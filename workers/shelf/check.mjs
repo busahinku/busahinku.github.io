@@ -93,7 +93,7 @@ const publicDns = async () => ["93.184.216.34"];
 const html = (body, headers = {}) => () => new Response(body, { headers: { "content-type": "text/html; charset=utf-8", ...headers } });
 
 const request = (path, { method = "GET", auth = AUTH, headers = {}, body } = {}) =>
-  new Request(`https://busahin.com${path}`, { method, body, headers: { ...(auth ? { authorization: auth } : {}), ...headers } });
+  new Request(`https://busahin.com${path}`, { method, body, duplex: "half", headers: { ...(auth ? { authorization: auth } : {}), ...headers } });
 
 // ---- the reader's OPDS 1.x parser, transcribed ----
 // freeink-sdk libs/network/Opds/src/OpdsParser.cpp at the commit CrossPoint 2.0.0
@@ -352,10 +352,13 @@ assert.equal(basicCredentials("Basic " + btoa("\u00e7:p:q".replace(/./g, (c) => 
 
 // ---- 4. upload validation ----
 
-const upload = (bytes, name = "book.epub", e = env) => {
+const upload = async (bytes, name = "book.epub", e = env) => {
   const form = new FormData();
   form.append("file", new Blob([bytes], { type: "application/epub+zip" }), name);
-  return handle(request("/api/shelf/upload", { method: "POST", body: form, headers: { accept: "application/json" } }), e);
+  const encoded = new Response(form); // as a browser sends it: a multipart body with its length
+  const body = await encoded.arrayBuffer();
+  const headers = { accept: "application/json", "content-type": encoded.headers.get("content-type"), "content-length": String(body.byteLength) };
+  return handle(request("/api/shelf/upload", { method: "POST", body, headers }), e);
 };
 
 // An EPUB as other tools write it: deflated entries, OPF in a subfolder, an EPUB 2 cover meta.
@@ -423,6 +426,10 @@ await expectUpload(await book([{ name: "META-INF/encryption.xml", data: '<encryp
 assert.equal((await upload(await book([{ name: "META-INF/encryption.xml", data: '<encryption><EncryptedData><EncryptionMethod Algorithm="http://www.idpf.org/2008/embedding"/></EncryptedData></encryption>' }]))).status, 200, "font obfuscation is not DRM");
 const tooBig = await handle(request("/api/shelf/upload", { method: "POST", body: "x", headers: { "content-length": String(30 << 20), accept: "application/json" } }), env);
 assert.equal(tooBig.status, 413);
+// A body without a declared length is refused before it is read.
+const unsized = await handle(request("/api/shelf/upload", { method: "POST", body: new Blob([await book()]).stream(), headers: { accept: "application/json" } }), env);
+assert.equal(unsized.status, 411);
+assert.equal((await unsized.json()).error, "length");
 // A zip bomb: a small entry claiming to unpack far past the cap is refused before inflating.
 await expectUpload(await book([], OPF.padEnd(OPF.length + (2 << 20), " ")), 415, "not-epub");
 

@@ -299,6 +299,7 @@ const MESSAGES = {
   "not-epub": "That file isn't an EPUB.",
   drm: "That EPUB is DRM-protected, so the reader couldn't open it anyway.",
   big: "Files are limited to 25 MB.",
+  length: "The upload didn't say its size. Send it from the form, or with a Content-Length header.",
   full: "The shelf is full: 1,000 items or 2 GB. Delete something first.",
   missing: "Nothing to do: the form was empty.",
   budget: "Today's allowance is used up. It resets at midnight UTC.",
@@ -439,7 +440,10 @@ async function route(request, env, deps) {
   }
 
   if (path === `${BASE}/upload`) {
-    if (Number(request.headers.get("content-length") || 0) > MAX_UPLOAD + 64 * 1024) return done(request, { error: "big" }, 413);
+    // Without a declared size the body would be read whole before it could be measured.
+    const length = request.headers.get("content-length");
+    if (length === null) return done(request, { error: "length" }, 411);
+    if (!(Number(length) <= MAX_UPLOAD + 64 * 1024)) return done(request, { error: "big" }, 413);
     let bytes;
     let name = "";
     const type = request.headers.get("content-type") || "";
