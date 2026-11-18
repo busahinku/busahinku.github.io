@@ -9,7 +9,7 @@ const SITE = "https://busahin.com";
 const ORIGINS = new Set([SITE, "http://localhost:4321"]);
 const QUEUE = 100;
 
-const KEY = /^(blog|projects|courses)\/[a-z0-9][a-z0-9-]{0,80}$/;
+const KEY = /^(blog|projects|courses|reading)\/[a-z0-9][a-z0-9-]{0,80}$/;
 const VISITOR = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const json = (body, status, cors) =>

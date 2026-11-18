@@ -1,9 +1,11 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import ReadingPage from "../../components/ReadingPage.astro";
+import { bookNotes, noteLinks } from "../../utils/book-notes";
 import { type Lang } from "../../i18n/translations";
 
 const lang: Lang = "tr";
+const notes = noteLinks(await bookNotes(lang), lang);
 ---
 
 <Layout
@@ -11,5 +13,5 @@ const lang: Lang = "tr";
   description="Okuduğum günler, elimdeki kitaplar ve bitirdiklerim."
   lang={lang}
 >
-  <ReadingPage lang={lang} />
+  <ReadingPage lang={lang} notes={notes} />
 </Layout>

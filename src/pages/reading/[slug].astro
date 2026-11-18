@@ -1,0 +1,42 @@
+---
+import { render } from "astro:content";
+import BlogPostEnhanced from "../../layouts/BlogPostEnhanced.astro";
+import type { PostNavLink } from "../../components/blog/PostNav.astro";
+import { bookNotes, noteSlug, type BookNote } from "../../utils/book-notes";
+
+// A note about a finished book: typeset like an article, dated by when the book was finished.
+export async function getStaticPaths() {
+  const notes = await bookNotes("en");
+  const link = (n?: BookNote) => n && { title: n.data.title, href: `/reading/${noteSlug(n)}/` };
+  return notes.map((note, i) => ({
+    params: { slug: noteSlug(note) },
+    props: { note, prevPost: link(notes[i + 1]), nextPost: link(notes[i - 1]) },
+  }));
+}
+
+interface Props {
+  note: BookNote;
+  prevPost?: PostNavLink;
+  nextPost?: PostNavLink;
+}
+
+const { note, prevPost, nextPost } = Astro.props;
+const { Content, headings } = await render(note);
+const slug = noteSlug(note);
+---
+
+<BlogPostEnhanced
+  post={{ title: note.data.title, description: note.data.author, pubDate: note.data.finished, heroImage: note.data.heroImage }}
+  metaDescription={note.data.description ?? `${note.data.title}, ${note.data.author}`}
+  headings={headings}
+  lang="en"
+  ogImage={`/og/reading/${slug}.png`}
+  backUrl="/reading/"
+  backLabel="Reading"
+  dateLabel="Finished"
+  prevPost={prevPost}
+  nextPost={nextPost}
+>
+  <Content />
+</BlogPostEnhanced>
+

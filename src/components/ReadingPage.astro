@@ -4,6 +4,8 @@ import type { Lang } from "../i18n/translations";
 
 interface Props {
   lang: Lang;
+  /** Book notes for this language, known at build time: rows link to them, and they are listed below. */
+  notes?: { keys: string[]; href: string; title: string; author: string; finished: string }[];
 }
 
 // Live numbers from workers/reading (/api/reading/summary). The page ships
@@ -11,14 +13,17 @@ interface Props {
 // is there, so a failed request or no JavaScript never shows an empty chart.
 // Motion here goes further than elsewhere on the site, by the owner's choice,
 // but only through canAnimate(), on transform and opacity, never blocking a number.
-const { lang } = Astro.props;
+const { lang, notes = [] } = Astro.props;
 const tr = lang === "tr";
+const noteDate = (day: string) =>
+  new Intl.DateTimeFormat(tr ? "tr-TR" : "en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${day}T12:00:00Z`));
 const copy = tr
   ? { title: "Okuma", year: "Yıl", now: "Şu an okuduklarım", finished: "Bitirdiklerim", less: "Az", more: "Çok", retry: "Yeniden dene", noscript: "Sayılar JavaScript ile yükleniyor." }
   : { title: "Reading", year: "The year", now: "Reading now", finished: "Finished", less: "Less", more: "More", retry: "Try again", noscript: "The numbers load with JavaScript." };
+const notesTitle = tr ? "Notlar" : "Notes";
 ---
 
-<div class="reading-page" data-reading={lang} data-pagefind-body>
+<div class="reading-page" data-reading={lang} data-notes={JSON.stringify(notes.map(({ keys, href }) => ({ keys, href })))} data-pagefind-body>
   <header class="page-head">
     <h1>{copy.title}</h1>
     <p class="status" data-status data-pagefind-ignore aria-live="polite" hidden>
@@ -59,12 +64,37 @@ const copy = tr
     <ul class="leader-list" data-list="finished"></ul>
   </section>
 
+  {
+    notes.length > 0 && (
+      <section class="reading-section notes-section">
+        <div class="section-head">
+          <h2>{notesTitle}</h2>
+        </div>
+        <ul class="leader-list">
+          {notes.map((n) => (
+            <li>
+              <a class="leader-row note-row" href={n.href}>
+                <span class="row-title">{n.title}<span class="row-sub">, {n.author}</span></span>
+                <span class="row-leader" aria-hidden="true" />
+                <span class="row-meta">{noteDate(n.finished)}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+
   <template data-icon="flag"><Flag size={13} aria-hidden="true" /></template>
   <template data-icon="chevron"><ChevronDown size={16} aria-hidden="true" /></template>
 </div>
 
 <script>
   import { canAnimate } from "../lib/motion";
+  import { titleKey } from "../lib/title-key.mjs";
+
+  // The book notes rendered into the page at build: title key -> the note's address.
+  let notes = new Map<string, string>();
 
   const ENDPOINT = import.meta.env.DEV ? "https://busahin.com/api/reading/summary" : "/api/reading/summary";
   const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)"; // the site's one motion curve (ArchiveList, BaseHead)
@@ -159,7 +189,9 @@ const copy = tr
   // The visible parts of a leader row: title (and author), dotted leader, value.
   function line(tag: "div" | "summary", title: string, sub: string | null, value: string) {
     const row = el(tag, "leader-row");
-    const t = el("span", "row-title", title);
+    // A book with a note: its title opens the note.
+    const href = notes.get(titleKey(title));
+    const t = href ? Object.assign(el("a", "row-title note-link", title), { href }) : el("span", "row-title", title);
     if (sub) t.append(el("span", "row-sub", `, ${sub}`));
     const leader = el("span", "row-leader");
     leader.setAttribute("aria-hidden", "true");
@@ -411,6 +443,11 @@ const copy = tr
     const root = document.querySelector<HTMLElement>("[data-reading]");
     if (!root || root.dataset.ready) return;
     root.dataset.ready = "true";
+    try {
+      notes = new Map((JSON.parse(root.dataset.notes ?? "[]") as { keys: string[]; href: string }[]).flatMap((n) => n.keys.map((k) => [k, n.href])));
+    } catch {
+      notes = new Map();
+    }
     const motion = canAnimate();
     root.dataset.motion = motion ? "on" : "off";
     const t = text[root.dataset.reading === "tr" ? "tr" : "en"];
@@ -680,6 +717,36 @@ const copy = tr
   .leader-list :global(.empty) {
     font-size: 0.9375rem;
     color: var(--text-secondary);
+  }
+
+  /* A book with a note: the title is a link, underlined so the cue is not colour alone. */
+  .leader-list :global(.note-link) {
+    color: var(--text-primary);
+    text-decoration: underline;
+    text-decoration-color: var(--border);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+    transition: text-decoration-color 0.2s ease, color 0.2s ease;
+  }
+
+  .note-row {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .notes-section .row-title {
+    text-decoration: underline;
+    text-decoration-color: var(--border);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .leader-list :global(.note-link:hover),
+    .note-row:hover .row-title {
+      color: var(--accent);
+      text-decoration-color: var(--accent);
+    }
   }
 
   /* Progress under a book; the percentage is in the row as text too. */
