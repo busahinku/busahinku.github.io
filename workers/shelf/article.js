@@ -197,7 +197,12 @@ const HINT_ATTRS = /\b(class|id|role|itemprop)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\
 const HIDDEN = /(?:^|\s)hidden(?:[\s=/]|$)|aria-hidden\s*=\s*["']?true/i;
 
 // Tags as an unrolled loop, so a stray quote costs one scan, never a backtracking blow-up.
-const TOKEN = /<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<[!?][^>]*>|<(\/?)([a-zA-Z][a-zA-Z0-9:-]*)([^>"']*(?:(?:"[^"]*"|'[^']*')[^>"']*)*)>/g;
+// Sticky: it is tried only where a "<" is, and a "<" it cannot read is either stray
+// text ("a < b") or an opener with no end, where scanning stops (see extract).
+const TOKEN = /<[!?][^>]*>|<(\/?)([a-zA-Z][a-zA-Z0-9:-]*)([^>"']*(?:(?:"[^"]*"|'[^']*')[^>"']*)*)>/y;
+const OPENER = /<\/?[a-zA-Z]|<[!?]/y;
+const RAW = [["<!--", "-->"], ["<![CDATA[", "]]>"]];
+const MAX_DEPTH = 256;
 
 // html: string, base: URL. Returns { title, author, site, date, lang, image, blocks }.
 // A block is { kind: "p" | "li" | "quote" | "pre" | "caption" | "h", level?, text } or { kind: "img", src, alt }.
@@ -272,12 +277,42 @@ export function extract(html, base) {
     }
   };
 
-  TOKEN.lastIndex = 0;
+  // An opener with no end (a comment without "-->", a tag without ">", an element
+  // that never closes) swallows the rest of the page in a browser too, so the scan
+  // stops there. Retrying from every later "<" instead is quadratic on hostile markup.
   let last = 0;
-  let match;
-  while ((match = TOKEN.exec(html))) {
-    if (match.index > last) buffer += html.slice(last, match.index);
-    last = TOKEN.lastIndex;
+  let at = 0;
+  const stop = (lt) => {
+    buffer += html.slice(last, lt);
+    last = html.length;
+  };
+  scan: for (;;) {
+    const lt = html.indexOf("<", at);
+    if (lt < 0) break;
+    for (const [begin, end] of RAW) {
+      if (!html.startsWith(begin, lt)) continue;
+      const endAt = html.indexOf(end, lt + begin.length);
+      if (endAt < 0) {
+        stop(lt);
+        break scan;
+      }
+      buffer += html.slice(last, lt);
+      last = at = endAt + end.length;
+      continue scan;
+    }
+    TOKEN.lastIndex = lt;
+    const match = TOKEN.exec(html);
+    if (!match) {
+      OPENER.lastIndex = lt;
+      if (OPENER.test(html)) {
+        stop(lt);
+        break;
+      }
+      at = lt + 1; // a stray "<" in the text
+      continue;
+    }
+    buffer += html.slice(last, lt);
+    last = at = TOKEN.lastIndex;
     const [, closing, rawName, rawAttrs] = match;
     if (!rawName) continue; // comment, doctype, CDATA
     const name = rawName.toLowerCase();
@@ -302,7 +337,11 @@ export function extract(html, base) {
       if (VOID.has(name) || selfClosing) continue;
       flush();
       const end = endOf(name, last);
-      if (end >= 0) last = TOKEN.lastIndex = end;
+      if (end < 0) {
+        last = html.length;
+        break;
+      }
+      last = at = end;
       continue;
     }
 
@@ -340,7 +379,8 @@ export function extract(html, base) {
     if (name === "hr") flush();
     else if (FRAMES.has(name) && !selfClosing) {
       flush();
-      open(name, rawAttrs);
+      // ponytail: deeper containers are ignored, so close() never walks a huge stack; real pages stay far below.
+      if (stack.length < MAX_DEPTH) open(name, rawAttrs);
     }
   }
   if (last < html.length) buffer += html.slice(last);

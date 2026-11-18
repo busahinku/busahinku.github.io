@@ -294,6 +294,19 @@ await refuse({ "https://example.com/app": html("<html><body><div id=root></div><
 await refuse({ "https://example.com/big": html("x", { "content-length": String(3 << 20) }) }, "size");
 await refuse({ "http://127.0.0.1/": html("x") }, "url");
 
+// Hostile markup stays linear: an opener with no end stops the scan instead of
+// being retried from every later "<", and text before it is kept.
+for (const unit of ['<a "', "<!--", "<![CDATA[", "<?x ", "<div hidden>", "<script>", "<div>", "</ul><div>", "<a <b <c "]) {
+  const hostile = `<p>${"word ".repeat(100)}</p>` + unit.repeat(Math.ceil(200_000 / unit.length));
+  const started = performance.now();
+  const blocks = extract(hostile, new URL("https://example.com/")).blocks;
+  const took = performance.now() - started;
+  assert.ok(took < 250, `${JSON.stringify(unit)} repeated to 200 KB took ${took.toFixed(0)} ms`);
+  assert.ok(blocks.some((b) => b.text?.startsWith("word word")), `${JSON.stringify(unit)}: the text before it is kept`);
+}
+// A stray "<" in text is text, not the end of the page.
+assert.ok(extract(`<p>${"a < b and c <= d ".repeat(30)}</p><p>still here</p>`, new URL("https://example.com/")).blocks.some((b) => b.text === "still here"));
+
 // ---- 3. auth on every route ----
 
 const ROUTES = [
