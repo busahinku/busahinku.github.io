@@ -21,8 +21,10 @@ crons = ["*/30 * * * *"]
 SYNC_URL = "https://sync.crosspointreader.com"
 NTFY_URL = "https://ntfy.sh"
 # HIDE_TITLES is a secret (DEPLOY.md, step 4), not a var.
-# Where the files Worker serves the bucket below; recordings are linked from here.
+# Where the files Worker serves the bucket below; recordings and covers are linked from here.
 FILES_URL = "https://files.busahin.com"
+# The only hosts a cover is copied from (https, comma-separated). Sync's covers come from Hardcover.
+COVER_HOSTS = "assets.hardcover.app"
 
 [[d1_databases]]
 binding = "DB"
