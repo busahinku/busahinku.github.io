@@ -110,7 +110,7 @@ function toItem(object) {
     kind: m.kind === "article" ? "article" : "book",
     site: m.site || "",
     date: m.date || "",
-    source: m.source || "",
+    source: /^https?:\/\//i.test(m.source || "") ? m.source : "", // it goes into an href
     added: m.added || object.uploaded?.toISOString?.() || "",
     cover: m.cover || "",
     size: object.size,
@@ -401,7 +401,8 @@ async function route(request, env, deps) {
   if (request.method === "GET" || request.method === "HEAD") {
     if (path === BASE) {
       const { items, cursor } = await listItems(env, { cursor: url.searchParams.get("cursor"), limit: 100 });
-      const message = MESSAGES[url.searchParams.get("m") || url.searchParams.get("e")] || "";
+      const code = url.searchParams.get("m") || url.searchParams.get("e");
+      const message = Object.hasOwn(MESSAGES, code) ? MESSAGES[code] : "";
       return respond(shelfPage({ items, cursor, message, prefill: firstUrl(url.searchParams.get("url")) }), 200, {
         "content-type": "text/html; charset=utf-8",
         "content-security-policy": PAGE_CSP,
@@ -436,8 +437,9 @@ async function route(request, env, deps) {
       const id = await store(env, built);
       return done(request, { done: "added", id, title: built.meta.title });
     } catch (error) {
-      const code = MESSAGES[error.message] ? error.message : "fetch";
-      if (!MESSAGES[error.message]) console.error(error);
+      const known = Object.hasOwn(MESSAGES, error.message);
+      if (!known) console.error(error);
+      const code = known ? error.message : "fetch";
       return done(request, { error: code }, 422);
     }
   }
@@ -487,8 +489,10 @@ async function route(request, env, deps) {
 
 // deps: test seams for check.mjs (a fake fetch and DNS resolver). Production passes none.
 export async function handle(request, env, deps = {}) {
-  const path = new URL(request.url).pathname;
+  const { pathname: path, protocol, hostname } = new URL(request.url);
   if (path !== BASE && !path.startsWith(`${BASE}/`)) return respond("Not found", 404);
+  // Never ask for the password over plain http (local wrangler dev aside).
+  if (protocol !== "https:" && hostname !== "localhost") return respond("HTTPS only", 403);
   // Refuse to run open: no secrets, or a password short enough to guess, means no shelf.
   if (!env.SHELF_USER || !env.SHELF_PASSWORD || env.SHELF_PASSWORD.length < 16) return respond("Not configured", 503);
 

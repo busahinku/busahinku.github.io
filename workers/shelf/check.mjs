@@ -337,6 +337,12 @@ assert.equal((await handle(request("/api/shelf/opds", { headers: { "cf-connectin
 // Not configured, or a short password: closed.
 assert.equal((await handle(request("/api/shelf/opds"), fakeEnv({ SHELF_PASSWORD: undefined }))).status, 503);
 assert.equal((await handle(request("/api/shelf/opds", { auth: "Basic " + btoa("reader:short") }), fakeEnv({ SHELF_PASSWORD: "short" }))).status, 503);
+// Plain http is refused before any challenge, so a password is never asked for in the clear.
+const insecure = await handle(new Request("http://busahin.com/api/shelf/opds"), env);
+assert.equal(insecure.status, 403);
+assert.equal(insecure.headers.get("www-authenticate"), null);
+// Unknown or inherited message codes show nothing.
+for (const code of ["constructor", "__proto__", "toString"]) assert.doesNotMatch(await (await handle(request(`/api/shelf/?e=${code}`), env)).text(), /function|native code|\[object/);
 // Outside /api/shelf the Worker answers nothing.
 assert.equal((await handle(request("/api/shelfish"), env)).status, 404);
 // A cross-site form cannot use the browser's remembered credentials.
@@ -448,6 +454,14 @@ assert.equal(unsized.status, 411);
 assert.equal((await unsized.json()).error, "length");
 // A zip bomb: a small entry claiming to unpack far past the cap is refused before inflating.
 await expectUpload(await book([], OPF.padEnd(OPF.length + (2 << 20), " ")), 415, "not-epub");
+
+// A stored source that is not http(s) never reaches an href.
+{
+  const odd = fakeEnv();
+  const id = (await (await upload(await book(), "book.epub", odd)).json()).id;
+  odd.SHELF.objects.get(`items/${id}.epub`).customMetadata.source = "javascript:alert(1)";
+  assert.doesNotMatch(await (await handle(request("/api/shelf/"), odd)).text(), /javascript:/);
+}
 
 // ---- 5. the feeds, as the reader parses them ----
 
