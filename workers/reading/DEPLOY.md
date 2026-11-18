@@ -11,13 +11,9 @@ CrossPoint 2.0.0, Settings → Connectivity → CrossPoint Sync, signed in to th
 
 Then open a book and press Sync once, so the service has something to return.
 
-## 1. Create the database
+## 1. The database (done)
 
-```bash
-npx wrangler@4.146.0 d1 create busahin-reading
-```
-
-Copy the `database_id` it prints into `workers/reading/wrangler.toml`, replacing `REPLACE-WITH-THE-ID-FROM-D1-CREATE`, and commit that change.
+`busahin-reading` exists (region EEUR) and its id is in `workers/reading/wrangler.toml`.
 
 ## 2. Apply the schema
 
@@ -25,17 +21,25 @@ Copy the `database_id` it prints into `workers/reading/wrangler.toml`, replacing
 npx wrangler@4.146.0 d1 execute busahin-reading --remote --file workers/reading/schema.sql --config workers/reading/wrangler.toml
 ```
 
-## 3. Load the dictionary
+Every statement is `CREATE ... IF NOT EXISTS`, so this is safe on the database as it is (with `dict` already loaded) and safe to run again; it never touches existing rows.
+
+## 3. The dictionary (done)
+
+`dict` is loaded (49,298 rows from `node scripts/reading-dict.mjs`). Reload it only for a newer WikDict, and on a day with nothing else to write: the file deletes every row and inserts them again, close to D1's free 100,000 writes a day.
+
+## 3b. Load the example sentences (another day)
 
 ```bash
-node scripts/reading-dict.mjs
+node scripts/reading-examples.mjs
 ```
 
 ```bash
-npx wrangler@4.146.0 d1 execute busahin-reading --remote --file workers/reading/dict.sql --config workers/reading/wrangler.toml
+npx wrangler@4.146.0 d1 execute busahin-reading --remote --file workers/reading/examples.sql --config workers/reading/wrangler.toml
 ```
 
-The first command downloads WikDict's English to Turkish StarDict (CC BY-SA 4.0) to a temporary folder and writes `workers/reading/dict.sql` (about 49,000 rows, 4.6 MB, ignored by git). The first load writes about 49,000 rows, half of D1's free daily allowance of 100,000, so do it on its own day. A reload later costs about twice that (the file deletes every row, then inserts them again, close to the whole day's 100,000), so only reload when you want a newer WikDict, and on a day with nothing else to write.
+The script downloads three Tatoeba exports (English sentences, Turkish sentences and the links between them, about 38 MB, CC BY 2.0 FR) to a temporary folder and needs `dict.sql` from step 3. It keeps up to three short, clean sentences with their Turkish for each dictionary word, capped at 40,000 rows, so loading them fits in one day's free D1 writes; do it on a different day from the dictionary. `examples.sql` (4.5 MB) is ignored by git.
+
+**Upgrading a database made from the first version** (before manual words, examples and recordings): apply `workers/reading/upgrades/0002-private-words.sql` once, then `schema.sql` again, as its first lines say. A new database needs neither.
 
 ## 4. Set the secrets
 
@@ -43,8 +47,9 @@ The first command downloads WikDict's English to Turkish StarDict (CC BY-SA 4.0)
 |---|---|
 | `SYNC_USER` | The CrossPoint Sync username the reader signs in with. |
 | `SYNC_KEY` | The lowercase MD5 hex of that account's password: what the reader itself sends as `x-auth-key`. Not the password. |
-| `READING_TOKEN` | A random string of at least 32 characters. It opens the private routes (`today` with the word of the day, `cards.csv`, `sentences`, `review`, `sync`). Keep it in your password manager. |
+| `READING_TOKEN` | A random string of at least 32 characters. It opens the private page (`/api/reading/app`, where you type it once and a signed session keeps you in for 60 days on that browser) and the private routes (`today` with the word of the day, `cards`, `words`, `audio`, `cards.csv`, `sentences`, `review`, `sync`). Keep it in your password manager. |
 | `NTFY_TOPIC` | The ntfy topic the morning notification goes to. Anyone who knows the name can read it, so make it unguessable. |
+| `HIDE_TITLES` | Optional. Comma-separated words; a book whose title contains any of them (any case) stays off the public page. A secret so the list is not in the public repository. |
 
 Each command reads the value from the terminal, so it never lands in shell history:
 
@@ -74,7 +79,7 @@ Deploy the Worker **before** merging the site change that adds `/reading/`. Unti
 npx wrangler@4.146.0 deploy --config workers/reading/wrangler.toml
 ```
 
-It takes `busahin.com/api/reading*`, which is more specific than the assistant's `busahin.com/api/*`, so it wins for those paths. It adds two cron triggers; Workers Free allows five per account.
+It takes `busahin.com/api/reading*`, which is more specific than the assistant's `busahin.com/api/*`, so it wins for those paths. It adds one cron trigger (every thirty minutes: the pull, and on the hour any notification due); Workers Free allows five per account.
 
 ## 6. Check it
 
@@ -108,7 +113,7 @@ Then open https://busahin.com/reading/ and https://busahin.com/tr/reading/. Publ
 
 ## 7. Book titles on the public page
 
-The public page shows a book only under a real title: its own metadata title, or one you set. A book synced without metadata is never shown under its file name. Titles containing any of `HIDE_TITLES` (in `wrangler.toml`) stay off the page. To see every book and what the page shows for it, and to hide one or give it a title:
+The public page shows a book only under a real title: its own metadata title, or one you set. A book synced without metadata is never shown under its file name. Titles containing any of the `HIDE_TITLES` secret's words stay off the page. To see every book and what the page shows for it, and to hide one or give it a title:
 
 ```bash
 curl -s -H "authorization: Bearer $TOKEN" https://busahin.com/api/reading/books
@@ -124,9 +129,44 @@ curl -s -X POST -H "authorization: Bearer $TOKEN" -H "content-type: application/
 
 `"title": null` goes back to the book's own title, `"hidden": false` shows it again. The public page changes at once (its stored answer is rebuilt), give or take the five-minute edge cache.
 
-## 8. Phone and watch
+## 8. The private app
 
-Install the ntfy app, add a subscription on the default server (ntfy.sh) with the `NTFY_TOPIC` name, and allow its notifications on the watch in the Galaxy Wearable app. The first one arrives at 08:00 Istanbul time.
+Open https://busahin.com/api/reading/app on the phone, type the token once, and add it to the home screen (Chrome: menu, Add to home screen; it opens standalone). Nothing links to it and it is `noindex`; it is served by the Worker, never by the static site, so no public page, script or search index mentions it. It has six screens, in English or Turkish (the language button is on Admin):
+
+- **Today:** the streak, what is due, whether you have read today, the word of the day, and one button for what to do next.
+- **Review:** one card at a time, Show, then Again or Good with the thumb. Answers are kept on the phone until the Worker has them, so a dropped connection loses nothing; a card answered Again comes back once more as practice.
+- **Words:** every card, searchable and filtered by state, source, book and list (the Academic Word List, frequency bands, a book's word list), with add, edit and delete.
+- **Sentences:** clipped sentences with their translation. Rare words are underlined; tap any word to add it as a card with the sentence it came from.
+- **Progress:** cards by state over twelve weeks, accuracy, words added, frequency bands, Academic Word List coverage, and each book's words.
+- **Admin:** the last pulls and their errors, Pull now, today's translation and recording quotas, the three notifications and their hours, exports (JSON, and CSV for Anki), rotating the token, sign out.
+
+**Access.** The token is checked in constant time against `READING_TOKEN` (or a rotated token's hash, below). Signing in sets a session cookie, not the token: `reading_session=<expiry>.<HMAC-SHA256 of the expiry and a counter>`, signed with the token, `HttpOnly`, `SameSite=Strict`, `Secure`, scoped to `/api/reading`, for 60 days. It cannot be turned back into the token or used in its place. Sign out (Admin) raises the counter in D1, which ends every session on every device; rotating the token ends them too. A cookie-carrying POST from another origin is refused, sign-in is limited to five tries a minute per visitor on top of the 30 a minute every route has, and without the token every private route answers 404, like a path that does not exist. The page is never served over plain http.
+
+**Same origin as the public site (accepted).** The page and its cookie live on `busahin.com`, so a script running on the static site could use the session. Nothing on the site runs untrusted script (a strict CSP, no third-party code beyond the allowlist in `BaseHead.astro`), so this is accepted for now. If that ever changes, move the page to its own hostname (for example a `reading.busahin.com` route on this Worker) with a host-only cookie; the code needs only the cookie path and the route.
+
+**HSTS (dashboard, once).** Cloudflare, busahin.com, SSL/TLS, Edge Certificates, HTTP Strict Transport Security: enable, max-age 6 months, include subdomains only if every subdomain is HTTPS, no preload. With it a browser never makes a plain-http request to the site, so the sign-in form cannot be imitated on a hostile network.
+
+**Rotating the token** (Admin, Rotate the token) makes a new one, shows it once, gives this browser a new session, and stores the new token's hash in D1; `READING_TOKEN` and every other session stop working. If the new token is lost, recover in this order. Deleting the row on its own would bring back the old `READING_TOKEN`, which is usually the one you rotated away from, so set a fresh secret first:
+
+```bash
+openssl rand -hex 32 | tee /dev/tty | npx wrangler@4.146.0 secret put READING_TOKEN --config workers/reading/wrangler.toml
+```
+
+```bash
+npx wrangler@4.146.0 d1 execute busahin-reading --remote --command "DELETE FROM settings WHERE key = 'token_hash'" --config workers/reading/wrangler.toml
+```
+
+**Book word lists.** The companion files on this Mac (`~/Documents/xteink-x4pro/companions/*/* - Words.json`) give each book's words with rank, IPA, Turkish, definition and Academic Word List flags. Upload them (again whenever they change; a book's list is replaced, never doubled):
+
+```bash
+READING_TOKEN=... node scripts/reading-companions.mjs
+```
+
+Recordings are copied once into the `busahin-files` bucket under `reading/audio/` with random names and served by the files Worker at files.busahin.com; at most 100 new ones a day. The Worker identifies itself to Wikimedia as `busahin-reading/1 (https://busahin.com/)`, as Wikimedia's API policy asks.
+
+## 9. Phone and watch
+
+Install the ntfy app, add a subscription on the default server (ntfy.sh) with the `NTFY_TOPIC` name, and allow its notifications on the watch in the Galaxy Wearable app. Three pushes, each switched on or off and given its hour (Istanbul time) on Admin: the morning word with the streak (08:00 by default; it also says when nothing has synced from the reader for three days, or when the pull has failed for a day), the evening streak-at-risk (21:00, only when there is a streak and nothing was read that day), and the Sunday digest (10:00).
 
 ## Using it
 
@@ -150,3 +190,5 @@ Install the ntfy app, add a subscription on the default server (ntfy.sh) with th
 | D1 writes | An unchanged answer writes nothing but its fetch time; a changed one rewrites only the rows that changed. The public summary is one stored row, rewritten each pull. |
 | D1 reads | A public request reads one row (the stored summary). Private routes find a card's clipping through partial indexes, so they read a few rows per card, not every clipping. |
 | Bad answers | A 200 answer without the documented lists is refused before anything is written, and no delete runs against an empty list. |
+| Recordings | 100 Wikimedia lookups a day (three small GETs each) and at most one R2 write each; a word with no recording is asked about again after 30 days. Five per pull are fetched ahead for new words. At a few KB each, a year of new words stays far inside R2's free 10 GB and million writes a month. |
+| Examples | 40,000 rows, loaded once. |
