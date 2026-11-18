@@ -189,6 +189,7 @@ const TEXT = {
     reviewN: (n) => `Review ${n} ${n === 1 ? "word" : "words"}`,
     addWord: "Add a word",
     wordOfDay: "Word of the day",
+    noteToWrite: (title) => `No note yet for ${title}.`,
     play: (w) => `Play ${w}`,
     playSentence: "Play the sentence",
     show: "Show",
@@ -272,6 +273,7 @@ const TEXT = {
     reviewN: (n) => `${n} kelimeyi tekrar et`,
     addWord: "Kelime ekle",
     wordOfDay: "Günün kelimesi",
+    noteToWrite: (title) => `${title} için henüz not yok.`,
     play: (w) => `${w} kelimesini dinle`,
     playSentence: "Cümleyi dinle",
     show: "Göster",
@@ -580,6 +582,8 @@ function client(ICON, TEXT, dropGrade) {
       due
         ? button(t.reviewN(due), { primary: true, class: "action", icon: "review", onclick: () => (location.hash = "#review") })
         : button(t.addWord, { primary: true, class: "action", icon: "plus", onclick: () => (location.hash = "#words/add") }),
+      // A quiet line per finished book that has no note on the site yet.
+      ...(mine.notes_to_write ?? []).map((b) => el("p", { class: "muted", style: "margin:.75rem 0 0;display:flex;gap:.5rem;align-items:center" }, icon("pencil"), t.noteToWrite(b.title))),
       wotd && el("h2", {}, t.wordOfDay),
       wotd && el("div", { class: "card" }, head(wotd), ...details(wotd)),
     ];

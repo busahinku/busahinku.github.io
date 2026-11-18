@@ -103,6 +103,7 @@ globalThis.fetch = async (input, init = {}) => {
     return new Response("{}");
   }
   if (url.host.endsWith("wikimedia.org") || url.host === "en.wiktionary.org") return wiki(url, init);
+  if (url.host === "busahin.com" && url.pathname === "/reading/notes.json") return new Response(answers.notes ?? '{"notes":[]}');
   requests.push({ url, headers: init.headers });
   const name = { "/healthz": "healthz", "/api/v1/progress": "progress", "/api/v1/stats/activity": "activity", "/api/v1/stats/overview": "overview", "/api/v1/clippings": "clippings" }[url.pathname];
   return name ? new Response(answers[name]) : new Response('{"code":2001,"message":"Unauthorized"}', { status: 401 });
@@ -895,6 +896,28 @@ assert.deepEqual(Object.keys(publicCard).sort(), ["day", "streak"], "still only 
   delete globalThis.caches;
 }
 assert.ok(fs.readFileSync(new URL("../../src/components/ReadingPage.astro", here), "utf8").includes('fetch(ENDPOINT, { cache: "no-store" })'), "the page asks the browser not to reuse an old answer");
+
+// ---- a finished book without a note on the site gets a quiet reminder in the private app
+{
+  const { titleKey } = await import("../../src/lib/title-key.mjs");
+  assert.equal(titleKey("Thé Remains: of the Day!"), titleKey("the remains of the day"));
+  assert.equal(titleKey("Alice’s Adventures & Wonders"), "alice s adventures and wonders");
+  sqlite.exec("DELETE FROM meta WHERE key = 'notes'");
+  assert.deepEqual((await w.todayCard(env, NOW, true)).notes_to_write, [], "no reminder before the site's list has been read");
+  answers.notes = JSON.stringify({ notes: [] });
+  await w.pull(env, NOW + 30_000_000, "cron");
+  assert.deepEqual((await w.todayCard(env, NOW, true)).notes_to_write, [{ title: "Foundryside" }]);
+  answers.notes = JSON.stringify({ notes: [{ keys: [titleKey("FOUNDRYSIDE.")], href: "/reading/foundryside/", title: "Foundryside" }] });
+  await w.pull(env, NOW + 30_100_000, "cron");
+  assert.deepEqual((await w.todayCard(env, NOW, true)).notes_to_write, [], "written: the reminder goes");
+  answers.notes = "<html>down</html>";
+  const log = console.error;
+  console.error = () => {};
+  await w.pull(env, NOW + 30_200_000, "cron");
+  console.error = log;
+  assert.deepEqual((await w.todayCard(env, NOW, true)).notes_to_write, [], "a failed fetch keeps the last list");
+  assert.ok(!("notes_to_write" in (await w.todayCard(env, NOW))), "never in public");
+}
 
 // ---- Workers reject fetch redirect "error" (Node accepts it, so only this catches it)
 for (const f of fs.readdirSync(here).filter((f) => f.endsWith(".js")))

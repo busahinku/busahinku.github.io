@@ -19,6 +19,7 @@
 //          POST /api/reading/audio     find and keep a human recording for {term}
 //          GET  /api/reading/app       the private words page (sign in with the token at POST /login)
 import { appPage, loginPage } from "./page.js";
+import { titleKey } from "../../src/lib/title-key.mjs";
 
 const SITE = "https://busahin.com";
 const ORIGINS = new Set([SITE, "http://localhost:4321"]);
@@ -655,6 +656,7 @@ async function todayCard(env, now, mine = false) {
     word: word && { term: word.term, ipa: word.ipa, tr: word.tr, def: word.def },
     words: { collected: counts.collected, learned: counts.learned },
     last_pull: last ? JSON.parse(last) : null,
+    notes_to_write: await notesToWrite(db, now),
   };
 }
 
@@ -1242,7 +1244,41 @@ async function pull(env, now, trigger = "manual") {
       at,
     ),
   ]).catch((error) => console.error(error));
+  await learnNotes(env, now);
   return outcome;
+}
+
+/**
+ * Which books have a note on the site, from the JSON the site builds
+ * (/reading/notes.json). Read on each pull, kept in meta; a failure keeps the
+ * last list. No secret and no write path back to the repository.
+ */
+async function learnNotes(env, now) {
+  try {
+    const res = await fetch(env.NOTES_URL || `${SITE}/reading/notes.json`, { redirect: "manual", signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) throw new Error(`notes.json: HTTP ${res.status}`);
+    const body = await res.json();
+    const keys = (Array.isArray(body?.notes) ? body.notes : []).flatMap((n) => (Array.isArray(n?.keys) ? n.keys.filter((k) => typeof k === "string").slice(0, 5) : []));
+    await env.DB.prepare("INSERT INTO meta (key, value, updated_at) VALUES ('notes', ?1, ?2) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at")
+      .bind(J(keys.slice(0, 2000)), Math.floor(now / 1000))
+      .run();
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+/** Books finished in the last 120 days that have no note yet, newest first, at most three. */
+async function notesToWrite(db, now) {
+  const [books, keys] = await Promise.all([
+    db.prepare("SELECT title, public_title, finished_at FROM books WHERE status = 'finished' AND finished_at >= ?1 ORDER BY finished_at DESC").bind(Math.floor(now / 1000) - 120 * 86_400).all(),
+    db.prepare("SELECT value FROM meta WHERE key = 'notes'").first("value"),
+  ]);
+  if (keys === null) return []; // the site's list has not been read yet: no reminder rather than a wrong one
+  const have = new Set(JSON.parse(keys));
+  return books.results
+    .filter((b) => (b.public_title ?? b.title) && !have.has(titleKey(b.public_title ?? b.title)) && !have.has(titleKey(b.title ?? "")))
+    .slice(0, 3)
+    .map((b) => ({ title: b.public_title ?? b.title }));
 }
 
 // ---------------------------------------------------------------- the private app's data
@@ -1650,4 +1686,4 @@ export default {
 };
 
 // For check.mjs.
-export { addDays, addWord, adminData, audioFor, authorized, band, booksList, buildSummary, candidates, cardsCsv, cardsJson, classify, commonsAudio, dayOf, deleteWord, derive, editWord, ensureAudio, eveningPush, exportAll, forecast, getSettings, handTerm, healthLines, importList, ingest, nextBox, notification, notifications, notify, pace, pickRecording, progress, publicTitle, pull, review, rotateToken, sentences, sentencesMined, setBook, setSettings, streak, summary, termOf, todayCard, weeklyPush, wordFacts };
+export { addDays, addWord, adminData, audioFor, authorized, band, booksList, buildSummary, candidates, cardsCsv, cardsJson, classify, commonsAudio, dayOf, deleteWord, derive, editWord, ensureAudio, eveningPush, exportAll, forecast, getSettings, handTerm, healthLines, importList, ingest, learnNotes, nextBox, notesToWrite, notification, notifications, notify, pace, pickRecording, progress, publicTitle, pull, review, rotateToken, sentences, sentencesMined, setBook, setSettings, streak, summary, termOf, todayCard, weeklyPush, wordFacts };
