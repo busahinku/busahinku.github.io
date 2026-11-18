@@ -71,4 +71,25 @@ const courses = defineCollection({
 		}),
 });
 
-export const collections = { blog, projects, courses };
+// A note about a book he has finished, at /reading/<slug>/. English is the
+// canonical language, like projects: a Turkish note sets lang "tr" and points
+// translationKey at the English file's slug.
+const books = defineCollection({
+	loader: glob({ base: './src/content/books', pattern: '**/*.{md,mdx}' }),
+	schema: ({ image }) =>
+		z.object({
+			title: z.string(),
+			author: z.string(),
+			finished: z.coerce.date(),
+			// One sentence for listings and the meta description; optional.
+			description: z.string().optional(),
+			// The title exactly as the reader reports it, when it differs from `title`.
+			readerTitle: z.string().optional(),
+			heroImage: image().optional(),
+			draft: z.boolean().default(false),
+			lang: z.enum(['en', 'tr']).default('en'),
+			translationKey: z.string().optional(),
+		}),
+});
+
+export const collections = { blog, projects, courses, books };

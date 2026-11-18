@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { KEY, VISITOR, cleanComment } from "./index.js";
 
-for (const key of ["courses/stat497", "projects/portfolio-website", "blog/first-post"]) assert.ok(KEY.test(key), key);
+for (const key of ["courses/stat497", "projects/portfolio-website", "blog/first-post", "reading/the-remains-of-the-day"]) assert.ok(KEY.test(key), key);
 for (const key of ["about", "courses/", "courses/../x", "courses/STAT497", "photos/x", "courses/a/b", `blog/${"a".repeat(90)}`]) assert.ok(!KEY.test(key), key);
 
 assert.ok(VISITOR.test(crypto.randomUUID()));

@@ -1,7 +1,7 @@
 ---
 import { Image } from "astro:assets";
 import type { CollectionEntry } from "astro:content";
-import type { MarkdownHeading } from "astro";
+import type { ImageMetadata, MarkdownHeading } from "astro";
 import BaseHead from "../components/BaseHead.astro";
 import Footer from "../components/Footer.astro";
 import Assistant from "../components/Assistant.astro";
@@ -24,7 +24,8 @@ interface Props {
   post:
     | CollectionEntry<"blog">["data"]
     | CollectionEntry<"projects">["data"]
-    | CollectionEntry<"courses">["data"];
+    | CollectionEntry<"courses">["data"]
+    | { title: string; description?: string; pubDate: Date; updatedDate?: Date; heroImage?: ImageMetadata };
   headings: MarkdownHeading[];
   lang?: Lang;
   github?: string;
@@ -37,6 +38,10 @@ interface Props {
   heroAspect?: "default" | "16:10";
   /** This page's share card, from src/pages/og. */
   ogImage?: string;
+  /** What the date means, when it is not the publishing date (a book note: when the book was finished). */
+  dateLabel?: string;
+  /** The meta description, when the line under the title is something else (a book note shows its author there). */
+  metaDescription?: string;
 }
 
 const {
@@ -51,6 +56,8 @@ const {
   nextPost,
   heroAspect = "default",
   ogImage,
+  dateLabel,
+  metaDescription,
 } = Astro.props;
 const { title, description, pubDate, updatedDate, heroImage } = post;
 const t = useTranslations(lang);
@@ -64,7 +71,7 @@ const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
 
 <html lang={lang}>
   <head>
-    <BaseHead title={title} description={description} image={ogImage} />
+    <BaseHead title={title} description={metaDescription ?? description} image={ogImage} />
   </head>
 
   <body>
@@ -112,7 +119,7 @@ const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
         <header class="article-header">
           <div class="article-meta" data-pagefind-ignore>
             <span>
-              {t("blog.publishedOn")}
+              {dateLabel ?? t("blog.publishedOn")}
               <FormattedDate date={pubDate} />
             </span>
             {

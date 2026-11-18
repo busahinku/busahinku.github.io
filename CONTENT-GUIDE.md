@@ -7,8 +7,9 @@ only what this guide supports."* If a feature is not listed here, it is not
 supported. Do not invent components or syntax.
 
 The site is built with Astro and MDX. Posts are `.mdx` files under
-`src/content/{blog,projects,courses}/`. The file name becomes the URL slug:
-`src/content/blog/my-post.mdx` serves at `/blog/my-post/`.
+`src/content/{blog,projects,courses,books}/`. The file name becomes the URL slug:
+`src/content/blog/my-post.mdx` serves at `/blog/my-post/`, and a book note
+`src/content/books/my-book.mdx` serves at `/reading/my-book/`.
 
 ---
 
@@ -82,6 +83,39 @@ Notes:
   Use it for work in progress.
 
 ---
+
+### Book notes (`src/content/books/`)
+
+A note about a book you have finished. It is typeset like a blog post at
+`/reading/<file name>/`, listed under Notes on `/reading/`, and the book's row
+on the reading page links to it whenever the titles match.
+
+```yaml
+---
+title: The Remains of the Day          # the book's title
+author: Kazuo Ishiguro
+finished: 2026-11-30                   # when you finished it; the page shows it
+description: One sentence for listings and search results.   # optional
+readerTitle: The Remains Of The Day    # optional: the title exactly as the reader shows it,
+                                       # only if it differs enough that matching fails
+heroImage: ../../assets/books/my-book/cover.jpg   # optional, like a blog cover
+draft: false                           # true keeps it off the site
+---
+```
+
+Matching ignores case, punctuation and accents, so `readerTitle` is rarely
+needed. A Turkish version is a separate file with `lang: tr` and
+`translationKey: <the English file's name>`, like projects; it replaces the
+English note only under `/tr/`.
+
+Writing one, the short way:
+
+1. Copy `src/content/books/the-book-title.mdx` (a draft template) to
+   `src/content/books/<short-name>.mdx`.
+2. Fill in the frontmatter, delete `draft: true`, and write below the second
+   `---`. Everything in this guide works there.
+3. Commit and push. The page, its share card, the RSS item and the link from
+   the reading page are all built from the file; nothing else to edit.
 
 ## 3. Standard Markdown
 
