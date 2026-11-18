@@ -409,6 +409,20 @@ assert.equal(uploaded.status, 200, await uploaded.clone().text());
 const uploadedId = (await uploaded.json()).id;
 assert.equal(env.SHELF.objects.get(`items/${uploadedId}.epub`).customMetadata.kind, "book");
 assert.ok(env.SHELF.objects.has(`covers/${uploadedId}`));
+// The item is written before its cover, so a failure between them never leaves a cover with no item.
+{
+  const fresh = fakeEnv();
+  const order = [];
+  const put = fresh.SHELF.put.bind(fresh.SHELF);
+  fresh.SHELF.put = (key, ...rest) => (order.push(key.split("/")[0]), put(key, ...rest));
+  const first = await (await upload(await book(), "book.epub", fresh)).json();
+  assert.deepEqual(order, ["items", "covers"]);
+  // Covers count toward the 2 GB cap: an item whose cover pushes the total over it fills the shelf.
+  fresh.SHELF.objects.get(`items/${first.id}.epub`).customMetadata.coverBytes = String(2 * 1024 ** 3);
+  const full = await upload(await book(), "book.epub", fresh);
+  assert.equal(full.status, 507);
+  assert.equal((await full.json()).error, "full");
+}
 
 const expectUpload = async (bytes, status, error) => {
   const response = await upload(bytes);

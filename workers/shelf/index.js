@@ -222,20 +222,23 @@ async function serveFile(request, env, key, filename) {
 
 const fileName = (item) => `${(item.author ? `${item.author} - ${item.title}` : item.title).replace(/[\\/:*?"<>|\u0000-\u001f]/g, "").slice(0, 100).trim() || "book"}.epub`;
 
+// Covers count too: each item records its cover's size, so one listing covers both.
 async function hasRoom(env, adding) {
-  const listed = await env.SHELF.list({ prefix: "items/", limit: MAX_ITEMS });
-  const used = listed.objects.reduce((n, o) => n + o.size, 0);
+  const listed = await env.SHELF.list({ prefix: "items/", limit: MAX_ITEMS, include: ["customMetadata"] });
+  const used = listed.objects.reduce((n, o) => n + o.size + (Number(o.customMetadata?.coverBytes) || 0), 0);
   return !listed.truncated && listed.objects.length < MAX_ITEMS && used + adding <= MAX_BYTES;
 }
 
 async function store(env, { epub, cover, meta }) {
   const id = newId();
-  const customMetadata = { ...meta, added: new Date().toISOString(), ...(cover ? { cover: cover.type } : {}) };
+  const customMetadata = { ...meta, added: new Date().toISOString(), ...(cover ? { cover: cover.type, coverBytes: cover.bytes.length } : {}) };
   // R2 allows 2 KB of custom metadata; these caps keep it under that even in three-byte characters.
   const caps = { title: 160, author: 120, site: 80, source: 500 };
   for (const key of Object.keys(customMetadata)) customMetadata[key] = String(customMetadata[key]).slice(0, caps[key] ?? 40);
-  if (cover) await env.SHELF.put(coverKey(id), cover.bytes, { httpMetadata: { contentType: cover.type } });
+  // The item first: if the cover then fails, the book is still there and its cover
+  // link answers 404, rather than a cover left behind with no item to delete it.
   await env.SHELF.put(itemKey(id), epub, { httpMetadata: { contentType: "application/epub+zip" }, customMetadata });
+  if (cover) await env.SHELF.put(coverKey(id), cover.bytes, { httpMetadata: { contentType: cover.type } });
   return id;
 }
 
@@ -465,7 +468,7 @@ async function route(request, env, deps) {
     } catch (error) {
       return done(request, { error: error.message === "drm" ? "drm" : "not-epub" }, 415);
     }
-    if (!(await hasRoom(env, bytes.length))) return done(request, { error: "full" }, 507);
+    if (!(await hasRoom(env, bytes.length + (info.cover?.bytes.length ?? 0)))) return done(request, { error: "full" }, 507);
     const title = info.title || name.replace(/\.epub$/i, "") || "Untitled";
     const id = await store(env, { epub: bytes, cover: info.cover, meta: { title, author: info.author, kind: "book" } });
     return done(request, { done: "uploaded", id, title });
