@@ -108,7 +108,17 @@ needed. A Turkish version is a separate file with `lang: tr` and
 `translationKey: <the English file's name>`, like projects; it replaces the
 English note only under `/tr/`.
 
-Writing one, the short way:
+Writing one: in the private reading app, open **Books**, tap the book, then
+**Write a note**. Title, author and the finished date are filled in from the
+reader; write the body in Markdown (with a preview), add a Turkish version if
+you like, and **Publish**. The app commits `src/content/books/<slug>.md` (and
+`tr/<slug>.md`) and the site rebuilds in a few minutes; it keeps the draft,
+publishes later edits, and can unpublish. Kalem is not needed for book notes.
+App notes are plain Markdown: no imports, components or HTML tags, so the
+MDX-only parts of this guide (callouts, figures, math components) do not apply
+there.
+
+By hand, for a book the reader never saw:
 
 1. Copy `src/content/books/the-book-title.mdx` (a draft template) to
    `src/content/books/<short-name>.mdx`.

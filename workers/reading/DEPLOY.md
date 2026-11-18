@@ -41,6 +41,8 @@ The script downloads three Tatoeba exports (English sentences, Turkish sentences
 
 **Upgrading a database made from the first version** (before manual words, examples and recordings): apply `workers/reading/upgrades/0002-private-words.sql` once, then `schema.sql` again, as its first lines say. A new database needs neither.
 
+**Upgrading for covers and book notes** (a database made before them, which includes the live one): apply `workers/reading/upgrades/0003-covers-notes.sql` once, then `schema.sql` again for the `notes` table, as its first lines say. Do it before deploying the Worker that needs them.
+
 ## 4. Set the secrets
 
 | Secret | What it holds |
@@ -50,6 +52,7 @@ The script downloads three Tatoeba exports (English sentences, Turkish sentences
 | `READING_TOKEN` | A random string of at least 32 characters. It opens the private page (`/api/reading/app`, where you type it once and a signed session keeps you in for 60 days on that browser) and the private routes (`today` with the word of the day, `cards`, `words`, `audio`, `cards.csv`, `sentences`, `review`, `sync`). Keep it in your password manager. |
 | `NTFY_TOPIC` | The ntfy topic the morning notification goes to. Anyone who knows the name can read it, so make it unguessable. |
 | `HIDE_TITLES` | Optional. Comma-separated words; a book whose title contains any of them (any case) stays off the public page. A secret so the list is not in the public repository. |
+| `GITHUB_TOKEN` | Optional, for publishing book notes from the private app. A fine-grained token for this one repository with Contents read and write and nothing else; the steps are below. Without it the app saves drafts but cannot publish. |
 
 Each command reads the value from the terminal, so it never lands in shell history:
 
@@ -70,6 +73,22 @@ printf 'reading-%s' "$(openssl rand -hex 12)" | tee /dev/tty | npx wrangler@4.14
 ```
 
 The last two print the value once so you can save it.
+
+### The GitHub token for book notes
+
+The Worker commits a note to `busahinku/busahinku.github.io` on `main` and the Pages workflow rebuilds the site. It only ever writes `src/content/books/<slug>.md` and `src/content/books/tr/<slug>.md` (the check is in `github()` in `index.js`), but the token is what really limits it, so make it as narrow as GitHub allows:
+
+1. github.com, your avatar, **Settings**, **Developer settings**, **Personal access tokens**, **Fine-grained tokens**, **Generate new token**.
+2. **Token name:** `busahin-reading notes`. **Expiration:** a year (note the date; when it runs out, publishing says GitHub did not take it, and you repeat these steps).
+3. **Resource owner:** `busahinku`. **Repository access:** *Only select repositories*, then `busahinku/busahinku.github.io` alone.
+4. **Permissions**, **Repository permissions**: **Contents: Read and write**. Leave everything else at *No access* (GitHub adds *Metadata: Read-only* itself; that is required and harmless). No account permissions.
+5. **Generate token**, copy it, and store it as the secret without it touching shell history:
+
+```bash
+npx wrangler@4.146.0 secret put GITHUB_TOKEN --config workers/reading/wrangler.toml
+```
+
+Never use another token here (not the one `gh` or wrangler use, not a classic token): a classic token reaches every repository you own. If `main` ever gets a rule that requires pull requests, publishing stops with an HTTP 409 or 422 from GitHub until the rule allows this token or is removed. To revoke, delete the token on the same GitHub page; drafts stay in D1.
 
 ## 5. Deploy
 
@@ -131,9 +150,11 @@ curl -s -X POST -H "authorization: Bearer $TOKEN" -H "content-type: application/
 
 ## 8. The private app
 
-Open https://busahin.com/api/reading/app on the phone, type the token once, and add it to the home screen (Chrome: menu, Add to home screen; it opens standalone). Nothing links to it and it is `noindex`; it is served by the Worker, never by the static site, so no public page, script or search index mentions it. It has six screens, in English or Turkish (the language button is on Admin):
+Open https://busahin.com/api/reading/app on the phone, type the token once, and add it to the home screen (Chrome: menu, Add to home screen; it opens standalone). Nothing links to it and it is `noindex`; it is served by the Worker, never by the static site, so no public page, script or search index mentions it. It has seven screens, in English or Turkish (the language button is on Admin):
 
 - **Today:** the streak, what is due, whether you have read today, the word of the day, and one button for what to do next.
+- **Books:** every book the reader knows, with its cover, author, year, pages, genres, series and progress (Hardcover's metadata, as Sync passes it on). Open one to show or hide it on the reading page, give it the title the page shows, upload or replace its cover, and write its note.
+- **Note** (from a book): the note in English and, if you like, Turkish, with title, author and finished date filled in from the book, a one-line description, and the body in Markdown with a preview. Every keystroke is kept on the phone and saved to D1 a few seconds after you stop typing, so a dropped connection or a closed tab loses nothing. **Publish** commits the note to the repository and the site rebuilds in a few minutes (the app says when the page is live); publishing again commits the changes, **Unpublish** deletes the file and keeps the draft. The address (`/reading/<slug>/`) is shared by both languages and fixed once either is published.
 - **Review:** one card at a time, Show, then Again or Good with the thumb. Answers are kept on the phone until the Worker has them, so a dropped connection loses nothing; a card answered Again comes back once more as practice.
 - **Words:** every card, searchable and filtered by state, source, book and list (the Academic Word List, frequency bands, a book's word list), with add, edit and delete.
 - **Sentences:** clipped sentences with their translation. Rare words are underlined; tap any word to add it as a card with the sentence it came from.
@@ -164,6 +185,10 @@ READING_TOKEN=... node scripts/reading-companions.mjs
 
 Recordings are copied once into the `busahin-files` bucket under `reading/audio/` with random names and served by the files Worker at files.busahin.com; at most 100 new ones a day. The Worker identifies itself to Wikimedia as `busahin-reading/1 (https://busahin.com/)`, as Wikimedia's API policy asks.
 
+**Covers.** Sync gives each book Hardcover's `cover_url`. The Worker copies it into the same bucket under `reading/covers/<random id>`, only for books the public page shows (reading or finished, not hidden, with a public title), and deletes the copy when a book leaves the page. The public page and the notes link only the copy on files.busahin.com, never Hardcover. A copy is fetched only from the hosts in `COVER_HOSTS` over https, never through a redirect, and is refused unless its headers say an image under 1 MB and its first bytes are a JPEG, PNG, WebP or AVIF (never SVG); a failure waits a day. An upload from the Books screen goes through the same byte check (the app shrinks the picture to 1200 px before sending it). A replaced cover keeps its key and gets a new `?v=`, so a published note that links it keeps working.
+
+**Notes and the repository.** Publishing needs the session cookie on a request from the app itself: a bearer token from a script cannot publish. The Worker writes the frontmatter from checked fields (one line each, every value quoted), refuses raw HTML in the body (the site's CSP allows inline script, so a note is Markdown only), and never overwrites a file it did not write, including a hand-made `.mdx` of the same name. If the file changed on GitHub since the last publish, the app asks before replacing it. Commit messages are always `Reading note: publish|update|unpublish <slug> (<lang>)`.
+
 ## 9. Phone and watch
 
 Install the ntfy app, add a subscription on the default server (ntfy.sh) with the `NTFY_TOPIC` name, and allow its notifications on the watch in the Galaxy Wearable app. Three pushes, each switched on or off and given its hour (Istanbul time) on Admin: the morning word with the streak (08:00 by default; it also says when nothing has synced from the reader for three days, or when the pull has failed for a day), the evening streak-at-risk (21:00, only when there is a streak and nothing was read that day), and the Sunday digest (10:00).
@@ -192,3 +217,5 @@ Install the ntfy app, add a subscription on the default server (ntfy.sh) with th
 | Bad answers | A 200 answer without the documented lists is refused before anything is written, and no delete runs against an empty list. |
 | Recordings | 100 Wikimedia lookups a day (three small GETs each) and at most one R2 write each; a word with no recording is asked about again after 30 days. Five per pull are fetched ahead for new words. At a few KB each, a year of new words stays far inside R2's free 10 GB and million writes a month. |
 | Examples | 40,000 rows, loaded once. |
+| Covers | 5 copies a pull, 50 a day (uploads included), at most 2,000 objects; each under 1 MB (a Hardcover cover is about 36 KB). |
+| Notes | 20 publishes and unpublishes a day, a body of 100,000 characters, one GitHub request or two per publish. GitHub allows a token 5,000 requests an hour. |

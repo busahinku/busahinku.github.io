@@ -3,8 +3,8 @@
 // form), so nothing about it is part of the public site: the static pages,
 // their scripts and the search index never mention it.
 //
-// Six screens on one page, switched by the URL hash: Today, Review, Words,
-// Sentences, Progress and Admin. English and Turkish (the site's rule for
+// Screens on one page, switched by the URL hash: Today, Books (with the note
+// editor), Review, Words, Sentences, Progress and Admin. English and Turkish (the site's rule for
 // pages), the four themes (tokens copied from src/styles/global.css; keep them
 // in step), Lucide icons only. Grades are queued in localStorage and sent when
 // there is a connection, so a dropped connection mid-review loses nothing.
@@ -108,17 +108,55 @@ button.line { width: 100%; text-align: left; background: none; border: none; bor
 .switch input[type="checkbox"] { width: 1.25rem; min-height: 1.25rem; margin: 0; accent-color: var(--text-primary); }
 .switch select { width: 6rem; }
 .token { font-family: ui-monospace, monospace; font-size: .8125rem; overflow-wrap: anywhere; padding: .75rem; border: 1px solid var(--text-primary); border-radius: .5rem; }
-nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--bg-primary); border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(6, 1fr); background: var(--bg-primary); border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
 nav.tabs a { display: flex; flex-direction: column; align-items: center; gap: .125rem; padding: .5rem 0 .625rem; min-height: 4.25rem; font-size: .6875rem; color: var(--text-secondary); text-decoration: none; }
 nav.tabs a[aria-current="page"] { color: var(--text-primary); font-weight: 600; }
 nav.tabs a[aria-current="page"] svg { stroke-width: 2.5; }
 .offline { display: flex; align-items: center; gap: .5rem; margin: 0 0 1rem; padding: .5rem .75rem; border: 1px solid var(--text-primary); border-radius: .5rem; font-size: .875rem; }
 footer { margin-top: 2.5rem; font-size: .75rem; color: var(--text-secondary); }
+.cover { display: block; width: 3rem; aspect-ratio: 2 / 3; object-fit: cover; flex-shrink: 0; border-radius: 2px; background: var(--bg-secondary); box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-primary) 10%, transparent); }
+.cover.big { width: 7.5rem; }
+.cover.small { width: 2.25rem; }
+.cover.empty { display: flex; align-items: center; justify-content: center; color: var(--text-muted); background: transparent; box-shadow: inset 0 0 0 1px var(--border); }
+.book { display: flex; gap: 1rem; align-items: flex-start; width: 100%; padding: .875rem 0; text-align: left; background: none; border: none; border-bottom: 1px dashed color-mix(in srgb, var(--border) 70%, transparent); border-radius: 0; }
+.book .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .125rem; }
+.book strong { font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; text-wrap: pretty; }
+.book .by { color: var(--text-secondary); font-size: .9375rem; }
+.metaline { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .625rem; margin-top: .25rem; color: var(--text-secondary); font-size: .8125rem; font-variant-numeric: tabular-nums; }
+.metaline .state { display: inline-flex; align-items: center; gap: .25rem; }
+.opened { padding: 0 0 1.25rem; border-bottom: 1px dashed color-mix(in srgb, var(--border) 70%, transparent); }
+.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .375rem 1rem; margin: .25rem 0 0; font-size: .875rem; }
+.facts dt { color: var(--text-secondary); }
+.facts dd { margin: 0; overflow-wrap: anywhere; }
+.sub { font-size: .8125rem; color: var(--text-secondary); margin: 1.25rem 0 .5rem; }
+.seg { display: inline-flex; padding: 2px; border: 1px solid var(--border); border-radius: 999px; }
+.seg button { min-height: 2.5rem; padding: 0 1rem; border: none; border-radius: 999px; background: none; font-size: .9375rem; transition: background-color .2s ease, color .2s ease; }
+.seg button[aria-pressed="true"] { background: var(--text-primary); color: var(--bg-primary); font-weight: 600; }
+.field { display: grid; gap: .25rem; }
+.field > span { font-size: .8125rem; color: var(--text-secondary); }
+.pair { display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; }
+.prefix { display: flex; align-items: center; gap: .25rem; }
+.prefix > span { color: var(--text-secondary); font-size: .9375rem; white-space: nowrap; }
+.editor { display: grid; gap: .75rem; }
+.editor textarea.body, .preview { min-height: 55svh; }
+.editor textarea.body { line-height: 1.7; }
+.preview { padding: .25rem 0; font-size: 1.0625rem; line-height: 1.75; overflow-wrap: anywhere; }
+.preview > :first-child { margin-top: 0; }
+.preview h1, .preview h2, .preview h3, .preview h4 { font-weight: 600; line-height: 1.25; margin: 1.75rem 0 .5rem; border: none; padding: 0; font-size: 1.25rem; }
+.preview h3, .preview h4 { font-size: 1.0625rem; }
+.preview blockquote { margin: 1rem 0; padding-left: 1rem; border-left: 2px solid var(--border); color: var(--text-secondary); }
+.preview code { font-family: ui-monospace, monospace; font-size: .875em; }
+.preview pre { overflow-x: auto; padding: .75rem; border: 1px solid var(--border); border-radius: .5rem; }
+.preview a { color: inherit; text-underline-offset: 3px; }
+.preview hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+.saved { min-height: 1.25rem; margin: 0; color: var(--text-secondary); font-size: .8125rem; }
+.state.live { border-color: var(--text-primary); color: var(--text-primary); }
+.link { display: inline-flex; align-items: center; gap: .25rem; color: inherit; font-size: .875rem; text-underline-offset: 3px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .spin svg { animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 [data-motion="off"] *, [data-motion="off"] *::before { transition: none !important; animation: none !important; }
-@media (min-width: 720px) { .figures { grid-template-columns: repeat(4, minmax(0, 1fr)); } .filters { grid-template-columns: repeat(4, minmax(0, 1fr)); } .filters .wide { grid-column: 1 / -1; } }
+@media (min-width: 720px) { .pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .figures { grid-template-columns: repeat(4, minmax(0, 1fr)); } .filters { grid-template-columns: repeat(4, minmax(0, 1fr)); } .filters .wide { grid-column: 1 / -1; } }
 `;
 
 // Pre-paint: the site's own theme choice (same origin, same localStorage), else the system's.
@@ -178,7 +216,7 @@ export function loginPage(nonce, failed = false) {
 const TEXT = {
   en: {
     locale: "en-GB",
-    tabs: { today: "Today", review: "Review", words: "Words", sentences: "Sentences", progress: "Progress", admin: "Admin" },
+    tabs: { today: "Today", books: "Books", review: "Review", words: "Words", sentences: "Sentences", progress: "Progress", admin: "Admin", note: "Note" },
     streak: "Streak",
     days: (n) => (n === 1 ? "day" : "days"),
     readToday: "Read today",
@@ -190,6 +228,66 @@ const TEXT = {
     addWord: "Add a word",
     wordOfDay: "Word of the day",
     noteToWrite: (title) => `No note yet for ${title}.`,
+    noBooks: "No books synced yet.",
+    status: { reading: "Reading", paused: "Paused", finished: "Finished", dnf: "Stopped" },
+    hiddenChip: "Hidden",
+    offPage: "Not on the reading page",
+    year: "Published",
+    pageCount: "Pages",
+    genres: "Genres",
+    series: "Series",
+    seriesLine: (name, n) => (n ? `${name}, #${n}` : name),
+    readingPage: "On the reading page",
+    showOnPage: "Show on the reading page",
+    noTitle: "It has no title of its own, so it stays off the page until it gets one here.",
+    publicTitle: "Title on the page",
+    cover: "Cover",
+    uploadCover: "Upload a cover",
+    replaceCover: "Replace the cover",
+    coverWaiting: "The cover is copied on the next pull.",
+    coverOnPage: "A cover is kept only for a book on the reading page.",
+    coverSaved: "Cover saved.",
+    writeNote: "Write a note",
+    editNote: "Edit the note",
+    notes: { draft: "Note: draft", published: "Note: published" },
+    back: "Books",
+    english: "English",
+    turkish: "Türkçe",
+    noteTitle: "Title",
+    author: "Author",
+    finishedOn: "Finished",
+    address: "Address",
+    addressHint: "Lowercase letters, digits and hyphens.",
+    description: "One line for listings (optional)",
+    write: "Write",
+    preview: "Preview",
+    bodyHint: "Write in Markdown: ## for a heading, *italic*, **bold**, > for a quote, - for a list.",
+    nothingYet: "Nothing to preview yet.",
+    saving: "Saving…",
+    savedAt: (time) => `Saved ${time}`,
+    unsaved: "Not saved yet. Kept on this device and tried again.",
+    draft: "Draft",
+    published: "Published",
+    changed: "Changes not published",
+    live: "Live on the site",
+    building: "Published. The site rebuilds in a few minutes.",
+    removed: "Taken off the site. The draft stays here.",
+    publish: "Publish",
+    publishChanges: "Publish the changes",
+    unpublish: "Unpublish",
+    confirmUnpublish: "Take this note off the site? The draft stays here.",
+    confirmForce: "The file on GitHub changed since the last publish. Replace it with this version?",
+    openOnSite: "Open on the site",
+    noteErrors: {
+      incomplete: "First a title, an author, the finished date and some text.",
+      html: "A note is Markdown only. Take out the HTML tags.",
+      exists: "A note with this address is already on the site. Change the address.",
+      "slug taken": "Another book's note uses this address.",
+      "daily limit": "That is enough publishing for today.",
+      "no token": "Publishing is not set up yet: GITHUB_TOKEN is missing.",
+      github: "GitHub did not take it. Try again in a minute.",
+      changed: "The file on GitHub changed since the last publish.",
+    },
     play: (w) => `Play ${w}`,
     playSentence: "Play the sentence",
     show: "Show",
@@ -262,7 +360,7 @@ const TEXT = {
   },
   tr: {
     locale: "tr-TR",
-    tabs: { today: "Bugün", review: "Tekrar", words: "Kelimeler", sentences: "Cümleler", progress: "İlerleme", admin: "Yönetim" },
+    tabs: { today: "Bugün", books: "Kitaplar", review: "Tekrar", words: "Kelimeler", sentences: "Cümleler", progress: "İlerleme", admin: "Yönetim", note: "Not" },
     streak: "Seri",
     days: () => "gün",
     readToday: "Bugün okudum",
@@ -274,6 +372,66 @@ const TEXT = {
     addWord: "Kelime ekle",
     wordOfDay: "Günün kelimesi",
     noteToWrite: (title) => `${title} için henüz not yok.`,
+    noBooks: "Henüz eşitlenmiş kitap yok.",
+    status: { reading: "Okunuyor", paused: "Ara verildi", finished: "Bitti", dnf: "Bırakıldı" },
+    hiddenChip: "Gizli",
+    offPage: "Okuma sayfasında değil",
+    year: "Yayın yılı",
+    pageCount: "Sayfa",
+    genres: "Türler",
+    series: "Seri",
+    seriesLine: (name, n) => (n ? `${name}, #${n}` : name),
+    readingPage: "Okuma sayfasında",
+    showOnPage: "Okuma sayfasında göster",
+    noTitle: "Kendi başlığı yok; burada bir başlık verilene kadar sayfada görünmez.",
+    publicTitle: "Sayfadaki başlık",
+    cover: "Kapak",
+    uploadCover: "Kapak yükle",
+    replaceCover: "Kapağı değiştir",
+    coverWaiting: "Kapak bir sonraki çekmede kopyalanır.",
+    coverOnPage: "Kapak yalnızca okuma sayfasındaki kitaplar için saklanır.",
+    coverSaved: "Kapak kaydedildi.",
+    writeNote: "Not yaz",
+    editNote: "Notu düzenle",
+    notes: { draft: "Not: taslak", published: "Not: yayında" },
+    back: "Kitaplar",
+    english: "English",
+    turkish: "Türkçe",
+    noteTitle: "Başlık",
+    author: "Yazar",
+    finishedOn: "Bitiş",
+    address: "Adres",
+    addressHint: "Küçük harf, rakam ve tire.",
+    description: "Listeler için tek satır (isteğe bağlı)",
+    write: "Yaz",
+    preview: "Önizle",
+    bodyHint: "Markdown ile yaz: başlık için ##, *italik*, **kalın**, alıntı için >, liste için -.",
+    nothingYet: "Önizlenecek bir şey yok.",
+    saving: "Kaydediliyor…",
+    savedAt: (time) => `${time} kaydedildi`,
+    unsaved: "Henüz kaydedilmedi. Bu cihazda tutuluyor, yeniden denenecek.",
+    draft: "Taslak",
+    published: "Yayında",
+    changed: "Yayınlanmamış değişiklikler",
+    live: "Sitede yayında",
+    building: "Yayınlandı. Site birkaç dakika içinde yenilenir.",
+    removed: "Siteden kaldırıldı. Taslak burada duruyor.",
+    publish: "Yayınla",
+    publishChanges: "Değişiklikleri yayınla",
+    unpublish: "Yayından kaldır",
+    confirmUnpublish: "Bu not siteden kaldırılsın mı? Taslak burada kalır.",
+    confirmForce: "GitHub'daki dosya son yayından beri değişmiş. Bu sürümle değiştirilsin mi?",
+    openOnSite: "Sitede aç",
+    noteErrors: {
+      incomplete: "Önce başlık, yazar, bitiş tarihi ve biraz metin.",
+      html: "Not yalnızca Markdown olabilir. HTML etiketlerini çıkar.",
+      exists: "Bu adreste sitede zaten bir not var. Adresi değiştir.",
+      "slug taken": "Bu adresi başka bir kitabın notu kullanıyor.",
+      "daily limit": "Bugünlük bu kadar yayın yeter.",
+      "no token": "Yayın henüz ayarlı değil: GITHUB_TOKEN yok.",
+      github: "GitHub kabul etmedi. Bir dakika sonra yeniden dene.",
+      changed: "GitHub'daki dosya son yayından beri değişmiş.",
+    },
     play: (w) => `${w} kelimesini dinle`,
     playSentence: "Cümleyi dinle",
     show: "Göster",
@@ -393,6 +551,11 @@ function client(ICON, TEXT, dropGrade) {
         localStorage.setItem(k, JSON.stringify(v));
       } catch {}
     },
+    del: (k) => {
+      try {
+        localStorage.removeItem(k);
+      } catch {}
+    },
   };
   let lang = store.get("reading-app-lang", navigator.language?.startsWith("tr") ? "tr" : "en");
   let t = TEXT[lang];
@@ -402,7 +565,7 @@ function client(ICON, TEXT, dropGrade) {
   const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
   const app = document.getElementById("app");
   const nav = document.querySelector("nav.tabs");
-  const SCREENS = ["today", "review", "words", "sentences", "progress"];
+  const SCREENS = ["today", "books", "review", "words", "sentences", "progress"];
 
   // ---- small helpers
   const el = (tag, attrs = {}, ...children) => {
@@ -432,7 +595,9 @@ function client(ICON, TEXT, dropGrade) {
   const enter = (node) => motion && node.animate([{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], { duration: 200, easing: EASE });
 
   async function api(path, body) {
-    const res = await fetch(`/api/reading/${path}`, body !== undefined ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {});
+    // A Blob (a cover) goes as it is; anything else as JSON.
+    const send = body instanceof Blob ? { method: "POST", headers: { "content-type": body.type || "application/octet-stream" }, body } : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) };
+    const res = await fetch(`/api/reading/${path}`, body !== undefined ? send : {});
     const json = (res.headers.get("content-type") ?? "").includes("json");
     // Without a valid session every private route answers an empty 404: back to the sign-in form.
     if (res.status === 404 && !json) {
@@ -583,7 +748,9 @@ function client(ICON, TEXT, dropGrade) {
         ? button(t.reviewN(due), { primary: true, class: "action", icon: "review", onclick: () => (location.hash = "#review") })
         : button(t.addWord, { primary: true, class: "action", icon: "plus", onclick: () => (location.hash = "#words/add") }),
       // A quiet line per finished book that has no note on the site yet.
-      ...(mine.notes_to_write ?? []).map((b) => el("p", { class: "muted", style: "margin:.75rem 0 0;display:flex;gap:.5rem;align-items:center" }, icon("pencil"), t.noteToWrite(b.title))),
+      ...(mine.notes_to_write ?? []).map((b) =>
+        el("p", { style: "margin:.75rem 0 0" }, el("a", { class: "link muted", href: `#note/${b.document}` }, icon("pencil"), t.noteToWrite(b.title))),
+      ),
       wotd && el("h2", {}, t.wordOfDay),
       wotd && el("div", { class: "card" }, head(wotd), ...details(wotd)),
     ];
@@ -887,6 +1054,392 @@ function client(ICON, TEXT, dropGrade) {
     ];
   }
 
+  // ---- books and their notes
+  const coverImg = (src, size = "") =>
+    src
+      ? el("img", { class: `cover ${size}`, src, alt: "", loading: "lazy", decoding: "async" })
+      : el("span", { class: `cover empty ${size}`, "aria-hidden": "true" }, icon("book"));
+
+  /** A picked image, made smaller in the browser before it is sent (the Worker takes at most 1 MB). */
+  async function shrink(file) {
+    try {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height));
+      const canvas = el("canvas", { width: Math.round(bitmap.width * scale), height: Math.round(bitmap.height * scale) });
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      return (await new Promise((done) => canvas.toBlob(done, "image/jpeg", 0.86))) ?? file;
+    } catch {
+      return file;
+    }
+  }
+
+  async function booksScreen() {
+    const { books } = await api("books");
+    const percent = (b) => (b.percentage == null ? null : `${num(Math.round(b.percentage * 100))}%`);
+    const row = (b) => {
+      const li = el("li");
+      const draw = (open) => {
+        const summary = el(
+          "button",
+          { type: "button", class: "book", "aria-expanded": String(open), onclick: () => draw(!open) },
+          coverImg(b.cover, open ? "big" : ""),
+          el(
+            "span",
+            { class: "grow" },
+            el("strong", {}, b.shown_as ?? b.title ?? b.filename ?? b.document),
+            b.author && el("span", { class: "by" }, b.author),
+            el(
+              "span",
+              { class: "metaline" },
+              el("span", {}, [t.status[b.status], b.status !== "finished" && percent(b)].filter(Boolean).join(" · ")),
+              b.hidden && el("span", { class: "state" }, icon("hidden"), t.hiddenChip),
+              !b.hidden && !b.on_page && b.status !== "paused" && el("span", { class: "state" }, t.offPage),
+              b.notes.en || b.notes.tr ? el("span", { class: `state${Object.values(b.notes).includes("published") ? " live" : ""}` }, t.notes[Object.values(b.notes).includes("published") ? "published" : "draft"]) : null,
+            ),
+            b.status === "reading" && b.percentage != null && el("span", { class: "bar" }, el("span", { style: `transform:scaleX(${b.percentage})` })),
+          ),
+        );
+        li.replaceChildren(...(open ? [summary, opened(b, draw)] : [summary]));
+        if (open) enter(li.lastChild);
+      };
+      draw(false);
+      return li;
+    };
+    const opened = (b, draw) => {
+      const refresh = async () => {
+        Object.assign(b, (await api("books")).books.find((x) => x.document === b.document));
+        draw(true);
+      };
+      const facts = [
+        [t.year, b.release_year],
+        [t.pageCount, b.page_count && num(b.page_count)],
+        [t.genres, b.genres.join(", ")],
+        [t.series, b.series && t.seriesLine(b.series, b.series_position)],
+      ].filter(([, v]) => v);
+      const title = el("input", { value: b.public_title ?? "", placeholder: b.title ?? "", "aria-label": t.publicTitle, maxlength: 200 });
+      const file = el("input", { type: "file", accept: "image/jpeg,image/png,image/webp,image/avif", hidden: true });
+      file.addEventListener("change", async () => {
+        if (!file.files[0]) return;
+        try {
+          await api(`books/cover?document=${b.document}`, await shrink(file.files[0]));
+          status(t.coverSaved);
+          await refresh();
+        } catch (e) {
+          status(t.error(e.message));
+        }
+      });
+      const id = `show-${b.document}`;
+      return el(
+        "div",
+        { class: "opened" },
+        facts.length > 0 && el("dl", { class: "facts" }, facts.map(([k, v]) => el("div", { style: "display:contents" }, el("dt", {}, k), el("dd", {}, String(v))))),
+        el("p", { class: "sub" }, t.readingPage),
+        el(
+          "div",
+          { class: "switch", style: "border-top:1px dashed var(--border)" },
+          el(
+            "label",
+            { for: id },
+            el("input", {
+              id,
+              type: "checkbox",
+              checked: !b.hidden,
+              onchange: async (e) => {
+                try {
+                  await api("books", { document: b.document, hidden: !e.target.checked });
+                  await refresh();
+                } catch (err) {
+                  status(t.error(err.message));
+                }
+              },
+            }),
+            t.showOnPage,
+          ),
+        ),
+        !b.hidden && !b.title && !b.public_title && el("p", { class: "muted" }, t.noTitle),
+        el(
+          "form",
+          {
+            class: "row",
+            onsubmit: async (e) => {
+              e.preventDefault();
+              try {
+                await api("books", { document: b.document, title: title.value });
+                await refresh();
+              } catch (err) {
+                status(t.error(err.message));
+              }
+            },
+          },
+          el("label", { class: "field", style: "flex:1;min-width:12rem" }, el("span", {}, t.publicTitle), title),
+          button(t.save, { type: "submit", class: "", icon: "check" }),
+        ),
+        el("p", { class: "sub" }, t.cover),
+        b.on_page
+          ? el("div", { class: "row", style: "margin-top:0" }, button(b.cover ? t.replaceCover : t.uploadCover, { icon: "upload", onclick: () => file.click() }), file, !b.cover && b.cover_waiting && el("span", { class: "muted" }, t.coverWaiting))
+          : el("p", { class: "muted" }, t.coverOnPage),
+        button(b.notes.en || b.notes.tr ? t.editNote : t.writeNote, { primary: true, class: "action", icon: "pencil", onclick: () => (location.hash = `#note/${b.document}`) }),
+      );
+    };
+    return [top(t.tabs.books), books.length ? el("ul", { class: "plain" }, books.map(row)) : el("p", {}, t.noBooks)];
+  }
+
+  // Markdown for the preview: headings, paragraphs, emphasis, links, lists, quotes, code, rules.
+  // Built as nodes, never as HTML, so nothing typed can run. The site renders the real thing.
+  function inline(text) {
+    const out = [];
+    const TOKEN = /(`[^`]+`)|(\*\*[^*]+\*\*|__[^_]+__)|(\*[^*\s][^*]*\*|_[^_\s][^_]*_)|(!?\[[^\]]*\]\([^)\s]+\))/;
+    for (let rest = text; rest; ) {
+      const m = rest.match(TOKEN);
+      if (!m) {
+        out.push(rest);
+        break;
+      }
+      if (m.index) out.push(rest.slice(0, m.index));
+      const tok = m[0];
+      if (m[1]) out.push(el("code", {}, tok.slice(1, -1)));
+      else if (m[2]) out.push(el("strong", {}, inline(tok.slice(2, -2))));
+      else if (m[3]) out.push(el("em", {}, inline(tok.slice(1, -1))));
+      else {
+        const [, bang, label, href] = tok.match(/^(!?)\[([^\]]*)\]\(([^)\s]+)\)$/);
+        out.push(bang ? el("span", { class: "muted" }, `[${label || "image"}]`) : el("a", { href: /^(https?:\/\/|\/|#)/.test(href) ? href : null, target: "_blank", rel: "noreferrer" }, inline(label)));
+      }
+      rest = rest.slice(m.index + tok.length);
+    }
+    return out;
+  }
+  function markdown(source) {
+    const lines = source.replace(/\r\n?/g, "\n").split("\n");
+    const out = [];
+    const para = [];
+    const flush = () => para.length && (out.push(el("p", {}, inline(para.join(" ")))), (para.length = 0));
+    const LIST = /^\s*([-*+]|\d+[.)])\s+(.*)$/;
+    for (let i = 0; i < lines.length; ) {
+      const line = lines[i];
+      let m;
+      if (!line.trim()) (flush(), i++);
+      else if ((m = line.match(/^(```|~~~)/))) {
+        flush();
+        const code = [];
+        for (i++; i < lines.length && !lines[i].startsWith(m[1]); i++) code.push(lines[i]);
+        i++;
+        out.push(el("pre", {}, el("code", {}, code.join("\n"))));
+      } else if ((m = line.match(/^(#{1,6})\s+(.*)$/))) (flush(), out.push(el(`h${m[1].length}`, {}, inline(m[2]))), i++);
+      else if (/^([-*_])(\s*\1){2,}\s*$/.test(line.trim())) (flush(), out.push(el("hr")), i++);
+      else if (/^>/.test(line)) {
+        flush();
+        const quote = [];
+        for (; i < lines.length && /^>/.test(lines[i]); i++) quote.push(lines[i].replace(/^>\s?/, ""));
+        out.push(el("blockquote", {}, markdown(quote.join("\n"))));
+      } else if ((m = line.match(LIST))) {
+        flush();
+        const ordered = /\d/.test(m[1]);
+        const items = [];
+        for (; i < lines.length && (m = lines[i].match(LIST)) && /\d/.test(m[1]) === ordered; i++) items.push(el("li", {}, inline(m[2])));
+        out.push(el(ordered ? "ol" : "ul", {}, items));
+      } else (para.push(line.trim()), i++);
+    }
+    flush();
+    return out;
+  }
+
+  const slugify = (s) =>
+    (s ?? "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/ı/g, "i").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+/, "").slice(0, 80).replace(/-+$/, "") || "note";
+  const SLUG = /^[a-z0-9][a-z0-9-]{0,80}$/;
+
+  /**
+   * One book's note, English and Turkish. Every change is kept on this device
+   * at once and saved to the Worker a few seconds after typing stops (and on
+   * leaving), so a lost connection or a closed tab loses nothing.
+   */
+  async function noteScreen(document) {
+    if (!document) return booksScreen();
+    const data = await api(`note?document=${encodeURIComponent(document)}`);
+    const book = data.book;
+    const FIELDS = ["slug", "title", "author", "finished", "description", "body"];
+    const blank = (from) => ({ slug: from?.slug ?? slugify(book.title), title: from?.title ?? book.title, author: from?.author ?? book.author, finished: from?.finished ?? book.finished ?? "", description: "", body: "" });
+    const notes = { en: { lang: "en", ...(data.notes.en ?? blank()) }, tr: { lang: "tr", ...(data.notes.tr ?? blank(data.notes.en)) } };
+    const keyOf = (l) => `reading-note:${document}:${l}`;
+    for (const l of ["en", "tr"]) {
+      const kept = store.get(keyOf(l), null);
+      if (kept && kept.at > (notes[l].updated_at ?? 0) * 1000) Object.assign(notes[l], kept.fields, { dirty: true });
+    }
+    const locked = () => notes.en.published || notes.tr.published; // the address is fixed once either language is on the site
+    let slugTouched = Boolean(data.notes.en || data.notes.tr);
+    let which = data.notes.en || !data.notes.tr ? "en" : "tr";
+    let previewing = false;
+
+    const f = {
+      title: el("input", { maxlength: 200, autocomplete: "off" }),
+      author: el("input", { maxlength: 200, autocomplete: "off" }),
+      finished: el("input", { type: "date" }),
+      slug: el("input", { maxlength: 81, autocomplete: "off", autocapitalize: "none", spellcheck: "false", inputmode: "url" }),
+      description: el("input", { maxlength: 300, autocomplete: "off" }),
+      body: el("textarea", { class: "body", "aria-label": t.write }),
+    };
+    const saved = el("p", { class: "saved", role: "status" });
+    const state = el("div", { class: "row", style: "margin-top:.5rem" });
+    const preview = el("div", { class: "preview", hidden: true });
+    const prefix = el("span", {});
+    const langs = el("div", { class: "seg", role: "group", "aria-label": `${t.english} / ${t.turkish}` });
+    const modes = el("div", { class: "seg", role: "group" });
+    const publishButton = button(t.publish, { primary: true, icon: "publish", onclick: () => publish() });
+    const unpublishButton = button(t.unpublish, { icon: "unpublish", onclick: () => unpublish() });
+    const say = (msg) => (saved.textContent = msg);
+    const clock = () => new Intl.DateTimeFormat(t.locale, { hour: "2-digit", minute: "2-digit" }).format(new Date());
+
+    const read = () => {
+      for (const k of FIELDS) notes[which][k] = f[k].value;
+      notes.en.slug = notes.tr.slug = notes[which].slug;
+    };
+    const fill = () => {
+      const n = notes[which];
+      for (const k of FIELDS) f[k].value = n[k] ?? "";
+      f.slug.disabled = locked();
+      for (const k of ["title", "author", "description", "body"]) f[k].lang = which;
+      prefix.textContent = which === "tr" ? "/tr/reading/" : "/reading/";
+      langs.replaceChildren(...["en", "tr"].map((l) => el("button", { type: "button", "aria-pressed": String(l === which), onclick: () => switchTo(l) }, l === "en" ? t.english : t.turkish)));
+      drawState();
+      if (previewing) drawPreview();
+    };
+    const drawState = () => {
+      const n = notes[which];
+      const label = n.published ? (n.changed || n.dirty ? t.changed : n.live ? t.live : t.published) : t.draft;
+      publishButton.lastChild.textContent = n.published ? t.publishChanges : t.publish;
+      unpublishButton.hidden = !n.published;
+      state.replaceChildren(
+        el("span", { class: `state${n.published ? " live" : ""}` }, label),
+        n.published && el("a", { class: "link", href: n.url, target: "_blank", rel: "noreferrer" }, icon("external"), t.openOnSite),
+      );
+    };
+    const drawPreview = () => {
+      const nodes = markdown(f.body.value);
+      preview.replaceChildren(...(nodes.length ? nodes : [el("p", { class: "muted" }, t.nothingYet)]));
+    };
+
+    let timer = null;
+    // One save at a time, in order, so an older draft can never land after a newer one.
+    let queue = Promise.resolve(true);
+    const save = (l = which) => (queue = queue.then(() => saveNow(l), () => saveNow(l)));
+    async function saveNow(l) {
+      clearTimeout(timer);
+      const n = notes[l];
+      if (!n.dirty) return true;
+      if (!SLUG.test(n.slug)) return (say(`${t.address}: ${t.addressHint}`), false);
+      n.dirty = false;
+      say(t.saving);
+      try {
+        const out = await api("note", { document, lang: l, ...Object.fromEntries(FIELDS.map((k) => [k, n[k] ?? ""])) });
+        Object.assign(n, { slug: out.slug, published: out.published, changed: out.changed, updated_at: out.updated_at, url: out.url });
+        if (!n.dirty) store.del(keyOf(l));
+        say(t.savedAt(clock()));
+        if (l === which) drawState();
+        return true;
+      } catch (e) {
+        n.dirty = true;
+        const fixable = e.status === 400 || e.status === 409;
+        say(t.noteErrors[e.data?.error] ?? t.unsaved);
+        if (!fixable) timer = setTimeout(() => save(l), 15_000);
+        return false;
+      }
+    }
+    const changed = (e) => {
+      if (e.target === f.slug) slugTouched = true;
+      if (e.target === f.title && !slugTouched && !locked()) f.slug.value = slugify(f.title.value);
+      read();
+      const n = notes[which];
+      n.dirty = true;
+      store.set(keyOf(which), { at: Date.now(), fields: Object.fromEntries(FIELDS.map((k) => [k, n[k]])) });
+      say("");
+      drawState();
+      clearTimeout(timer);
+      timer = setTimeout(save, 3000);
+    };
+    for (const input of Object.values(f)) input.addEventListener("input", changed);
+    const switchTo = async (l) => {
+      if (l === which) return;
+      read();
+      save(which);
+      which = l;
+      fill();
+    };
+    const setMode = (p) => {
+      previewing = p;
+      f.body.hidden = p;
+      preview.hidden = !p;
+      if (p) drawPreview();
+      modes.replaceChildren(...[[false, t.write], [true, t.preview]].map(([v, label]) => el("button", { type: "button", "aria-pressed": String(v === p), onclick: () => setMode(v) }, label)));
+    };
+
+    // After a first publish, the page is live once it answers; until then it is building.
+    const watch = async (n, tries = 30) => {
+      for (let i = 0; i < tries && !n.live; i++) {
+        await new Promise((done) => setTimeout(done, 20_000));
+        const res = await fetch(new URL(n.url).pathname, { method: "HEAD", cache: "no-store" }).catch(() => null);
+        if (res?.ok) n.live = true;
+      }
+      if (n === notes[which]) drawState();
+    };
+    async function publish(force = false) {
+      read();
+      if (!(await save(which))) return;
+      const n = notes[which];
+      const first = !n.published;
+      publishButton.disabled = true;
+      try {
+        const out = await api("note/publish", { document, lang: which, ...(force ? { force: true } : {}) });
+        Object.assign(n, { published: out.published, changed: out.changed, url: out.url, live: !first && n.live });
+        say(t.building);
+        drawState();
+        f.slug.disabled = true;
+        if (first) watch(n);
+      } catch (e) {
+        if (e.data?.error === "changed" && !force && confirm(t.confirmForce)) return publish(true);
+        say(t.noteErrors[e.data?.error] ?? t.error(e.message));
+      } finally {
+        publishButton.disabled = false;
+      }
+    }
+    async function unpublish(force = false) {
+      if (!force && !confirm(t.confirmUnpublish)) return;
+      try {
+        const out = await api("note/unpublish", { document, lang: which, ...(force ? { force: true } : {}) });
+        Object.assign(notes[which], { published: out.published, changed: false, live: false });
+        f.slug.disabled = locked();
+        say(t.removed);
+        drawState();
+      } catch (e) {
+        if (e.data?.error === "changed" && !force && confirm(t.confirmForce)) return unpublish(true);
+        say(t.noteErrors[e.data?.error] ?? t.error(e.message));
+      }
+    }
+
+    leave = () => (read(), save("en"), save("tr"));
+    setMode(false);
+    fill();
+    const field = (label, input, extra = {}) => el("label", { class: "field", ...extra }, el("span", {}, label), input);
+    return [
+      top(t.tabs.note, button(t.back, { icon: "back", iconOnly: true, onclick: () => (location.hash = "#books") })),
+      el("div", { class: "row", style: "margin:0 0 1.25rem;flex-wrap:nowrap" }, coverImg(book.cover, "small"), el("div", { style: "min-width:0" }, el("strong", { style: "display:block;overflow-wrap:anywhere" }, book.title), el("span", { class: "muted" }, book.author))),
+      el(
+        "div",
+        { class: "editor" },
+        langs,
+        field(t.noteTitle, f.title),
+        el("div", { class: "pair" }, field(t.author, f.author), field(t.finishedOn, f.finished)),
+        el("label", { class: "field" }, el("span", {}, `${t.address} · ${t.addressHint}`), el("span", { class: "prefix" }, prefix, f.slug)),
+        field(t.description, f.description),
+        el("div", { class: "row", style: "margin-top:.5rem" }, modes),
+        el("p", { class: "muted", style: "margin:0" }, t.bodyHint),
+        f.body,
+        preview,
+        saved,
+        state,
+        el("div", { class: "row", style: "margin-top:0" }, publishButton, unpublishButton),
+      ),
+    ];
+  }
+
   async function admin() {
     const a = await api("admin");
     const last = a.sync[0];
@@ -985,15 +1538,26 @@ function client(ICON, TEXT, dropGrade) {
     if (!s) app.prepend((s = el("p", { class: "status global", role: "status" })));
     s.textContent = msg;
   };
-  const SCREEN_FNS = { today, review, words, sentences, progress: progressScreen, admin };
+  const SCREEN_FNS = { today, books: booksScreen, note: noteScreen, review, words, sentences, progress: progressScreen, admin };
   let current = 0;
+  // A screen with unsaved work sets this; it runs when the screen is left or the page is hidden.
+  let leave = null;
+  const leaving = () => {
+    const done = leave;
+    leave = null;
+    done?.();
+  };
+  addEventListener("pagehide", () => leave?.());
+  addEventListener("visibilitychange", () => document.visibilityState === "hidden" && leave?.());
   async function route() {
+    leaving();
     const [name, sub] = (location.hash.slice(1) || "today").split("/");
     const screen = SCREEN_FNS[name] ? name : "today";
     const ticket = ++current;
     document.title = `${t.tabs[screen]} · Reading`;
+    const tab = screen === "note" ? "books" : screen;
     nav.replaceChildren(
-      ...SCREENS.map((s) => el("a", { href: `#${s}`, "aria-current": s === screen ? "page" : null }, icon(s), t.tabs[s])),
+      ...SCREENS.map((s) => el("a", { href: `#${s}`, "aria-current": s === tab ? "page" : null }, icon(s), t.tabs[s])),
     );
     if (screen !== "review") document.querySelector(".grades")?.remove();
     document.querySelector(".sheet")?.remove();

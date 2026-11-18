@@ -86,6 +86,11 @@ const books = defineCollection({
 			// The title exactly as the reader reports it, when it differs from `title`.
 			readerTitle: z.string().optional(),
 			heroImage: image().optional(),
+			// The book's cover as the reading Worker keeps it in R2 (written by the private app when it publishes).
+			cover: z
+				.string()
+				.regex(/^https:\/\/files\.busahin\.com\/reading\/covers\/[0-9a-f-]{36}(\?v=[0-9a-f]{1,16})?$/)
+				.optional(),
 			draft: z.boolean().default(false),
 			lang: z.enum(['en', 'tr']).default('en'),
 			translationKey: z.string().optional(),

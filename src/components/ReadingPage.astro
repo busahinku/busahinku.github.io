@@ -5,7 +5,7 @@ import type { Lang } from "../i18n/translations";
 interface Props {
   lang: Lang;
   /** Book notes for this language, known at build time: rows link to them, and they are listed below. */
-  notes?: { keys: string[]; href: string; title: string; author: string; finished: string }[];
+  notes?: { keys: string[]; href: string; title: string; author: string; finished: string; cover: string | null }[];
 }
 
 // Live numbers from workers/reading (/api/reading/summary). The page ships
@@ -18,9 +18,10 @@ const tr = lang === "tr";
 const noteDate = (day: string) =>
   new Intl.DateTimeFormat(tr ? "tr-TR" : "en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${day}T12:00:00Z`));
 const copy = tr
-  ? { title: "Okuma", year: "Yıl", now: "Şu an okuduklarım", finished: "Bitirdiklerim", less: "Az", more: "Çok", retry: "Yeniden dene", noscript: "Sayılar JavaScript ile yükleniyor." }
-  : { title: "Reading", year: "The year", now: "Reading now", finished: "Finished", less: "Less", more: "More", retry: "Try again", noscript: "The numbers load with JavaScript." };
+  ? { title: "Okuma", year: "Yıl", now: "Şu an okuduklarım", finished: "Bitirdiklerim", less: "Az", more: "Çok", noData: "Veri yok", retry: "Yeniden dene", noscript: "Sayılar JavaScript ile yükleniyor." }
+  : { title: "Reading", year: "The year", now: "Reading now", finished: "Finished", less: "Less", more: "More", noData: "No data", retry: "Try again", noscript: "The numbers load with JavaScript." };
 const notesTitle = tr ? "Notlar" : "Notes";
+const notesCovered = notes.some((n) => n.cover);
 ---
 
 <div class="reading-page" data-reading={lang} data-notes={JSON.stringify(notes.map(({ keys, href }) => ({ keys, href })))} data-pagefind-body>
@@ -44,6 +45,8 @@ const notesTitle = tr ? "Notlar" : "Notes";
       </div>
     </div>
     <div class="legend" aria-hidden="true">
+      <span class="since-label" data-since-label></span>
+      <span class="legend-key"><span class="day nodata"></span>{copy.noData}</span>
       <span>{copy.less}</span>
       <span class="day" data-level="0"></span><span class="day" data-level="1"></span><span class="day" data-level="2"></span><span
         class="day"
@@ -72,7 +75,13 @@ const notesTitle = tr ? "Notlar" : "Notes";
         </div>
         <ul class="leader-list">
           {notes.map((n) => (
-            <li>
+            <li class:list={[{ "with-cover": notesCovered }]}>
+              {notesCovered &&
+                (n.cover ? (
+                  <img class="cover is-loaded" src={n.cover} alt="" width="132" height="198" loading="lazy" decoding="async" />
+                ) : (
+                  <span class="cover cover-empty" aria-hidden="true" />
+                ))}
               <a class="leader-row note-row" href={n.href}>
                 <span class="row-title">{n.title}<span class="row-sub">, {n.author}</span></span>
                 <span class="row-leader" aria-hidden="true" />
@@ -102,6 +111,7 @@ const notesTitle = tr ? "Notlar" : "Notes";
   type Book = {
     title: string;
     author: string | null;
+    cover?: string | null;
     percent: number;
     page_count: number | null;
     started: string | null;
@@ -110,12 +120,13 @@ const notesTitle = tr ? "Notlar" : "Notes";
     pages_per_day: number | null;
     forecast: string | null;
   };
-  type Done = { title: string; author: string | null; finished: string | null; days: number | null };
+  type Done = { title: string; author: string | null; cover?: string | null; finished: string | null; days: number | null };
   type Summary = {
     today: string;
     updated_at: number | null;
     streak: { current: number; longest: number };
     days: [string, number][];
+    since?: string | null;
     reading: Book[];
     finished: Done[];
     time: { seconds: number; week_seconds: number } | null;
@@ -136,6 +147,8 @@ const notesTitle = tr ? "Notlar" : "Notes";
       hours: "Hours read",
       grid: (n: number, p: string) => `Reading days over the last 12 months: ${n} days, ${p} pages. Use the arrow keys for single days.`,
       cell: (day: string, pages: number | undefined) => (pages === undefined ? `${day}, not read` : `${day}, ${pages === 1 ? "1 page" : `${pages} pages`}`),
+      noData: (day: string) => `${day}, no data`,
+      since: (day: string, _month: number) => `Since ${day}`,
       perDay: (v: string, pages: boolean) => (pages ? `${v} pages a day` : `${v}% a day`),
       by: "Expected to finish",
       stalled: "No progress in two weeks",
@@ -162,6 +175,9 @@ const notesTitle = tr ? "Notlar" : "Notes";
       hours: "Okuma saati",
       grid: (n: number, p: string) => `Son 12 ayın okuma günleri: ${n} gün, ${p} sayfa. Tek tek günler için ok tuşlarını kullan.`,
       cell: (day: string, pages: number | undefined) => (pages === undefined ? `${day}, okunmadı` : `${day}, ${pages} sayfa`),
+      noData: (day: string) => `${day}, veri yok`,
+      // The ablative suffix follows the month's last sound: Ocak'tan, Nisan'dan, Eylül'den.
+      since: (day: string, month: number) => `${day}${["'tan", "'tan", "'tan", "'dan", "'tan", "'dan", "'dan", "'tan", "'den", "'den", "'dan", "'tan"][month]} beri`,
       perDay: (v: string, pages: boolean) => (pages ? `günde ${v} sayfa` : `günde %${v}`),
       by: "Tahmini bitiş",
       stalled: "İki haftadır ilerleme yok",
@@ -197,6 +213,31 @@ const notesTitle = tr ? "Notlar" : "Notes";
     leader.setAttribute("aria-hidden", "true");
     row.append(t, leader, el("span", "row-meta", value));
     return row;
+  }
+
+  // The book's cover beside its row, in a list where any book has one (an empty frame for the rest).
+  // Covers come from the reading Worker's copy on files.busahin.com, never from Hardcover.
+  function withCover(li: HTMLElement, cover: string | null | undefined, covered: boolean) {
+    if (!covered) return li;
+    const body = el("div", "book-body");
+    body.append(...[...li.childNodes]);
+    let pic: HTMLElement;
+    if (cover) {
+      const img = el("img", "cover");
+      Object.assign(img, { src: cover, alt: "", loading: "lazy", decoding: "async", width: 132, height: 198 });
+      // Fades in once it has loaded (instantly without motion); a failed load leaves the empty frame showing.
+      const shown = () => img.classList.add("is-loaded");
+      if (img.complete) shown();
+      else img.addEventListener("load", shown, { once: true });
+      img.addEventListener("error", () => img.classList.add("cover-empty", "is-loaded"), { once: true });
+      pic = img;
+    } else {
+      pic = el("span", "cover cover-empty");
+      pic.setAttribute("aria-hidden", "true");
+    }
+    li.classList.add("with-cover");
+    li.append(pic, body);
+    return li;
   }
 
   function bar(percent: number, week: number | null) {
@@ -335,6 +376,10 @@ const notesTitle = tr ? "Notlar" : "Notes";
 
     // The year: 53 weeks, Monday to Sunday down each column, ending with this week.
     const pages = new Map(data.days);
+    // Before tracking began there is no data, which is not the same as a day not read.
+    const since = typeof data.since === "string" && /^\d{4}-\d{2}-\d{2}$/.test(data.since) ? data.since : null;
+    const sinceLabel = root.querySelector<HTMLElement>("[data-since-label]")!;
+    sinceLabel.textContent = since ? t.since(fmt(since, { day: "numeric", month: t.locale === "tr-TR" ? "long" : "short" }), Number(since.slice(5, 7)) - 1) : "";
     const grid = root.querySelector<HTMLElement>("[data-grid]")!;
     const months = root.querySelector<HTMLElement>("[data-months]")!;
     grid.setAttribute("aria-label", t.grid(lastYear.length, num.format(pagesYear)));
@@ -354,17 +399,28 @@ const notesTitle = tr ? "Notlar" : "Notes";
       if (at > today) cell.classList.add("future");
       else {
         const p = pages.get(day);
-        cell.dataset.level = p === undefined ? "0" : p < 10 ? "1" : p < 25 ? "2" : p < 50 ? "3" : "4";
+        // A day before tracking with nothing recorded is "no data"; anything recorded still shows.
+        if (since && day < since && p === undefined) cell.classList.add("nodata");
+        else cell.dataset.level = p === undefined ? "0" : p < 10 ? "1" : p < 25 ? "2" : p < 50 ? "3" : "4";
+        if (day === since) cell.classList.add("since");
         cell.dataset.day = day;
       }
       cells.append(cell);
     }
     grid.replaceChildren(cells);
     months.replaceChildren(labels);
-    heatmapTips(root, (cell) => t.cell(fmt(cell.dataset.day!, { weekday: "short", day: "numeric", month: "short", year: cell.dataset.day!.slice(0, 4) === thisYear ? undefined : "numeric" }), pages.get(cell.dataset.day!)), stop.signal);
+    heatmapTips(
+      root,
+      (cell) => {
+        const label = fmt(cell.dataset.day!, { weekday: "short", day: "numeric", month: "short", year: cell.dataset.day!.slice(0, 4) === thisYear ? undefined : "numeric" });
+        return cell.classList.contains("nodata") ? t.noData(label) : t.cell(label, pages.get(cell.dataset.day!));
+      },
+      stop.signal,
+    );
 
     // Books in progress: the row opens on the details and where the book will be in a week.
     const now = list("now");
+    const nowCovered = data.reading.some((b) => b.cover);
     now.replaceChildren(
       ...data.reading.map((b) => {
         const li = el("li", "book");
@@ -402,18 +458,19 @@ const notesTitle = tr ? "Notlar" : "Notes";
           }
         } else note.append(t.stalled);
         li.append(note);
-        return li;
+        return withCover(li, b.cover, nowCovered);
       }),
     );
     if (!data.reading.length) now.append(el("li", "empty", t.nothingNow));
 
     const done = list("finished");
+    const doneCovered = data.finished.some((b) => b.cover);
     done.replaceChildren(
       ...data.finished.map((b) => {
         const li = el("li");
         li.append(line("div", b.title, b.author, b.finished ? date(b.finished) : ""));
         if (b.days) li.append(el("p", "row-note", t.took(b.days, num.format(b.days))));
-        return li;
+        return withCover(li, b.cover, doneCovered);
       }),
     );
     if (!data.finished.length) done.append(el("li", "empty", t.nothingDone));
@@ -749,6 +806,45 @@ const notesTitle = tr ? "Notlar" : "Notes";
     }
   }
 
+  /* A cover beside a book's row: upright 2:3, a thin edge so a white cover still has one. */
+  .reading-page {
+    --cover-w: 2.75rem;
+  }
+
+  .leader-list > :global(li.with-cover) {
+    display: grid;
+    grid-template-columns: var(--cover-w) minmax(0, 1fr);
+    column-gap: 1rem;
+    align-items: start;
+  }
+
+  .leader-list :global(.book-body) {
+    min-width: 0;
+  }
+
+  .leader-list :global(.cover) {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+    border-radius: 2px;
+    background: var(--bg-secondary);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-primary) 8%, transparent);
+    opacity: 0;
+    transition: opacity 300ms ease-out;
+  }
+
+  .leader-list :global(.cover.is-loaded),
+  .leader-list :global(.cover-empty) {
+    opacity: 1;
+  }
+
+  .leader-list :global(.cover-empty) {
+    background: transparent;
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
+
   /* Progress under a book; the percentage is in the row as text too. */
   .leader-list :global(.bar) {
     position: relative;
@@ -977,8 +1073,21 @@ const notesTitle = tr ? "Notlar" : "Notes";
     background: var(--accent);
   }
 
+  /* Before tracking began: a faint hatch, no border, so it never reads as a day not read (e-ink too). */
+  .reading-page :global(.day.nodata) {
+    border-color: transparent;
+    background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--text-muted) 45%, transparent) 0 1px, transparent 1px 3px);
+  }
+
+  /* The day tracking began: a ring around its square. */
+  .year-grid :global(.day.since:not(.is-active)) {
+    outline: 1px solid var(--text-secondary);
+    outline-offset: 1px;
+  }
+
   .legend {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
     gap: 3px;
@@ -987,16 +1096,28 @@ const notesTitle = tr ? "Notlar" : "Notes";
     color: var(--text-secondary);
   }
 
-  .legend span:first-child {
+  .legend .since-label {
+    margin-right: auto;
+    padding-right: 0.75rem;
+  }
+
+  .legend-key {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-right: 0.875rem;
+  }
+
+  .legend .since-label + .legend-key + span {
     margin-right: 0.375rem;
   }
 
-  .legend span:last-child {
+  .legend > span:last-child {
     margin-left: 0.375rem;
   }
 
   /* E-ink has no shades: a day read is a filled square, a day missed an outline. */
-  :global([data-theme="eink"]) .reading-page :global(.day:not([data-level="0"])) {
+  :global([data-theme="eink"]) .reading-page :global(.day[data-level]:not([data-level="0"])) {
     background: var(--text-primary);
   }
 
@@ -1019,6 +1140,10 @@ const notesTitle = tr ? "Notlar" : "Notes";
   @media (min-width: 720px) {
     .year {
       --cell: 10.5px;
+    }
+
+    .reading-page {
+      --cover-w: 3.25rem;
     }
   }
 

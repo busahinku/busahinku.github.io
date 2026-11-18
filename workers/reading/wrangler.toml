@@ -20,9 +20,14 @@ crons = ["*/30 * * * *"]
 # CrossPoint Sync, or a self-hosted copy of it.
 SYNC_URL = "https://sync.crosspointreader.com"
 NTFY_URL = "https://ntfy.sh"
+# The day tracking began; the year on /reading/ draws the days before it as "no data".
+# Without it, the earliest day synced.
+TRACKING_SINCE = "2026-11-16"
 # HIDE_TITLES is a secret (DEPLOY.md, step 4), not a var.
-# Where the files Worker serves the bucket below; recordings are linked from here.
+# Where the files Worker serves the bucket below; recordings and covers are linked from here.
 FILES_URL = "https://files.busahin.com"
+# The only hosts a cover is copied from (https, comma-separated). Sync's covers come from Hardcover.
+COVER_HOSTS = "assets.hardcover.app"
 
 [[d1_databases]]
 binding = "DB"
