@@ -207,6 +207,25 @@ const playlists = [
       <h2>{copy.reading}</h2>
     </div>
     <p class="section-note">{copy.readingDesc}</p>
+    {/* Books come from the reading Worker's public summary; filled in by the script below, hidden until then. */}
+    <ul
+      class="leader-list"
+      data-misc-books
+      data-endpoint="/api/reading/summary"
+      data-base={readingBase}
+      data-lang={lang}
+      hidden
+    >
+      <template data-row>
+        <li>
+          <a class="leader-row" href={`${readingBase}/`}>
+            <span class="row-title"><span data-t></span><span class="row-author" data-a></span></span>
+            <span class="row-leader" aria-hidden="true"></span>
+            <span class="row-meta" data-m></span>
+          </a>
+        </li>
+      </template>
+    </ul>
     {
       notes.length > 0 && (
         <ul class="leader-list">
@@ -227,6 +246,45 @@ const playlists = [
     }
     <a class="more-link" href={`${readingBase}/`}>{copy.openReading}</a>
   </section>
+
+  <script>
+    // The Misc Reading list: what the e-reader reports, at most five books, reading
+    // first. Text only (textContent), so book titles from the API can never become markup.
+    const LIMIT = 5;
+    async function fillBooks() {
+      const list = document.querySelector<HTMLUListElement>("[data-misc-books]");
+      if (!list || list.dataset.ready) return;
+      list.dataset.ready = "1";
+      const row = list.querySelector<HTMLTemplateElement>("template[data-row]");
+      if (!row) return;
+      const tr = list.dataset.lang === "tr";
+      try {
+        const res = await fetch(list.dataset.endpoint!, { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        const reading = Array.isArray(data?.reading) ? data.reading : [];
+        const finished = Array.isArray(data?.finished) ? data.finished : [];
+        const rows = [
+          ...reading.map((b: any) => ({ b, meta: typeof b.percent === "number" ? `${b.percent.toLocaleString(tr ? "tr-TR" : "en-GB")}%` : "" })),
+          ...finished.map((b: any) => ({ b, meta: tr ? "Bitti" : "Finished" })),
+        ].slice(0, LIMIT);
+        if (!rows.length) return;
+        for (const { b, meta } of rows) {
+          if (typeof b?.title !== "string") continue;
+          const li = row.content.firstElementChild!.cloneNode(true) as HTMLLIElement;
+          li.querySelector("[data-t]")!.textContent = b.title;
+          li.querySelector("[data-a]")!.textContent = typeof b.author === "string" && b.author ? `, ${b.author}` : "";
+          li.querySelector("[data-m]")!.textContent = meta;
+          list.append(li);
+        }
+        list.hidden = false;
+      } catch {
+        // No numbers is fine here: the link to the reading page stays.
+      }
+    }
+    fillBooks();
+    document.addEventListener("astro:after-swap", fillBooks);
+  </script>
 
 
   <section class="misc-section" id="desk">
