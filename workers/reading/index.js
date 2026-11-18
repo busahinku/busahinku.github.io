@@ -626,10 +626,14 @@ async function buildSummary(env, now) {
     .sort((x, y) => (y.b.finished_at ?? 0) - (x.b.finished_at ?? 0))
     .map(({ b, title }) => ({ title, author: b.author, cover: coverOf(b, env), started: day(b.started_at), finished: day(b.finished_at), days: b.days_to_finish }));
 
+  const allDays = await readingDays(db);
   return {
     today,
     updated_at: meta[0]?.updated ?? null,
-    streak: streak(await readingDays(db), today),
+    // The first day there is data for: TRACKING_SINCE (a var) when set, else the earliest day synced.
+    // The page draws the days before it as "no data", not as days without reading.
+    since: isDay(env.TRACKING_SINCE) ? env.TRACKING_SINCE : (allDays[0] ?? null),
+    streak: streak(allDays, today),
     days: days.map((d) => [d.day, d.pages]),
     reading,
     finished,
