@@ -1,0 +1,103 @@
+{
+ "items": [
+  {
+   "document": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+   "id": "c0ffee0011223301",
+   "spine": 3,
+   "para": 12,
+   "start_offset": 100,
+   "chapter": "Day One",
+   "text": "ubiquitous",
+   "note": null,
+   "created_at": 1794943800
+  },
+  {
+   "document": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+   "id": "c0ffee0011223302",
+   "spine": 3,
+   "para": 12,
+   "start_offset": 100,
+   "chapter": "Day One",
+   "text": "The ubiquitous hum of the house had settled into something like a promise, and I found I did not mind it.",
+   "note": null,
+   "created_at": 1794943740
+  },
+  {
+   "document": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+   "id": "c0ffee0011223303",
+   "spine": 3,
+   "para": 12,
+   "start_offset": 100,
+   "chapter": "Day One",
+   "text": "  “Mellow,” ",
+   "note": null,
+   "created_at": 1794682800
+  },
+  {
+   "document": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+   "id": "c0ffee0011223304",
+   "spine": 3,
+   "para": 12,
+   "start_offset": 100,
+   "chapter": "Day One",
+   "text": "give up",
+   "note": null,
+   "created_at": 1794510000
+  },
+  {
+   "document": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+   "id": "c0ffee0011223305",
+   "spine": 3,
+   "para": 12,
+   "start_offset": 100,
+   "chapter": "Day One",
+   "text": "abandoned",
+   "note": null,
+   "created_at": 1794337200
+  },
+  {
+   "document": "25f8abb4f4f5594f02f361726814fea1",
+   "id": "c0ffee0011223306",
+   "spine": 3,
+   "para": 12,
+   "start_offset": 100,
+   "chapter": "Chapter 8",
+   "text": "Running",
+   "note": null,
+   "created_at": 1792954800
+  },
+  {
+   "document": "25f8abb4f4f5594f02f361726814fea1",
+   "id": "c0ffee0011223307",
+   "spine": 3,
+   "para": 12,
+   "start_offset": 100,
+   "chapter": "Chapter 9",
+   "text": "So we beat on, boats against the current, borne back ceaselessly into the past.",
+   "note": null,
+   "created_at": 1793041200
+  },
+  {
+   "document": "25f8abb4f4f5594f02f361726814fea1",
+   "id": "c0ffee0011223308",
+   "spine": 3,
+   "para": 12,
+   "start_offset": 100,
+   "chapter": "Day One",
+   "text": "  ...  ",
+   "note": null,
+   "created_at": 1793041500
+  },
+  {
+   "document": "25f8abb4f4f5594f02f361726814fea1",
+   "id": "bad id!",
+   "spine": 3,
+   "para": 12,
+   "start_offset": 100,
+   "chapter": "Day One",
+   "text": "skipped",
+   "note": null,
+   "created_at": 1793041500
+  }
+ ]
+}

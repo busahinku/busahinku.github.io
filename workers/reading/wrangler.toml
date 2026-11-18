@@ -1,0 +1,57 @@
+# Deploy: npx wrangler@4.146.0 deploy --config workers/reading/wrangler.toml
+# First time: follow workers/reading/DEPLOY.md (database, schema, dictionary, secrets).
+name = "busahin-reading"
+main = "index.js"
+compatibility_date = "2026-09-01"
+# The private app's code is sent to the browser as a function's source text
+# (page.js); kept names would add a helper call that only exists in the Worker.
+keep_names = false
+workers_dev = false
+preview_urls = false
+# More specific than the assistant's busahin.com/api/*, so it wins for these paths.
+routes = [{ pattern = "busahin.com/api/reading*", zone_name = "busahin.com" }]
+
+# Every thirty minutes: pull from CrossPoint Sync; on the hour, also any
+# notification whose hour (Istanbul time, set on the private page) has come.
+[triggers]
+crons = ["*/30 * * * *"]
+
+[vars]
+# CrossPoint Sync, or a self-hosted copy of it.
+SYNC_URL = "https://sync.crosspointreader.com"
+NTFY_URL = "https://ntfy.sh"
+# HIDE_TITLES is a secret (DEPLOY.md, step 4), not a var.
+# Where the files Worker serves the bucket below; recordings are linked from here.
+FILES_URL = "https://files.busahin.com"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "busahin-reading"
+database_id = "f0ed98f7-1129-4288-bf17-f8c7e08a5bed"
+
+# The existing bucket behind the files Worker. Only pronunciation recordings are
+# written, under reading/audio/, at most AUDIO_PER_DAY a day (index.js).
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "busahin-files"
+
+# Sentence translations, capped per day in index.js.
+[ai]
+binding = "AI"
+
+# Thirty requests a minute per visitor, three hundred for the site.
+[[ratelimits]]
+name = "PER_VISITOR"
+namespace_id = "4976"
+simple = { limit = 30, period = 60 }
+
+[[ratelimits]]
+name = "SITE_WIDE"
+namespace_id = "4977"
+simple = { limit = 300, period = 60 }
+
+# Sign-in attempts on the private page: five a minute per visitor.
+[[ratelimits]]
+name = "LOGIN"
+namespace_id = "4978"
+simple = { limit = 5, period = 60 }
