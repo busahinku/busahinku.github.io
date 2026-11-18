@@ -140,6 +140,8 @@ for (const bad of [
   "http://127.0.0.1/", "http://127.1/", "http://2130706433/", "http://0x7f.0.0.1/", "http://0/", "http://10.0.0.1/", "http://100.64.0.1/",
   "http://169.254.169.254/latest/meta-data/", "http://172.16.0.1/", "http://192.168.1.1/", "http://198.18.0.1/", "http://224.0.0.1/",
   "http://[::1]/", "http://[::]/", "http://[::ffff:127.0.0.1]/", "http://[::ffff:7f00:1]/", "http://[fd00::1]/", "http://[fe80::1]/", "http://[64:ff9b::a00:1]/", "http://[2002:c0a8:101::1]/",
+  "http://[::ffff:0:127.0.0.1]/", "http://[2001:0::1]/", "http://[2001:0:4136:e378:8000:63bf:3fff:fdd2]/", "http://[fec0::1]/", "http://[100::1]/", "http://[3fff::1]/", "http://[ff02::1]/",
+  "http://busahin.com../", "http://localhost.../", "http://files.busahin.com.../x",
   "https://user:pass@example.com/", "https://example.com:8443/", "https://busahin.com/api/shelf/", "https://files.busahin.com/x",
 ]) assert.equal(allowedUrl(bad), null, bad);
 for (const good of ["https://example.com/a?b=c", "http://example.org/", "http://93.184.216.34/", "https://[2606:4700::1111]/"]) assert.ok(allowedUrl(good), good);

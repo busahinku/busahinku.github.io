@@ -55,9 +55,14 @@ function privateV6(host) {
   const n = groups.map((g) => parseInt(g, 16));
   if (n.slice(0, 7).every((g) => g === 0)) return true; // :: and ::1
   if (n.slice(0, 5).every((g) => g === 0) && (n[5] === 0xffff || n[5] === 0)) return privateV4([n[6] >> 8, n[6] & 255, n[7] >> 8]); // v4-mapped or -compatible
+  if (n.slice(0, 4).every((g) => g === 0) && n[4] === 0xffff && n[5] === 0) return privateV4([n[6] >> 8, n[6] & 255, n[7] >> 8]); // v4-translated (SIIT)
   if (n[0] === 0x64 && n[1] === 0xff9b) return privateV4([n[6] >> 8, n[6] & 255, n[7] >> 8]); // NAT64
   if (n[0] === 0x2002) return privateV4([n[1] >> 8, n[1] & 255, n[2] >> 8]); // 6to4
-  return (n[0] & 0xfe00) === 0xfc00 || (n[0] & 0xffc0) === 0xfe80 || (n[0] & 0xff00) === 0xff00 || (n[0] === 0x2001 && n[1] === 0x0db8) || n[0] === 0x0100;
+  // Only global unicast (2000::/3) leaves the building: that drops ULA, link- and
+  // site-local, multicast, discard and anything unassigned in one test. Within it,
+  // 2001::/23 (Teredo, benchmarking, ORCHID) and documentation are refused too.
+  if ((n[0] & 0xe000) !== 0x2000) return true;
+  return (n[0] === 0x2001 && n[1] < 0x0200) || (n[0] === 0x2001 && n[1] === 0x0db8) || (n[0] === 0x3fff && n[1] < 0x1000);
 }
 
 export function privateAddress(address) {
@@ -77,7 +82,7 @@ export function allowedUrl(input) {
   }
   if (url.protocol !== "https:" && url.protocol !== "http:") return null;
   if (url.username || url.password || url.port) return null;
-  const host = url.hostname.replace(/^\[|\]$/g, "").replace(/\.$/, "");
+  const host = url.hostname.replace(/^\[|\]$/g, "").replace(/\.+$/, "");
   if (!host) return null;
   // An IP literal (WHATWG URL already turned 0x7f.1 and 2130706433 into dotted form).
   if (ipv4(host) || host.includes(":")) return privateAddress(host) ? null : url;
