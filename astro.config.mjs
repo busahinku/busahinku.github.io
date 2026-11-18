@@ -15,6 +15,11 @@ export default defineConfig({
   site: 'https://busahin.com',
   integrations: [mdx(), sitemap(), assistantIndex()],
   output: 'static',
+  // The old Misc books list became the reading page; keep old links working.
+  redirects: {
+    '/misc/books': '/reading/',
+    '/tr/misc/books': '/tr/reading/',
+  },
   // Prefetch the page a visitor is actually reaching for. Using `viewport`
   // here fetched every visible header/footer link at once, competing with the
   // current page's fonts and images on slower connections.

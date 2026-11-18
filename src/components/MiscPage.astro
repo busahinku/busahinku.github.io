@@ -4,9 +4,9 @@ import { type Lang } from "../i18n/translations";
 import { SITE_CONFIG } from "../consts";
 import {
   bookmarks as allBookmarks,
-  books as allBooks,
 } from "../data/misc";
 import { photos } from "../data/photos";
+import { bookNotes, noteSlug } from "../utils/book-notes";
 
 interface Props {
   lang: Lang;
@@ -31,12 +31,11 @@ const copy = {
     ? "Dönüp dolaşıp yine açtığım bağlantılar."
     : "Links I keep coming back to.",
   allBookmarks: tr ? "Tüm yer imleri" : "All bookmarks",
-  books: tr ? "Kitaplar" : "Books",
-  booksDesc: tr
-    ? "Düşünme ya da çalışma şeklimi değiştiren kitaplar."
-    : "Books that changed how I think or work.",
-  allBooks: tr ? "Tüm kitaplar" : "All books",
-  reading: tr ? "Şu an okuduklarım" : "What I'm reading now",
+  reading: tr ? "Okuma" : "Reading",
+  readingDesc: tr
+    ? "Okuduklarım, bitirdiklerim ve onlar hakkında yazdıklarım."
+    : "What I'm reading, what I've finished, and what I wrote about it.",
+  openReading: tr ? "Okuma sayfası" : "The reading page",
   photos: tr ? "Fotoğraflar" : "Photographs",
   photosDesc: tr
     ? "Yürüyüşlerde ve uzun yollarda çektiklerim."
@@ -52,7 +51,7 @@ const sectionIndex = [
   { id: "listening", label: copy.listening },
   { id: "photos", label: copy.photos },
   { id: "bookmarks", label: copy.bookmarks },
-  { id: "books", label: copy.books },
+  { id: "reading", label: copy.reading },
   { id: "desk", label: copy.desk },
 ];
 
@@ -62,10 +61,12 @@ const bookmarks = allBookmarks.slice(0, 5).map((item) => ({
   category: item.category[lang],
 }));
 
-const books = allBooks.slice(0, 5).map((item) => ({
-  title: item.title,
-  author: item.sub ?? "",
-  category: item.category[lang],
+const readingBase = tr ? "/tr/reading" : "/reading";
+const notes = (await bookNotes(lang)).slice(0, 5).map((note) => ({
+  title: note.data.title,
+  author: note.data.author,
+  href: `${readingBase}/${noteSlug(note)}/`,
+  year: note.data.finished.getUTCFullYear(),
 }));
 
 
@@ -201,29 +202,30 @@ const playlists = [
     >
   </section>
 
-  <section class="misc-section" id="books">
+  <section class="misc-section" id="reading">
     <div class="section-head">
-      <h2>{copy.books}</h2>
+      <h2>{copy.reading}</h2>
     </div>
-    <p class="section-note">{copy.booksDesc}</p>
-    <ul class="leader-list">
-      {
-        books.map((book) => (
-          <li>
-            <div class="leader-row">
-              <span class="row-title">
-                {book.title}<span class="row-author">, {book.author}</span>
-              </span>
-              <span class="row-leader" aria-hidden="true" />
-              <span class="row-meta">{book.category}</span>
-            </div>
-          </li>
-        ))
-      }
-    </ul>
-    <a class="more-link" href={`${basePath}/misc/books/`}>{copy.allBooks}</a>
-    <span class="index-sep" aria-hidden="true">·</span>
-    <a class="more-link" href={`${basePath}/reading/`}>{copy.reading}</a>
+    <p class="section-note">{copy.readingDesc}</p>
+    {
+      notes.length > 0 && (
+        <ul class="leader-list">
+          {notes.map((note) => (
+            <li>
+              <a class="leader-row" href={note.href}>
+                <span class="row-title">
+                  {note.title}
+                  <span class="row-author">, {note.author}</span>
+                </span>
+                <span class="row-leader" aria-hidden="true" />
+                <span class="row-meta">{note.year}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+    <a class="more-link" href={`${readingBase}/`}>{copy.openReading}</a>
   </section>
 
 
