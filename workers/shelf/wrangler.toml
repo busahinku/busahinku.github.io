@@ -14,16 +14,13 @@ routes = [{ pattern = "busahin.com/api/shelf*", zone_name = "busahin.com" }]
 binding = "SHELF"
 bucket_name = "busahin-shelf"
 
-# Wrong passwords: five a minute per visitor, twenty for everyone together.
+# Every request carrying credentials, right or wrong, per visitor. Checked before
+# the password, so it slows guessing; generous enough for the reader fetching a
+# feed page and a cover for each of its 60 entries.
 [[ratelimits]]
-name = "AUTH_FAILURES"
+name = "AUTH_ATTEMPTS"
 namespace_id = "4981"
-simple = { limit = 5, period = 60 }
-
-[[ratelimits]]
-name = "AUTH_FAILURES_SITE"
-namespace_id = "4982"
-simple = { limit = 20, period = 60 }
+simple = { limit = 300, period = 60 }
 
 # A hard daily ceiling on authenticated requests (see DAILY_REQUESTS).
 [[durable_objects.bindings]]

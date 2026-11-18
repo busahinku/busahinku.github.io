@@ -87,5 +87,5 @@ javascript:location.href='https://busahin.com/api/shelf/?url='+encodeURIComponen
 
 - Workers free plan: running out ends in an error, never a charge.
 - R2 is the one product here with a bill behind its free allowance (10 GB stored, 1 million Class A and 10 million Class B operations a month, shared with `busahin-files`). The Worker keeps far below it: R2 is touched only after the password checks out, a Durable Object stops authenticated requests at 3,000 a day (at most three Class A operations each, about 280,000 a month), and new files are refused once the shelf holds 1,000 items or 2 GB.
-- Wrong passwords: five a minute per visitor and twenty a minute site-wide, then 429. They never reach R2.
+- Guessing: every request that carries a password, right or wrong, counts toward 300 a minute per visitor, checked before the password is compared, so past it the answer is 429 either way. Wrong passwords never reach R2. The real protection is the password itself: random, at least 16 characters.
 - Fetching articles: http and https on default ports, public addresses only (checked on the URL, on every redirect and on the DNS answers), 2 MB for the page, 300 KB per image (a cover and two pictures at most, JPEG or PNG), four redirects, ten seconds.

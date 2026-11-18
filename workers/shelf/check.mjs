@@ -75,8 +75,7 @@ function fakeEnv(overrides = {}) {
     SHELF_USER: USER,
     SHELF_PASSWORD: PASSWORD,
     SHELF: fakeBucket(),
-    AUTH_FAILURES: fakeLimiter(5),
-    AUTH_FAILURES_SITE: fakeLimiter(20),
+    AUTH_ATTEMPTS: fakeLimiter(300),
     BUDGET: { idFromName: () => "id", get: () => ({ fetch: async () => new Response(null, { status: ++budget <= (overrides.budget ?? 1e9) ? 200 : 429 }) }) },
     ...overrides,
   };
@@ -304,7 +303,6 @@ const ROUTES = [
 ];
 for (const [method, path] of ROUTES) {
   const opsBefore = env.SHELF.ops;
-  env.AUTH_FAILURES_SITE = fakeLimiter(20); // two counted guesses per route; the site-wide limit is checked below
   for (const auth of [null, "Basic " + btoa(`${USER}:wrong-password-here`), "Basic " + btoa(`${USER}x:${PASSWORD}`), "Basic !!!", `Bearer ${PASSWORD}`, "Basic " + btoa(USER + PASSWORD)]) {
     const response = await handle(request(path, { method, auth, headers: { "cf-connecting-ip": `198.51.100.${ROUTES.findIndex((r) => r[1] === path && r[0] === method)}` } }), env);
     assert.equal(response.status, 401, `${method} ${path} with ${auth}`);
@@ -313,16 +311,14 @@ for (const [method, path] of ROUTES) {
   }
   assert.equal(env.SHELF.ops, opsBefore, `${method} ${path}: no bucket access without auth`);
 }
-// The sixth wrong password from one visitor in a minute is refused outright.
+// Past the per-visitor limit every credentialed request is refused, the right password
+// included, and the limiter is asked before the password is compared.
+const guesser = { ...env, AUTH_ATTEMPTS: fakeLimiter(3) };
 const guesses = [];
-for (let i = 0; i < 6; i++) guesses.push((await handle(request("/api/shelf/opds", { auth: "Basic " + btoa(`${USER}:guess${i}`), headers: { "cf-connecting-ip": "203.0.113.9" } }), env)).status);
-assert.deepEqual(guesses, [401, 401, 401, 401, 401, 429]);
-// And twenty-one wrong passwords from twenty-one visitors trip the site-wide limit.
-env.AUTH_FAILURES_SITE = fakeLimiter(20);
-const spread = [];
-for (let i = 0; i < 21; i++) spread.push((await handle(request("/api/shelf/opds", { auth: "Basic " + btoa(`${USER}:g${i}`), headers: { "cf-connecting-ip": `192.0.2.${i}` } }), env)).status);
-assert.equal(spread.at(-1), 429);
-assert.equal(spread.filter((s) => s === 401).length, 20);
+for (const password of ["g1", "g2", "g3", "g4", PASSWORD]) guesses.push((await handle(request("/api/shelf/opds", { auth: "Basic " + btoa(`${USER}:${password}`), headers: { "cf-connecting-ip": "203.0.113.9" } }), guesser)).status);
+assert.deepEqual(guesses, [401, 401, 401, 429, 429]);
+// Another visitor is unaffected.
+assert.equal((await handle(request("/api/shelf/opds", { headers: { "cf-connecting-ip": "203.0.113.10" } }), guesser)).status, 200);
 // Not configured, or a short password: closed.
 assert.equal((await handle(request("/api/shelf/opds"), fakeEnv({ SHELF_PASSWORD: undefined }))).status, 503);
 assert.equal((await handle(request("/api/shelf/opds", { auth: "Basic " + btoa("reader:short") }), fakeEnv({ SHELF_PASSWORD: "short" }))).status, 503);

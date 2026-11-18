@@ -5,7 +5,9 @@
 //
 // Every route needs HTTP Basic auth (the reader's OPDS client speaks Basic, not
 // Digest). Credentials are the SHELF_USER and SHELF_PASSWORD secrets, compared
-// in constant time; wrong guesses are rate limited per visitor and site-wide.
+// in constant time. Every request that carries credentials, right or wrong,
+// counts against a per-visitor limit before the compare, so a visitor over it
+// gets 429 whatever the password and learns nothing from the answer.
 // Files live in their own R2 bucket, `busahin-shelf`, which has no public URL
 // and is bound to no other Worker, so the only way to a file is through here.
 //
@@ -485,12 +487,10 @@ export async function handle(request, env, deps = {}) {
 
   const given = basicCredentials(request.headers.get("authorization"));
   if (given === null) return challenge();
-  if (!(await sameSecret(given, `${env.SHELF_USER}:${env.SHELF_PASSWORD}`))) {
-    const ip = request.headers.get("cf-connecting-ip") || "unknown";
-    const [mine, all] = await Promise.all([env.AUTH_FAILURES.limit({ key: ip }), env.AUTH_FAILURES_SITE.limit({ key: "site" })]);
-    if (!mine.success || !all.success) return respond("Too many attempts", 429, { "retry-after": "60" });
-    return challenge();
-  }
+  // Before the compare, so a limited visitor cannot tell a right password from a wrong one.
+  const { success } = await env.AUTH_ATTEMPTS.limit({ key: request.headers.get("cf-connecting-ip") || "unknown" });
+  if (!success) return respond("Too many attempts", 429, { "retry-after": "60" });
+  if (!(await sameSecret(given, `${env.SHELF_USER}:${env.SHELF_PASSWORD}`))) return challenge();
 
   if (request.method === "POST" && crossSite(request)) return respond("Forbidden", 403);
   if (!(await withinBudget(env))) return request.method === "POST" ? done(request, { error: "budget" }, 429) : respond("Daily limit reached", 429);
