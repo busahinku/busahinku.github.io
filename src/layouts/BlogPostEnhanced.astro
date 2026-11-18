@@ -116,6 +116,7 @@ const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
           )
         }
 
+        <slot name="lead" />
         <header class="article-header">
           <div class="article-meta" data-pagefind-ignore>
             <span>

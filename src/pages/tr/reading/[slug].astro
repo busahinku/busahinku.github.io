@@ -37,6 +37,28 @@ const slug = noteSlug(note);
   prevPost={prevPost}
   nextPost={nextPost}
 >
+  {note.data.cover && <img slot="lead" class="book-cover" src={note.data.cover} alt="" width="240" height="360" decoding="async" />}
   <Content />
 </BlogPostEnhanced>
+
+<style>
+  /* The book's own cover, small and upright above the title: a cover is 2:3, never the 16:10 hero. */
+  .book-cover {
+    display: block;
+    width: 8rem;
+    height: auto;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+    margin: 0 0 1.75rem;
+    border-radius: 2px;
+    background: var(--bg-secondary);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-primary) 8%, transparent);
+  }
+
+  @media (max-width: 640px) {
+    .book-cover {
+      width: 6.5rem;
+    }
+  }
+</style>
 

@@ -24,5 +24,6 @@ export function noteLinks(notes: BookNote[], lang: Lang) {
     title: note.data.title,
     author: note.data.author,
     finished: note.data.finished.toISOString().slice(0, 10),
+    cover: note.data.cover ?? null,
   }));
 }
