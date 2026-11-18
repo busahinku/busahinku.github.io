@@ -68,7 +68,12 @@ const COVER_ERROR_RETRY = 86_400;
 const COOKIE = "reading_session";
 const SESSION_DAYS = 60;
 const CLIPPINGS_MAX = 5000; // GET /api/v1/clippings returns at most this many
-const KEEP_RAW = 900_000; // characters of an answer worth keeping; D1 rows stop at 2 MB
+const KEEP_RAW = 900_000;
+// Raise when the derivation changes (a new column, a new field read from an answer): the
+// next pull ignores the stored hashes once and re-derives every table from the answers,
+// so rows written by older code are filled in even when Sync's answers have not changed.
+// 2: covers and Hardcover's metadata on books.
+const DERIVE_VERSION = 2; // characters of an answer worth keeping; D1 rows stop at 2 MB
 
 const DOC = /^[A-Za-z0-9._-]{1,64}$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -274,7 +279,10 @@ async function ingest(env, now = Date.now()) {
   } catch {}
 
   const db = env.DB;
-  const stored = new Map((await db.prepare("SELECT endpoint, hash FROM raw").all()).results.map((r) => [r.endpoint, r.hash]));
+  const [rawRows, derivedBy] = await db.batch([db.prepare("SELECT endpoint, hash FROM raw"), db.prepare("SELECT value FROM meta WHERE key = 'derive_version'")]);
+  const current = Number(derivedBy.results[0]?.value) === DERIVE_VERSION;
+  // An older derivation: every answer counts as changed for this pull.
+  const stored = new Map(current ? rawRows.results.map((r) => [r.endpoint, r.hash]) : []);
   const hashes = Object.fromEntries(await Promise.all(Object.entries(bodies).map(async ([k, v]) => [k, await sha256(v)])));
   const changed = Object.keys(bodies).filter((k) => stored.get(k) !== hashes[k]);
   const booksChanged = changed.includes("progress") || changed.includes("activity");
@@ -402,6 +410,13 @@ async function ingest(env, now = Date.now()) {
     );
   }
 
+  // Written with the rows (and only when it moves), so a failed pull leaves the old version and is tried again in full.
+  if (!current)
+    statements.push(
+    db
+      .prepare("INSERT INTO meta (key, value, updated_at) VALUES ('derive_version', ?1, ?2) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at")
+      .bind(String(DERIVE_VERSION), seconds),
+  );
   await db.batch(statements);
   for (const key of goneCovers) await env.FILES?.delete(key).catch((error) => console.error(error));
   const translated = await translate(env, today, seconds);
