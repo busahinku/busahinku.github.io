@@ -104,10 +104,17 @@ globalThis.fetch = async (input, init = {}) => {
   }
   if (url.host.endsWith("wikimedia.org") || url.host === "en.wiktionary.org") return wiki(url, init);
   if (url.host === "busahin.com" && url.pathname === "/reading/notes.json") return new Response(answers.notes ?? '{"notes":[]}');
+  if (url.host === "assets.hardcover.app") return (coverFetches.push(url.href), coverAnswer(url));
+  if (url.host === "api.github.com") return githubApi(url, init);
   requests.push({ url, headers: init.headers });
   const name = { "/healthz": "healthz", "/api/v1/progress": "progress", "/api/v1/stats/activity": "activity", "/api/v1/stats/overview": "overview", "/api/v1/clippings": "clippings" }[url.pathname];
   return name ? new Response(answers[name]) : new Response('{"code":2001,"message":"Unauthorized"}', { status: 401 });
 };
+// Hardcover's cover images and the GitHub contents API, both offline (defined with their checks below).
+const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 16, 0x4a, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1]);
+const coverFetches = [];
+let coverAnswer = () => new Response(JPEG, { headers: { "content-type": "image/jpeg", "content-length": String(JPEG.length) } });
+let githubApi = () => new Response("{}", { status: 500 });
 let aiCalls = 0;
 const env = {
   DB: d1(sqlite),
@@ -170,7 +177,9 @@ assert.equal(remains.percent_per_day, 1.6);
 assert.equal(remains.pages_per_day, 4.1);
 assert.equal(remains.forecast, "2026-12-13");
 assert.equal(remains.started, "2026-11-01");
-assert.deepEqual(s.finished, [{ title: "Foundryside", author: "Robert Jackson Bennett", started: "2026-10-20", finished: "2026-10-30", days: 11 }]);
+assert.deepEqual(s.finished, [{ title: "Foundryside", author: "Robert Jackson Bennett", cover: null, started: "2026-10-20", finished: "2026-10-30", days: 11 }]);
+assert.equal(remains.cover, null, "no bucket in the first pulls: no cover copy, and never Hardcover's own address");
+for (const secret of ["hardcover", "1989", "Historical"]) assert.ok(!JSON.stringify(s).includes(secret), `summary carries "${secret}"`);
 assert.deepEqual(Object.keys(s).sort(), ["days", "finished", "reading", "streak", "time", "today", "updated_at"], "nothing about words in public");
 assert.equal(s.time, null, "CrossPoint uploads no reading time");
 assert.ok(s.updated_at > 0);
@@ -906,7 +915,7 @@ assert.ok(fs.readFileSync(new URL("../../src/components/ReadingPage.astro", here
   assert.deepEqual((await w.todayCard(env, NOW, true)).notes_to_write, [], "no reminder before the site's list has been read");
   answers.notes = JSON.stringify({ notes: [] });
   await w.pull(env, NOW + 30_000_000, "cron");
-  assert.deepEqual((await w.todayCard(env, NOW, true)).notes_to_write, [{ title: "Foundryside" }]);
+  assert.deepEqual((await w.todayCard(env, NOW, true)).notes_to_write, [{ document: "25f8abb4f4f5594f02f361726814fea1", title: "Foundryside" }]);
   answers.notes = JSON.stringify({ notes: [{ keys: [titleKey("FOUNDRYSIDE.")], href: "/reading/foundryside/", title: "Foundryside" }] });
   await w.pull(env, NOW + 30_100_000, "cron");
   assert.deepEqual((await w.todayCard(env, NOW, true)).notes_to_write, [], "written: the reminder goes");
@@ -918,6 +927,337 @@ assert.ok(fs.readFileSync(new URL("../../src/components/ReadingPage.astro", here
   assert.deepEqual((await w.todayCard(env, NOW, true)).notes_to_write, [], "a failed fetch keeps the last list");
   assert.ok(!("notes_to_write" in (await w.todayCard(env, NOW))), "never in public");
 }
+
+// ---- covers: copied from Hardcover into R2 only for books on the public page, with the recordings' guards
+{
+  const log = console.error;
+  console.error = () => {};
+  const REMAINS = "a1b2c3d4e5f60718293a4b5c6d7e8f90";
+  const MIDDLEMARCH = "0123456789abcdef0123456789abcdef";
+  const FOUNDRYSIDE = "25f8abb4f4f5594f02f361726814fea1";
+  const book = (d) => sqlite.prepare("SELECT cover_url, cover_key, cover_v, cover_checked_at, release_year, genres, series, series_position FROM books WHERE document = ?").get(d);
+  const covers = () => [...bucket.keys()].filter((k) => k.startsWith("reading/covers/"));
+  const fresh = () => (sqlite.exec("UPDATE books SET cover_v = NULL, cover_checked_at = NULL; DELETE FROM daily WHERE day = '2026-11-18'"), coverFetches.splice(0));
+  for (const k of covers()) bucket.delete(k);
+
+  assert.deepEqual(
+    { ...book(MIDDLEMARCH), cover_key: undefined, cover_v: undefined, cover_checked_at: undefined },
+    { cover_url: "https://assets.hardcover.app/edition/1/middlemarch.jpeg", cover_key: undefined, cover_v: undefined, cover_checked_at: undefined, release_year: 1871, genres: '["Classics"]', series: "Penguin Classics", series_position: 12 },
+    "Hardcover's metadata is kept",
+  );
+
+  assert.ok(w.coverSource("https://assets.hardcover.app/edition/1/a.jpeg", env));
+  for (const bad of ["http://assets.hardcover.app/a.jpeg", "https://evil.example/a.jpeg", "https://assets.hardcover.app.evil.example/a.jpeg", "https://u:p@assets.hardcover.app/a.jpeg", "https://assets.hardcover.app:8443/a.jpeg", "not a url", "data:image/png;base64,AA"])
+    assert.equal(w.coverSource(bad, env), null, bad);
+  assert.ok(w.coverSource("https://covers.example/a.jpg", { COVER_HOSTS: "covers.example, other.example" }), "the host list is configurable");
+  assert.equal(w.coverSource("https://assets.hardcover.app/a.jpg", { COVER_HOSTS: "covers.example" }), null, "and replaces the default");
+
+  const bytes = (...b) => new Uint8Array([...b, ...new Array(16).fill(0)]).buffer;
+  assert.equal(w.imageType(JPEG.buffer), "image/jpeg");
+  assert.equal(w.imageType(bytes(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)), "image/png");
+  assert.equal(w.imageType(new TextEncoder().encode("RIFF\0\0\0\0WEBPVP8 ").buffer), "image/webp");
+  assert.equal(w.imageType(new TextEncoder().encode("\0\0\0\x1cftypavif\0\0").buffer), "image/avif");
+  for (const not of ["<svg xmlns='http://www.w3.org/2000/svg'/>", "<html><script>", "GIF89a......"]) assert.equal(w.imageType(new TextEncoder().encode(not).buffer), null, not);
+
+  // One copy, for the one book on the page with a cover: never Middlemarch (paused, so not on the page).
+  fresh();
+  assert.equal(await w.syncCovers(env, NOW), 1);
+  assert.deepEqual(coverFetches, ["https://assets.hardcover.app/edition/30373948/remains.jpeg"]);
+  const remainsCover = book(REMAINS);
+  assert.match(remainsCover.cover_key, /^reading\/covers\/[0-9a-f-]{36}$/, "a random key, so the address names no book");
+  assert.match(remainsCover.cover_v, /^[0-9a-f]{12}$/);
+  assert.deepEqual(covers(), [remainsCover.cover_key]);
+  assert.equal(bucket.get(remainsCover.cover_key).opts.httpMetadata.contentType, "image/jpeg");
+  assert.equal(book(MIDDLEMARCH).cover_v, null);
+  const pub = await w.buildSummary(env, NOW);
+  assert.equal(pub.reading.find((b) => b.title === "The Remains of the Day").cover, `https://files.busahin.com/${remainsCover.cover_key}?v=${remainsCover.cover_v}`, "served by the files Worker, versioned");
+  assert.ok(!JSON.stringify(pub).includes("hardcover"), "Hardcover is never linked from the public page");
+  assert.equal(await w.syncCovers(env, NOW), 0, "copied once");
+  assert.equal(coverFetches.length, 1);
+
+  // Hidden: the copy goes at once; shown again: it comes back under the same key.
+  await w.setBook(env, { document: REMAINS, hidden: true }, NOW);
+  assert.deepEqual([covers(), book(REMAINS).cover_v], [[], null]);
+  assert.ok(!JSON.stringify(await w.buildSummary(env, NOW)).includes(remainsCover.cover_key));
+  await w.setBook(env, { document: REMAINS, hidden: false }, NOW);
+  assert.deepEqual([covers(), book(REMAINS).cover_key], [[remainsCover.cover_key], remainsCover.cover_key], "the same key, so a note linking the cover keeps working");
+  // HIDE_TITLES takes a cover off too.
+  await w.syncCovers({ ...env, HIDE_TITLES: "remains" }, NOW);
+  assert.deepEqual(covers(), []);
+
+  // The guards. Each failure leaves the book waiting a day.
+  const tryWith = async (answer, at = NOW) => {
+    fresh();
+    coverAnswer = answer;
+    await w.syncCovers(env, at);
+    return { stored: covers().length, checked: book(REMAINS).cover_checked_at };
+  };
+  let read = false;
+  const huge = () => ({ ok: true, status: 200, headers: new Headers({ "content-type": "image/jpeg", "content-length": "30000000" }), arrayBuffer: async () => ((read = true), JPEG.buffer) });
+  let r = await tryWith(huge);
+  assert.deepEqual([r.stored, read, r.checked > 0], [0, false, true], "30 MB is refused without reading it, and noted");
+  r = await tryWith(() => new Response(null, { status: 302, headers: { location: "https://elsewhere.example/a.jpg" } }));
+  assert.equal(r.stored, 0, "a redirect is not followed");
+  r = await tryWith(() => new Response("<html>", { headers: { "content-type": "text/html", "content-length": "6" } }));
+  assert.equal(r.stored, 0, "not an image by its headers");
+  const svg = new TextEncoder().encode("<svg onload='alert(1)'/>");
+  r = await tryWith(() => new Response(svg, { headers: { "content-type": "image/svg+xml", "content-length": String(svg.length) } }));
+  assert.equal(r.stored, 0, "an SVG says image/ but is refused by its bytes");
+  r = await tryWith(() => new Response(JPEG, { headers: { "content-type": "image/jpeg" } }));
+  assert.equal(r.stored, 0, "no length, no copy");
+  coverAnswer = () => new Response(JPEG, { headers: { "content-type": "image/jpeg", "content-length": String(JPEG.length) } });
+  await w.syncCovers(env, NOW + 3_600_000);
+  assert.equal(covers().length, 0, "a failed cover waits");
+  await w.syncCovers(env, NOW + 86_400_000 + 60_000);
+  assert.equal(covers().length, 1, "for a day");
+  // A cover_url on another host, or plain http, is never fetched.
+  for (const url of ["http://assets.hardcover.app/edition/1/a.jpeg", "https://evil.example/a.jpeg"]) {
+    fresh();
+    for (const k of covers()) bucket.delete(k);
+    sqlite.prepare("UPDATE books SET cover_url = ? WHERE document = ?").run(url, REMAINS);
+    const before = wikiCalls.length + requests.length;
+    await w.syncCovers(env, NOW);
+    assert.deepEqual([covers().length, coverFetches.length, wikiCalls.length + requests.length], [0, 0, before], url);
+  }
+  sqlite.prepare("UPDATE books SET cover_url = ? WHERE document = ?").run("https://assets.hardcover.app/edition/30373948/remains.jpeg", REMAINS);
+  // The daily cap and the object cap.
+  fresh();
+  sqlite.exec("INSERT INTO daily (day, covers) VALUES ('2026-11-18', 50)");
+  await w.syncCovers(env, NOW);
+  assert.deepEqual([covers().length, coverFetches.length], [0, 0], "nothing past the daily cap");
+  fresh();
+  sqlite.exec("BEGIN");
+  const fill = sqlite.prepare("INSERT INTO books (document, title, status, cover_key, cover_v) VALUES (?, 'x', 'finished', 'k', 'v')");
+  for (let i = 0; i < 2000; i++) fill.run(`filler${i}`);
+  sqlite.exec("COMMIT");
+  await w.syncCovers({ ...env, FILES: { ...env.FILES, delete: async () => {} } }, NOW);
+  assert.equal(coverFetches.length, 0, "nothing past the object cap");
+  sqlite.exec("DELETE FROM books WHERE document LIKE 'filler%'");
+
+  // A cover sent from the app, for a book on the page.
+  fresh();
+  await w.syncCovers(env, NOW);
+  const upload = (document, body, type = "image/png", length = body?.byteLength) =>
+    w.uploadCover(env, new Request(`https://busahin.com/api/reading/books/cover?document=${document}`, { method: "POST", headers: { "content-type": type, ...(length !== false ? { "content-length": String(length) } : {}) }, body }), NOW);
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52]);
+  const up = await upload(FOUNDRYSIDE, PNG);
+  assert.match(up.cover, /^https:\/\/files\.busahin\.com\/reading\/covers\/[0-9a-f-]{36}\?v=[0-9a-f]{12}$/);
+  assert.equal(bucket.get(book(FOUNDRYSIDE).cover_key).opts.httpMetadata.contentType, "image/png", "the type is the bytes', not the request's");
+  assert.equal((await w.summary(env, NOW)).finished[0].cover, up.cover, "the public page has it at once");
+  const again = await upload(FOUNDRYSIDE, JPEG, "image/jpeg");
+  assert.equal(again.cover.split("?")[0], up.cover.split("?")[0], "a replacement keeps the key");
+  assert.notEqual(again.cover, up.cover, "and changes the version");
+  assert.equal(await upload(FOUNDRYSIDE, svg, "image/png"), null, "the bytes decide, not the content type");
+  assert.equal(await upload(FOUNDRYSIDE, PNG, "text/plain"), null);
+  assert.equal((await upload(FOUNDRYSIDE, PNG, "image/png", false)).status, 411);
+  assert.equal((await upload(FOUNDRYSIDE, new Uint8Array(1_000_001))).status, 413);
+  assert.deepEqual(await upload(MIDDLEMARCH, PNG), { error: "not on the page" }, "no copy for a book the page does not show");
+  assert.equal(await upload("no-such-book", PNG), undefined);
+  assert.equal(await upload("../../x", PNG), null);
+
+  // A book gone from the reader takes its cover copy with it.
+  const key = book(FOUNDRYSIDE).cover_key;
+  const saved = answers.progress;
+  const progressFewer = JSON.parse(saved);
+  progressFewer.items = progressFewer.items.filter((i) => i.document !== FOUNDRYSIDE);
+  answers.progress = JSON.stringify(progressFewer);
+  await w.ingest(env, NOW + 31_000_000);
+  assert.ok(!bucket.has(key), "no orphan in R2");
+  answers.progress = saved;
+  await w.ingest(env, NOW + 31_100_000);
+  console.error = log;
+}
+
+// ---- book notes: drafts in D1, published to the site's repository through the GitHub contents API
+{
+  const yaml = (await import("js-yaml")).default;
+  const REMAINS = "a1b2c3d4e5f60718293a4b5c6d7e8f90";
+  const FOUNDRYSIDE = "25f8abb4f4f5594f02f361726814fea1";
+  // An offline GitHub: one branch, files by path, a SHA per version, the API's own refusals.
+  const repo = new Map();
+  const gh = [];
+  let ghFails = false;
+  let shaCount = 0;
+  githubApi = async (url, init) => {
+    const path = decodeURIComponent(url.pathname.replace("/repos/busahinku/busahinku.github.io/contents/", ""));
+    const body = init.body ? JSON.parse(init.body) : null;
+    gh.push({ method: init.method, path, url: url.href, body, auth: init.headers.authorization, redirect: init.redirect });
+    if (ghFails) return new Response('{"message":"Server Error"}', { status: 500 });
+    const file = repo.get(path);
+    if (init.method === "GET") return file ? new Response(JSON.stringify({ path, sha: file.sha, type: "file" })) : new Response('{"message":"Not Found"}', { status: 404 });
+    if (body.branch !== "main") return new Response("{}", { status: 422 });
+    if (init.method === "PUT") {
+      if (file ? body.sha !== file.sha : body.sha) return new Response('{"message":"sha"}', { status: file ? 409 : 422 });
+      const sha = `sha${++shaCount}`;
+      repo.set(path, { sha, content: new TextDecoder().decode(Uint8Array.from(atob(body.content), (c) => c.charCodeAt(0))) });
+      return new Response(JSON.stringify({ content: { path, sha } }), { status: file ? 200 : 201 });
+    }
+    if (init.method === "DELETE") {
+      if (!file || body.sha !== file.sha) return new Response("{}", { status: file ? 409 : 404 });
+      repo.delete(path);
+      return new Response("{}");
+    }
+    return new Response("{}", { status: 405 });
+  };
+  const genv = { ...env, GITHUB_TOKEN: "github_pat_test_0123456789" };
+  const front = (path) => {
+    const [, fm, body] = repo.get(path).content.match(/^---\n([\s\S]*?)\n---\n\n([\s\S]*)$/);
+    return { fm: yaml.load(fm), body };
+  };
+
+  // Markdown only: raw HTML outside code is refused, autolinks and code are fine.
+  for (const html of ["<script>alert(1)</script>", 'Text <img src=x onerror="alert(1)">', "</div>", "<iframe src=x>", "<a href=\"javascript:x\">x</a>", "<SCRIPT>", "<style>"])
+    assert.ok(w.hasHtml(html), html);
+  for (const fine of ["See <https://example.com> and <me@example.com>.", "a < b and c > d", "Use `<script>` in code.", "```html\n<script>x</script>\n```", "<!-- a comment -->", "x<3"])
+    assert.ok(!w.hasHtml(fine), fine);
+
+  // Drafts: validated, autosaved, one slug per book.
+  const draft = { document: REMAINS, lang: "en", slug: "the-remains-of-the-day", title: "The Remains of the Day", author: "Kazuo Ishiguro", finished: "2026-11-10", description: "Dignity, and what it costs.", body: "Stevens drives west.\n\n## The road\n\nA *quiet* book." };
+  for (const bad of [{ ...draft, slug: "../../package" }, { ...draft, slug: "a/b" }, { ...draft, slug: "Upper" }, { ...draft, slug: "-x" }, { ...draft, slug: "x".repeat(82) }, { ...draft, slug: "x.md" }, { ...draft, lang: "de" }, { ...draft, document: "../x" }, { ...draft, body: "x".repeat(100_001) }, { ...draft, body: 5 }, null, []])
+    assert.equal(await w.saveNote(genv, bad, NOW), null, JSON.stringify(bad)?.slice(0, 60));
+  assert.equal(await w.saveNote(genv, { ...draft, document: "0000000000000000000000000000beef" }, NOW), undefined, "only a book the reader knows");
+  let note = await w.saveNote(genv, draft, NOW);
+  assert.deepEqual([note.published, note.changed, note.url], [false, false, "https://busahin.com/reading/the-remains-of-the-day/"]);
+  assert.equal((await w.saveNote(genv, { ...draft, finished: "2026-02-30" }, NOW)).finished, null, "not a real day: left empty");
+  note = await w.saveNote(genv, draft, NOW);
+  assert.deepEqual(await w.saveNote(genv, { ...draft, document: FOUNDRYSIDE }, NOW), { error: "slug taken" }, "another book's slug");
+  // The Turkish note follows the book's slug when it is changed before publishing.
+  await w.saveNote(genv, { ...draft, lang: "tr", title: "Günün Kalanı", body: "Stevens batıya gidiyor." }, NOW);
+  await w.saveNote(genv, { ...draft, slug: "remains" }, NOW);
+  assert.deepEqual(sqlite.prepare("SELECT lang, slug FROM notes ORDER BY lang").all().map((r) => [r.lang, r.slug]), [["en", "remains"], ["tr", "remains"]]);
+  note = await w.saveNote(genv, draft, NOW);
+  assert.equal((await w.getNote(genv, new Request(`https://busahin.com/api/reading/note?document=${REMAINS}`))).notes.tr.slug, "the-remains-of-the-day");
+
+  // Frontmatter is written here: a pasted title with a line break, "---" and quotes stays one line of text.
+  const hostile = { ...draft, title: 'Evil\n---\nlayout: "../../x"\ndraft: true "quoted" \\ title: yes', author: "A\r\nB", description: "--- # not yaml\n" };
+  const cleaned = await w.saveNote(genv, hostile, NOW);
+  assert.equal(cleaned.title, 'Evil --- layout: "../../x" draft: true "quoted" \\ title: yes');
+  const file = w.noteFile({ ...cleaned, lang: "en", reader_title: "The Remains of the Day", cover: null });
+  const [, fm] = file.match(/^---\n([\s\S]*?)\n---\n/);
+  assert.equal(fm.split("\n").length, 7, "one line per field, nothing smuggled in");
+  const parsed = yaml.load(fm);
+  assert.deepEqual(Object.keys(parsed), ["title", "author", "finished", "description", "readerTitle", "lang", "translationKey"]);
+  assert.deepEqual([parsed.title, parsed.author, parsed.description, parsed.translationKey], [cleaned.title, "A B", "--- # not yaml", "the-remains-of-the-day"]);
+  assert.equal(file.indexOf("\n---\n", 4), file.indexOf("\n---\n\n"), "the body starts after the one closing fence");
+  await w.saveNote(genv, draft, NOW);
+
+  // Publishing needs the session cookie from the app's own origin: never a bearer token, never another site.
+  const login = await site("POST", "/api/reading/login", { form: { token: env.READING_TOKEN } });
+  const session = login.headers.get("set-cookie").split(";")[0];
+  const send = (path, json, opts = {}) =>
+    w.default.fetch(
+      new Request(`https://busahin.com${path}`, { method: "POST", headers: { "content-type": "application/json", ...opts.headers }, body: JSON.stringify(json) }),
+      { ...genv, PER_VISITOR: open, SITE_WIDE: open },
+      { waitUntil() {} },
+    );
+  const asApp = { headers: { cookie: session, origin: "https://busahin.com" } };
+  assert.equal((await send("/api/reading/note/publish", { document: REMAINS, lang: "en" }, { headers: { authorization: `Bearer ${env.READING_TOKEN}` } })).status, 403, "a script with the token cannot publish");
+  assert.equal((await send("/api/reading/note/publish", { document: REMAINS, lang: "en" }, { headers: { cookie: session } })).status, 403, "no Origin, no publish");
+  assert.equal((await send("/api/reading/note/publish", { document: REMAINS, lang: "en" }, { headers: { cookie: session, origin: "https://evil.example" } })).status, 404, "another origin's cookie is no session");
+  assert.equal((await send("/api/reading/note/publish", { document: REMAINS, lang: "en" })).status, 404, "no session at all: the route does not exist");
+  assert.equal(gh.length, 0, "none of those reached GitHub");
+
+  // Create.
+  let res = await send("/api/reading/note/publish", { document: REMAINS, lang: "en" }, asApp);
+  assert.equal(res.status, 200);
+  note = await res.json();
+  assert.deepEqual([note.published, note.changed], [true, false]);
+  const path = "src/content/books/the-remains-of-the-day.md";
+  assert.deepEqual(gh.map((g) => [g.method, g.path]), [["GET", path], ["GET", path.replace(".md", ".mdx")], ["PUT", path]]);
+  assert.ok(gh.every((g) => g.auth === "Bearer github_pat_test_0123456789" && g.redirect === "manual"));
+  assert.ok(gh[0].url.endsWith("?ref=main"));
+  assert.deepEqual([gh[2].body.message, gh[2].body.branch, gh[2].body.sha], ["Reading note: publish the-remains-of-the-day (en)", "main", undefined]);
+  let { fm: meta, body } = front(path);
+  assert.deepEqual(meta, { title: draft.title, author: draft.author, finished: "2026-11-10", description: draft.description, cover: meta.cover, lang: "en", translationKey: "the-remains-of-the-day" });
+  assert.match(meta.cover, /^https:\/\/files\.busahin\.com\/reading\/covers\/[0-9a-f-]{36}\?v=[0-9a-f]{12}$/, "the cover copy, never Hardcover's");
+  assert.equal(body, "Stevens drives west.\n\n## The road\n\nA *quiet* book.\n");
+
+  // The slug is fixed once published.
+  note = await w.saveNote(genv, { ...draft, slug: "renamed", body: draft.body + "\n\nMore." }, NOW);
+  assert.deepEqual([note.slug, note.changed], ["the-remains-of-the-day", true], "edited: changes not published yet");
+
+  // Update, with the file's SHA.
+  gh.length = 0;
+  note = await (await send("/api/reading/note/publish", { document: REMAINS, lang: "en" }, asApp)).json();
+  assert.deepEqual(gh.map((g) => g.method), ["GET", "PUT"]);
+  assert.deepEqual([gh[1].body.message, gh[1].body.sha], ["Reading note: update the-remains-of-the-day (en)", "sha1"]);
+  assert.ok(front(path).body.endsWith("More.\n"));
+  assert.equal(note.changed, false);
+
+  // Changed on GitHub since: refused unless forced. A file that was never ours: never overwritten.
+  repo.set(path, { sha: "by-hand", content: "---\ntitle: x\n---\n" });
+  await w.saveNote(genv, { ...draft, body: "Third." }, NOW);
+  res = await send("/api/reading/note/publish", { document: REMAINS, lang: "en" }, asApp);
+  assert.deepEqual([res.status, (await res.json()).error], [409, "changed"]);
+  note = await (await send("/api/reading/note/publish", { document: REMAINS, lang: "en", force: true }, asApp)).json();
+  assert.equal(front(path).body, "Third.\n");
+  repo.set("src/content/books/foundryside.md", { sha: "hand", content: "---\ntitle: Foundryside\n---\n" });
+  await w.saveNote(genv, { ...draft, document: FOUNDRYSIDE, slug: "foundryside", title: "Foundryside", author: "Robert Jackson Bennett", body: "Keys." }, NOW);
+  res = await send("/api/reading/note/publish", { document: FOUNDRYSIDE, lang: "en", force: true }, asApp);
+  assert.deepEqual([res.status, (await res.json()).error, repo.get("src/content/books/foundryside.md").sha], [409, "exists", "hand"], "even forced");
+  repo.delete("src/content/books/foundryside.md");
+  repo.set("src/content/books/foundryside.mdx", { sha: "mdx", content: "---\n---\n" });
+  res = await send("/api/reading/note/publish", { document: FOUNDRYSIDE, lang: "en" }, asApp);
+  assert.equal((await res.json()).error, "exists", "nor shadowed by a hand-written .mdx of the same name");
+  repo.delete("src/content/books/foundryside.mdx");
+
+  // Refused before GitHub: incomplete, raw HTML.
+  gh.length = 0;
+  await w.saveNote(genv, { ...draft, document: FOUNDRYSIDE, slug: "foundryside", title: "Foundryside", author: "", body: "Keys." }, NOW);
+  assert.equal((await (await send("/api/reading/note/publish", { document: FOUNDRYSIDE, lang: "en" }, asApp)).json()).error, "incomplete");
+  await w.saveNote(genv, { ...draft, document: FOUNDRYSIDE, slug: "foundryside", title: "Foundryside", author: "R. J. Bennett", body: "Keys <script>alert(1)</script>" }, NOW);
+  assert.equal((await (await send("/api/reading/note/publish", { document: FOUNDRYSIDE, lang: "en" }, asApp)).json()).error, "html");
+  assert.equal(gh.length, 0);
+
+  // Turkish lives under tr/, with the same translation key.
+  note = await (await send("/api/reading/note/publish", { document: REMAINS, lang: "tr" }, asApp)).json();
+  ({ fm: meta } = front("src/content/books/tr/the-remains-of-the-day.md"));
+  assert.deepEqual([meta.lang, meta.translationKey, meta.title, meta.readerTitle, note.url], ["tr", "the-remains-of-the-day", "Günün Kalanı", "The Remains of the Day", "https://busahin.com/tr/reading/the-remains-of-the-day/"]);
+
+  // Unpublish deletes the file with its SHA; the draft stays.
+  gh.length = 0;
+  note = await (await send("/api/reading/note/unpublish", { document: REMAINS, lang: "tr" }, asApp)).json();
+  assert.deepEqual(gh.map((g) => [g.method, g.body?.message, g.body?.sha]), [["GET", undefined, undefined], ["DELETE", "Reading note: unpublish the-remains-of-the-day (tr)", "sha4"]]);
+  assert.ok(!repo.has("src/content/books/tr/the-remains-of-the-day.md"));
+  assert.deepEqual([note.published, note.title], [false, "Günün Kalanı"]);
+  assert.equal((await (await send("/api/reading/note/unpublish", { document: REMAINS, lang: "tr" }, asApp)).json()).error, "not published");
+
+  // Only ever a note's path, only ever on main.
+  assert.ok(gh.every((g) => /^src\/content\/books\/(tr\/)?[a-z0-9][a-z0-9-]*\.mdx?$/.test(g.path)));
+
+  // A GitHub failure says so, without the token; no token, no publishing; and a daily cap.
+  ghFails = true;
+  res = await send("/api/reading/note/publish", { document: REMAINS, lang: "en" }, asApp);
+  const failure = await res.text();
+  assert.deepEqual([res.status, JSON.parse(failure)], [502, { error: "github", reason: "GitHub: HTTP 500" }]);
+  assert.ok(!failure.includes("github_pat"));
+  ghFails = false;
+  assert.deepEqual(await w.publishNote(env, { document: REMAINS, lang: "en" }, NOW), { error: "no token" });
+  sqlite.exec("UPDATE daily SET publishes = 20 WHERE day = '2026-11-18'");
+  assert.deepEqual(await w.publishNote(genv, { document: REMAINS, lang: "en" }, NOW), { error: "daily limit" });
+  sqlite.exec("UPDATE daily SET publishes = 0 WHERE day = '2026-11-18'");
+
+  // Size caps at the door: no length, or more than the route reads.
+  const noLen = await w.default.fetch(new Request("https://busahin.com/api/reading/note", { method: "POST", headers: { cookie: session, origin: "https://busahin.com" }, body: "{}" }), { ...genv, PER_VISITOR: open, SITE_WIDE: open }, { waitUntil() {} });
+  assert.equal(noLen.status, 411);
+  const big = JSON.stringify({ ...draft, body: "x".repeat(400_001) });
+  const tooBig = await w.default.fetch(new Request("https://busahin.com/api/reading/note", { method: "POST", headers: { cookie: session, origin: "https://busahin.com", "content-length": String(big.length) }, body: big }), { ...genv, PER_VISITOR: open, SITE_WIDE: open }, { waitUntil() {} });
+  assert.equal(tooBig.status, 400);
+
+  // The Books screen sees each book's notes.
+  const listed = (await w.booksList(genv)).books.find((b) => b.document === REMAINS);
+  assert.deepEqual(listed.notes, { en: "published", tr: "draft" });
+  assert.deepEqual([listed.release_year, listed.genres, listed.on_page], [1989, ["Fiction", "Historical"], true]);
+  sqlite.exec("DELETE FROM notes");
+}
+
+// ---- schema.sql is what the upgrades make: every column an upgrade adds is in a fresh install, the same way
+for (const f of fs.readdirSync(new URL("upgrades/", here)))
+  for (const [, table, column, decl] of fs.readFileSync(new URL(`upgrades/${f}`, here), "utf8").matchAll(/^ALTER TABLE (\w+) ADD COLUMN (\w+) ([^;]+);/gm)) {
+    const col = sqlite.prepare(`SELECT type, "notnull", dflt_value FROM pragma_table_info('${table}') WHERE name = ?`).get(column);
+    assert.ok(col, `${f}: ${table}.${column} is in schema.sql`);
+    assert.equal(`${col.type}${col.notnull ? " NOT NULL" : ""}${col.dflt_value !== null ? ` DEFAULT ${col.dflt_value}` : ""}`, decl, `${table}.${column}`);
+  }
 
 // ---- Workers reject fetch redirect "error" (Node accepts it, so only this catches it)
 for (const f of fs.readdirSync(here).filter((f) => f.endsWith(".js")))

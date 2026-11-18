@@ -14,6 +14,9 @@
 //          POST /api/reading/sync      pull from CrossPoint Sync now
 //          GET  /api/reading/books     every book and the title the public page shows for it, if any
 //          POST /api/reading/books     {"document", "hidden"?: bool, "title"?: string | null}
+//          POST /api/reading/books/cover?document=  a cover image (JPEG, PNG, WebP or AVIF) for a book on the public page
+//          GET  /api/reading/note?document=          the book's notes (English and Turkish drafts)
+//          POST /api/reading/note                    save a draft; /publish and /unpublish commit to the site's repository
 //          GET  /api/reading/cards     every card with meaning, examples, audio
 //          POST /api/reading/words     add a word by hand ({term, note?, sentence?}); /edit and /delete
 //          POST /api/reading/audio     find and keep a human recording for {term}
@@ -51,6 +54,17 @@ const AUDIO_MAX_BYTES = 200_000; // a spoken word is 10 to 40 KB
 const AUDIO_MAX_OBJECTS = 5000;
 const AUDIO_ERROR_RETRY = 86_400; // a lookup that failed is tried again after a day, not every pull
 const WIKI_HEADERS = { accept: "application/json", "user-agent": "busahin-reading/1 (https://busahin.com/)" };
+// Covers: copied from the Sync answer's cover_url into R2, only for books the
+// public page shows, and served by the files Worker. The same guards as the
+// recordings: allowed https hosts only, no redirect, an image judged by its
+// headers before a byte is read and by its first bytes after, a size cap, an
+// object cap, a daily cap, and a failure waits a day.
+const COVER_HOSTS = "assets.hardcover.app"; // env.COVER_HOSTS replaces it (comma-separated host names)
+const COVERS_PER_RUN = 5;
+const COVERS_PER_DAY = 50;
+const COVER_MAX_BYTES = 1_000_000; // a Hardcover cover is about 36 KB; the app shrinks an upload before sending it
+const COVER_MAX_OBJECTS = 2000;
+const COVER_ERROR_RETRY = 86_400;
 const COOKIE = "reading_session";
 const SESSION_DAYS = 60;
 const CLIPPINGS_MAX = 5000; // GET /api/v1/clippings returns at most this many
@@ -167,6 +181,14 @@ function deriveBooks(progress, activity) {
         last_at: ts(a.last_at ?? i.timestamp),
         finished_at: ts(a.finished_at),
         days_to_finish: int(a.days_to_finish, 1, 100_000),
+        // Hardcover's metadata, as Sync passes it on. Only plain strings are kept from lists.
+        cover_url: text(i.cover_url, 500),
+        release_year: int(i.release_year, 1, 3000),
+        genres: Array.isArray(i.genres) && i.genres.some((g) => typeof g === "string") ? J(i.genres.filter((g) => typeof g === "string").map((g) => g.slice(0, 60)).slice(0, 12)) : null,
+        series: text(i.series, 200),
+        series_position: num(i.series_position, 0, 100_000),
+        rating: num(i.rating, 0, 5),
+        hardcover_slug: text(i.hardcover_slug, 200),
       };
     });
 }
@@ -220,7 +242,7 @@ async function get(env, path, auth = true) {
 }
 
 async function sha256(s) {
-  const bytes = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
+  const bytes = new Uint8Array(await crypto.subtle.digest("SHA-256", typeof s === "string" ? new TextEncoder().encode(s) : s));
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
@@ -277,6 +299,7 @@ async function ingest(env, now = Date.now()) {
   const seconds = Math.floor(now / 1000);
   const statements = [];
   const counts = {};
+  const goneCovers = [];
 
   for (const k of Object.keys(bodies))
     statements.push(
@@ -300,20 +323,32 @@ async function ingest(env, now = Date.now()) {
     statements.push(
       db
         .prepare(
-          `INSERT INTO books (document, title, filename, author, percentage, status, page_count, started_at, last_at, finished_at, days_to_finish)
+          `INSERT INTO books (document, title, filename, author, percentage, status, page_count, started_at, last_at, finished_at, days_to_finish,
+                             cover_url, release_year, genres, series, series_position, rating, hardcover_slug)
            SELECT value->>'document', value->>'title', value->>'filename', value->>'author', value->>'percentage', value->>'status', value->>'page_count',
-                  value->>'started_at', value->>'last_at', value->>'finished_at', value->>'days_to_finish'
+                  value->>'started_at', value->>'last_at', value->>'finished_at', value->>'days_to_finish',
+                  value->>'cover_url', value->>'release_year', value->>'genres', value->>'series', value->>'series_position', value->>'rating', value->>'hardcover_slug'
            FROM json_each(?1) WHERE true
            ON CONFLICT (document) DO UPDATE SET title = excluded.title, filename = excluded.filename, author = excluded.author, percentage = excluded.percentage,
              status = excluded.status, page_count = excluded.page_count, started_at = excluded.started_at, last_at = excluded.last_at,
-             finished_at = excluded.finished_at, days_to_finish = excluded.days_to_finish
-           WHERE (books.title, books.filename, books.author, books.percentage, books.status, books.page_count, books.started_at, books.last_at, books.finished_at, books.days_to_finish)
-             IS NOT (excluded.title, excluded.filename, excluded.author, excluded.percentage, excluded.status, excluded.page_count, excluded.started_at, excluded.last_at, excluded.finished_at, excluded.days_to_finish)`,
+             finished_at = excluded.finished_at, days_to_finish = excluded.days_to_finish, cover_url = excluded.cover_url, release_year = excluded.release_year,
+             genres = excluded.genres, series = excluded.series, series_position = excluded.series_position, rating = excluded.rating, hardcover_slug = excluded.hardcover_slug
+           WHERE (books.title, books.filename, books.author, books.percentage, books.status, books.page_count, books.started_at, books.last_at, books.finished_at, books.days_to_finish,
+                  books.cover_url, books.release_year, books.genres, books.series, books.series_position, books.rating, books.hardcover_slug)
+             IS NOT (excluded.title, excluded.filename, excluded.author, excluded.percentage, excluded.status, excluded.page_count, excluded.started_at, excluded.last_at, excluded.finished_at, excluded.days_to_finish,
+                     excluded.cover_url, excluded.release_year, excluded.genres, excluded.series, excluded.series_position, excluded.rating, excluded.hardcover_slug)`,
         )
         .bind(J(books)),
     );
-    if (!parsed.progress.next)
+    if (!parsed.progress.next) {
+      // A book gone from the reader takes its cover copy with it (removed from R2 once the batch is written).
+      if (books.length) {
+        const kept = new Set(books.map((b) => b.document));
+        const { results } = await db.prepare("SELECT document, cover_key FROM books WHERE cover_v IS NOT NULL").all();
+        goneCovers.push(...results.filter((r) => !kept.has(r.document)).map((r) => r.cover_key));
+      }
       statements.push(db.prepare(`DELETE FROM books WHERE ${NONEMPTY} AND document NOT IN (SELECT value->>'document' FROM json_each(?1))`).bind(J(books)));
+    }
 
     const { days, bookDays } = deriveDays(parsed.activity);
     counts.days = days.length;
@@ -368,6 +403,7 @@ async function ingest(env, now = Date.now()) {
   }
 
   await db.batch(statements);
+  for (const key of goneCovers) await env.FILES?.delete(key).catch((error) => console.error(error));
   const translated = await translate(env, today, seconds);
   // New words get their recording ahead of time, so the play button is instant.
   const { results: fresh } = await db
@@ -382,9 +418,10 @@ async function ingest(env, now = Date.now()) {
       console.error(error);
     }
   }
+  const covers = await syncCovers(env, now);
   // The public answer is rebuilt every pull (the day may have turned) and read back as one row.
   await storeSummary(env, now);
-  return { changed, ...counts, translated, recorded };
+  return { changed, ...counts, translated, recorded, covers };
 }
 
 /** Reserves one translation from today's cap; false when it is spent. */
@@ -532,6 +569,13 @@ function publicTitle(book, env) {
   return patterns.some((p) => lower.includes(p)) ? null : title;
 }
 
+// The two lists the public page has: books open on the reader, and books finished.
+const isReading = (b) => b.status === "reading" && b.percentage != null && b.percentage < 1;
+const onPage = (b, env) => (isReading(b) || b.status === "finished") && publicTitle(b, env) !== null;
+const filesBase = (env) => (env.FILES_URL ?? "https://files.busahin.com").replace(/\/$/, "");
+/** Where a book's cover copy is served; ?v= changes with the picture, so a replaced cover is never stale. */
+const coverOf = (b, env) => (b.cover_v ? `${filesBase(env)}/${b.cover_key}?v=${b.cover_v}` : null);
+
 /** Everything the public page shows, computed from the tables. */
 async function buildSummary(env, now) {
   const db = env.DB;
@@ -554,7 +598,7 @@ async function buildSummary(env, now) {
   const first = new Map(firsts.map((f) => [f.document, f.first]));
 
   const reading = books
-    .filter((b) => b.status === "reading" && b.percentage != null && b.percentage < 1)
+    .filter(isReading)
     .map((b) => ({ b, title: publicTitle(b, env) }))
     .filter(({ title }) => title)
     .sort((x, y) => (y.b.last_at ?? 0) - (x.b.last_at ?? 0))
@@ -565,6 +609,7 @@ async function buildSummary(env, now) {
       return {
         title,
         author: b.author,
+        cover: coverOf(b, env),
         percent: Math.round(b.percentage * 1000) / 10,
         page_count: b.page_count,
         started: day(b.started_at),
@@ -579,7 +624,7 @@ async function buildSummary(env, now) {
     .map((b) => ({ b, title: publicTitle(b, env) }))
     .filter(({ title }) => title)
     .sort((x, y) => (y.b.finished_at ?? 0) - (x.b.finished_at ?? 0))
-    .map(({ b, title }) => ({ title, author: b.author, started: day(b.started_at), finished: day(b.finished_at), days: b.days_to_finish }));
+    .map(({ b, title }) => ({ title, author: b.author, cover: coverOf(b, env), started: day(b.started_at), finished: day(b.finished_at), days: b.days_to_finish }));
 
   return {
     today,
@@ -612,12 +657,28 @@ async function summary(env, now) {
   return buildSummary(env, now);
 }
 
-/** The private list of books with what the public page shows for each. */
+/** The private list of books: what the public page shows for each, Hardcover's metadata, the cover, and the notes. */
 async function booksList(env) {
-  const { results } = await env.DB.prepare(
-    "SELECT document, title, filename, public_title, hidden, author, status, percentage FROM books ORDER BY last_at DESC",
-  ).all();
-  return { books: results.map((b) => ({ ...b, hidden: Boolean(b.hidden), shown_as: publicTitle(b, env) })) };
+  const [books, notes] = await env.DB.batch([
+    env.DB.prepare(
+      `SELECT document, title, filename, public_title, hidden, author, status, percentage, page_count, release_year, genres, series, series_position,
+              cover_url, cover_key, cover_v FROM books ORDER BY last_at DESC`,
+    ),
+    env.DB.prepare("SELECT document, lang, published_path IS NOT NULL AS published FROM notes"),
+  ]);
+  const byBook = Map.groupBy(notes.results, (n) => n.document);
+  return {
+    books: books.results.map(({ cover_url, cover_key, cover_v, genres, ...b }) => ({
+      ...b,
+      hidden: Boolean(b.hidden),
+      shown_as: publicTitle(b, env),
+      on_page: onPage(b, env),
+      genres: genres ? JSON.parse(genres) : [],
+      cover: coverOf({ cover_key, cover_v }, env),
+      cover_waiting: !cover_v && Boolean(cover_url), // Hardcover has one; the next pull copies it if the book is on the page
+      notes: Object.fromEntries((byBook.get(b.document) ?? []).map((n) => [n.lang, n.published ? "published" : "draft"])),
+    })),
+  };
 }
 
 /** Hide or show a book publicly, or give it the title it should show ("" or null goes back to its own). */
@@ -632,6 +693,7 @@ async function setBook(env, input, now) {
     .prepare("UPDATE books SET hidden = CASE WHEN ?2 IS NULL THEN hidden ELSE ?2 END, public_title = CASE WHEN ?3 THEN ?4 ELSE public_title END WHERE document = ?1")
     .bind(input.document, input.hidden === undefined ? null : input.hidden ? 1 : 0, input.title === undefined ? 0 : 1, text(input.title, 200))
     .run();
+  await syncCovers(env, now); // a hidden book's cover goes now; a shown one's is copied
   await storeSummary(env, now);
   return (await booksList(env)).books.find((b) => b.document === input.document);
 }
@@ -1069,6 +1131,133 @@ async function audioFor(env, input, now) {
   return { audio: (await cardsJson(env, now, term)).cards[0]?.audio ?? null };
 }
 
+
+// ---------------------------------------------------------------- covers
+
+/** The image type from its first bytes: JPEG, PNG, WebP or AVIF, else null. Never SVG, which can carry script. */
+function imageType(buffer) {
+  const b = new Uint8Array(buffer, 0, Math.min(16, buffer.byteLength));
+  const ascii = (from, to) => String.fromCharCode(...b.subarray(from, to));
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+  if (ascii(0, 8) === "\x89PNG\r\n\x1a\n") return "image/png";
+  if (ascii(0, 4) === "RIFF" && ascii(8, 12) === "WEBP") return "image/webp";
+  if (ascii(4, 8) === "ftyp" && /^avi[fs]$/.test(ascii(8, 12))) return "image/avif";
+  return null;
+}
+
+/** The cover address to fetch, or null: https, on an allowed host, no credentials, the default port. */
+function coverSource(value, env) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  const hosts = String(env.COVER_HOSTS ?? COVER_HOSTS).split(",").map((h) => h.trim().toLowerCase()).filter(Boolean);
+  return url.protocol === "https:" && !url.username && !url.password && !url.port && hosts.includes(url.hostname) ? url : null;
+}
+
+/** Reserves one of today's `column` (a fixed name below) under `cap`; false when it is spent. */
+async function takeDaily(db, day, column, cap) {
+  if (!["covers", "publishes"].includes(column)) throw new Error(`no daily cap named ${column}`);
+  const row = await db
+    .prepare(`INSERT INTO daily (day, ${column}) VALUES (?1, 1) ON CONFLICT (day) DO UPDATE SET ${column} = ${column} + 1 WHERE daily.${column} < ?2 RETURNING ${column}`)
+    .bind(day, cap)
+    .first();
+  return Boolean(row);
+}
+
+/**
+ * Keeps an image as the book's cover: checked by its first bytes, written under
+ * the book's own random key (kept for good, so a note that links the cover
+ * keeps working when it is replaced), and versioned by its hash.
+ */
+async function storeCover(env, book, bytes, now) {
+  const type = imageType(bytes);
+  if (!type) throw new Error("cover: not a JPEG, PNG, WebP or AVIF image");
+  const key = book.cover_key ?? `reading/covers/${crypto.randomUUID()}`;
+  // A day, not a year: a note links the cover without ?v=, and should see a replacement soon.
+  await env.FILES.put(key, bytes, { httpMetadata: { contentType: type, cacheControl: "public, max-age=86400" } });
+  const v = (await sha256(bytes)).slice(0, 12);
+  await env.DB.prepare("UPDATE books SET cover_key = ?2, cover_v = ?3, cover_checked_at = ?4 WHERE document = ?1").bind(book.document, key, v, Math.floor(now / 1000)).run();
+  return coverOf({ cover_key: key, cover_v: v }, env);
+}
+
+/** Room for one more cover write: today's cap, and the object cap when it adds an object rather than replacing one. */
+async function coverRoom(env, now, adds = true) {
+  const stored = adds ? await env.DB.prepare("SELECT COUNT(*) AS n FROM books WHERE cover_v IS NOT NULL").first("n") : 0;
+  return stored < COVER_MAX_OBJECTS && (await takeDaily(env.DB, dayOf(now), "covers", COVERS_PER_DAY));
+}
+
+/** Copies one book's cover from its cover_url. A failure is noted, so the book waits a day. */
+async function copyCover(env, book, now) {
+  if (!(await coverRoom(env, now))) return false;
+  try {
+    const url = coverSource(book.cover_url, env);
+    if (!url) throw new Error(`cover: ${book.cover_url} is not on an allowed https host`);
+    const res = await fetch(url, { headers: { "user-agent": WIKI_HEADERS["user-agent"] }, redirect: "manual", signal: AbortSignal.timeout(15_000) });
+    // Judged before reading: an answer that is not an image, has no size, or is too big is never read. A 3xx is not ok.
+    const size = Number(res.headers.get("content-length"));
+    if (!res.ok || !(res.headers.get("content-type") ?? "").startsWith("image/") || !(size > 0) || size > COVER_MAX_BYTES)
+      throw new Error(`cover: HTTP ${res.status}, ${res.headers.get("content-type")}, ${size} bytes`);
+    const bytes = await res.arrayBuffer();
+    if (bytes.byteLength > COVER_MAX_BYTES) throw new Error("cover: larger than it said");
+    await storeCover(env, book, bytes, now);
+    return true;
+  } catch (error) {
+    console.error(error);
+    await env.DB.prepare("UPDATE books SET cover_checked_at = ?2 WHERE document = ?1").bind(book.document, Math.floor(now / 1000)).run();
+    return false;
+  }
+}
+
+/**
+ * Covers follow the public page: a book that left it (hidden, retitled away,
+ * or no longer reading or finished) has its copy deleted, and a book on it
+ * with a cover_url and no copy gets one, a few per run.
+ */
+async function syncCovers(env, now) {
+  if (!env.FILES) return 0;
+  const db = env.DB;
+  const { results } = await db
+    .prepare("SELECT document, title, public_title, hidden, status, percentage, cover_url, cover_key, cover_v, cover_checked_at FROM books")
+    .all();
+  for (const b of results.filter((b) => b.cover_v && !onPage(b, env))) {
+    try {
+      await env.FILES.delete(b.cover_key);
+      await db.prepare("UPDATE books SET cover_v = NULL, cover_checked_at = NULL WHERE document = ?1").bind(b.document).run();
+    } catch (error) {
+      console.error(error); // kept as it is, so the next run tries again
+    }
+  }
+  const seconds = Math.floor(now / 1000);
+  const due = results.filter((b) => onPage(b, env) && !b.cover_v && b.cover_url && !(b.cover_checked_at > seconds - COVER_ERROR_RETRY));
+  let copied = 0;
+  for (const b of due.slice(0, COVERS_PER_RUN)) if (await copyCover(env, b, now)) copied++;
+  return copied;
+}
+
+/** A cover sent from the private app for a book on the public page: the same checks as a copy, and it replaces any cover it had. */
+async function uploadCover(env, request, now) {
+  const document = new URL(request.url).searchParams.get("document") ?? "";
+  if (!DOC.test(document)) return null;
+  const length = request.headers.get("content-length");
+  if (length === null) return respond({ error: "length required" }, 411);
+  if (!(Number(length) > 0) || Number(length) > COVER_MAX_BYTES) return respond({ error: "too big" }, 413);
+  if (!(request.headers.get("content-type") ?? "").startsWith("image/")) return null;
+  const book = await env.DB.prepare("SELECT * FROM books WHERE document = ?1").bind(document).first();
+  if (!book) return undefined;
+  if (!onPage(book, env)) return { error: "not on the page" };
+  if (!env.FILES) return { error: "no bucket" };
+  const bytes = await request.arrayBuffer();
+  if (bytes.byteLength > COVER_MAX_BYTES) return respond({ error: "too big" }, 413);
+  if (!imageType(bytes)) return null;
+  if (!(await coverRoom(env, now, !book.cover_v))) return { error: "cover limit" };
+  const cover = await storeCover(env, book, bytes, now);
+  await storeSummary(env, now);
+  return { document, cover };
+}
+
 // ---------------------------------------------------------------- notifications and settings
 
 const SETTINGS = {
@@ -1270,7 +1459,7 @@ async function learnNotes(env, now) {
 /** Books finished in the last 120 days that have no note yet, newest first, at most three. */
 async function notesToWrite(db, now) {
   const [books, keys] = await Promise.all([
-    db.prepare("SELECT title, public_title, finished_at FROM books WHERE status = 'finished' AND finished_at >= ?1 ORDER BY finished_at DESC").bind(Math.floor(now / 1000) - 120 * 86_400).all(),
+    db.prepare("SELECT document, title, public_title, finished_at FROM books WHERE status = 'finished' AND finished_at >= ?1 ORDER BY finished_at DESC").bind(Math.floor(now / 1000) - 120 * 86_400).all(),
     db.prepare("SELECT value FROM meta WHERE key = 'notes'").first("value"),
   ]);
   if (keys === null) return []; // the site's list has not been read yet: no reminder rather than a wrong one
@@ -1278,8 +1467,260 @@ async function notesToWrite(db, now) {
   return books.results
     .filter((b) => (b.public_title ?? b.title) && !have.has(titleKey(b.public_title ?? b.title)) && !have.has(titleKey(b.title ?? "")))
     .slice(0, 3)
-    .map((b) => ({ title: b.public_title ?? b.title }));
+    .map((b) => ({ document: b.document, title: b.public_title ?? b.title }));
 }
+
+
+// ---------------------------------------------------------------- book notes, written here, published to the site
+
+// The one repository and branch this Worker may write to, with GITHUB_TOKEN (a
+// fine-grained token for this repository alone, Contents read and write; see
+// DEPLOY.md). Every request goes through github(), which only ever touches
+// src/content/books/<slug>.md and src/content/books/tr/<slug>.md.
+const REPO = "busahinku/busahinku.github.io";
+const BRANCH = "main";
+const NOTE_SLUG = /^[a-z0-9][a-z0-9-]{0,80}$/; // the engagement Worker's page keys allow the same
+const NOTE_PATH = /^src\/content\/books\/(tr\/)?[a-z0-9][a-z0-9-]{0,80}\.md$/;
+const NOTE_BODY_MAX = 100_000;
+const PUBLISH_PER_DAY = 20;
+const LANGS = ["en", "tr"];
+
+const notePath = (slug, lang) => `src/content/books/${lang === "tr" ? "tr/" : ""}${slug}.md`;
+const noteUrl = (slug, lang) => `${SITE}${lang === "tr" ? "/tr" : ""}/reading/${slug}/`;
+/** One line of frontmatter text: no control characters or line breaks, whatever was pasted. */
+const oneLine = (v, max) => (typeof v === "string" ? v.toWellFormed().replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "");
+const isDay = (v) => typeof v === "string" && DAY.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`)) && new Date(`${v}T00:00:00Z`).toISOString().startsWith(v);
+
+/**
+ * Raw HTML in a note, outside code. Markdown files may carry HTML into the
+ * page, and the site's CSP allows inline script, so a note is Markdown only.
+ * Autolinks (<https://...>) and comments are not tags and pass.
+ */
+function hasHtml(body) {
+  const prose = body.replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1[^\n]*$/gm, "").replace(/`+[^`\n]*`+/g, "");
+  return /<\/?[A-Za-z][A-Za-z0-9-]*(?=[\s/>])/.test(prose);
+}
+
+/**
+ * The file as committed: frontmatter written here from validated fields, every
+ * value a JSON string (a valid YAML double-quoted scalar, so quotes, colons and
+ * "---" stay text), then the body.
+ */
+function noteFile(note) {
+  const fields = [
+    ["title", note.title],
+    ["author", note.author],
+    ["finished", note.finished],
+    ["description", note.description],
+    ["readerTitle", note.reader_title],
+    ["cover", note.cover],
+    ["lang", note.lang],
+    ["translationKey", note.slug],
+  ].filter(([, v]) => v);
+  return `---\n${fields.map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join("\n")}\n---\n\n${note.body.trim()}\n`;
+}
+
+/** A draft as the app sends it, cleaned; null when it can never be saved. Empty fields are fine until publishing. */
+function noteInput(input) {
+  if (!isRecord(input) || typeof input.document !== "string" || !DOC.test(input.document) || !LANGS.includes(input.lang)) return null;
+  if (typeof input.slug !== "string" || !NOTE_SLUG.test(input.slug) || typeof input.body !== "string") return null;
+  const body = input.body.toWellFormed().replace(/\r\n?/g, "\n").replace(/\u0000/g, "");
+  if (body.length > NOTE_BODY_MAX) return null;
+  return {
+    document: input.document,
+    lang: input.lang,
+    slug: input.slug,
+    title: oneLine(input.title, 200),
+    author: oneLine(input.author, 200),
+    finished: isDay(input.finished) ? input.finished : null,
+    description: oneLine(input.description, 300) || null,
+    body,
+  };
+}
+
+/** A note with what publishing would write, and whether that differs from what was last committed. */
+async function noteState(env, row, book) {
+  const file = noteFile(noteForFile(row, book, env));
+  return {
+    document: row.document,
+    lang: row.lang,
+    slug: row.slug,
+    title: row.title,
+    author: row.author,
+    finished: row.finished,
+    description: row.description,
+    body: row.body,
+    updated_at: row.updated_at,
+    published: Boolean(row.published_path),
+    published_at: row.published_at,
+    changed: Boolean(row.published_path) && (await sha256(file)) !== row.published_hash,
+    url: noteUrl(row.slug, row.lang),
+  };
+}
+
+/** The note plus what the book adds to its file: the reader's own title when it differs, and the cover when the book is on the page. */
+const noteForFile = (row, book, env) => ({
+  ...row,
+  reader_title: book?.title && titleKey(book.title) !== titleKey(row.title) ? oneLine(book.title, 200) : null,
+  cover: book && onPage(book, env) ? coverOf(book, env) : null,
+});
+
+const bookRow = (db, document) => db.prepare("SELECT * FROM books WHERE document = ?1").bind(document).first();
+
+/** Both languages of a book's note, and the book to fill a new one from. */
+async function getNote(env, request) {
+  const document = new URL(request.url).searchParams.get("document") ?? "";
+  if (!DOC.test(document)) return null;
+  const book = await bookRow(env.DB, document);
+  if (!book) return undefined;
+  const { results } = await env.DB.prepare("SELECT * FROM notes WHERE document = ?1").bind(document).all();
+  const notes = {};
+  for (const row of results) notes[row.lang] = await noteState(env, row, book);
+  return {
+    book: {
+      document,
+      title: book.public_title ?? book.title ?? "",
+      author: book.author ?? "",
+      finished: book.finished_at ? dayOf(book.finished_at * 1000) : null,
+      cover: coverOf(book, env),
+      on_page: onPage(book, env),
+    },
+    notes,
+  };
+}
+
+/**
+ * Saves a draft (the app autosaves). A book's notes share one slug: it can be
+ * changed until either language is published, and no other book may use it.
+ */
+async function saveNote(env, input, now) {
+  const note = noteInput(input);
+  if (!note) return null;
+  const db = env.DB;
+  if (!(await bookRow(db, note.document))) return undefined;
+  const fixed = await db.prepare("SELECT slug FROM notes WHERE document = ?1 AND published_path IS NOT NULL LIMIT 1").bind(note.document).first("slug");
+  if (fixed) note.slug = fixed;
+  else if (await db.prepare("SELECT 1 FROM notes WHERE slug = ?1 AND document <> ?2").bind(note.slug, note.document).first()) return { error: "slug taken" };
+  await db.batch([
+    db
+      .prepare(
+        `INSERT INTO notes (document, lang, slug, title, author, finished, description, body, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+         ON CONFLICT (document, lang) DO UPDATE SET slug = excluded.slug, title = excluded.title, author = excluded.author, finished = excluded.finished,
+           description = excluded.description, body = excluded.body, updated_at = excluded.updated_at`,
+      )
+      .bind(note.document, note.lang, note.slug, note.title, note.author, note.finished, note.description, note.body, Math.floor(now / 1000)),
+    db.prepare("UPDATE notes SET slug = ?2 WHERE document = ?1 AND slug <> ?2").bind(note.document, note.slug),
+  ]);
+  return readNote(env, note.document, note.lang);
+}
+
+async function readNote(env, document, lang) {
+  const row = await env.DB.prepare("SELECT * FROM notes WHERE document = ?1 AND lang = ?2").bind(document, lang).first();
+  return row && noteState(env, row, await bookRow(env.DB, document));
+}
+
+const base64 = (text) => {
+  const bytes = new TextEncoder().encode(text);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+};
+
+/**
+ * The GitHub contents API, for one path. The lock is here: anything but a
+ * note's path is refused before a request is made, and only .md is written.
+ * A GET of a missing file is null.
+ */
+async function github(env, method, path, body) {
+  const read = method === "GET";
+  if (!(read ? /^src\/content\/books\/(tr\/)?[a-z0-9][a-z0-9-]{0,80}\.mdx?$/ : NOTE_PATH).test(path) || !["GET", "PUT", "DELETE"].includes(method))
+    throw new Error("refused: not a note's path");
+  const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${path}${read ? `?ref=${BRANCH}` : ""}`, {
+    method,
+    redirect: "manual",
+    signal: AbortSignal.timeout(15_000),
+    headers: {
+      authorization: `Bearer ${env.GITHUB_TOKEN}`,
+      accept: "application/vnd.github+json",
+      "x-github-api-version": "2022-11-28",
+      "user-agent": "busahin-reading",
+      ...(body ? { "content-type": "application/json" } : {}),
+    },
+    body: body ? J({ ...body, branch: BRANCH }) : undefined,
+  });
+  if (read && res.status === 404) return null;
+  if (!res.ok) throw Object.assign(new Error(`GitHub: HTTP ${res.status}`), { github: true });
+  return res.json();
+}
+
+/**
+ * Commits a note to the site's repository, which rebuilds the site. A file
+ * that is already there and not ours is never overwritten; one that changed
+ * on GitHub since our last commit is only with {force: true}. One commit per
+ * language, with a fixed message.
+ */
+async function publishNote(env, input, now) {
+  if (!isRecord(input) || typeof input.document !== "string" || !DOC.test(input.document) || !LANGS.includes(input.lang)) return null;
+  if (!env.GITHUB_TOKEN) return { error: "no token" };
+  const db = env.DB;
+  const row = await db.prepare("SELECT * FROM notes WHERE document = ?1 AND lang = ?2").bind(input.document, input.lang).first();
+  if (!row) return undefined;
+  if (!row.title || !row.author || !row.finished || !row.body.trim()) return { error: "incomplete" };
+  if (hasHtml(row.body)) return { error: "html" };
+  const path = notePath(row.slug, row.lang);
+  const file = noteFile(noteForFile(row, await bookRow(db, row.document), env));
+  if (!(await takeDaily(db, dayOf(now), "publishes", PUBLISH_PER_DAY))) return { error: "daily limit" };
+  const current = await github(env, "GET", path);
+  if (current && !row.published_sha) return { error: "exists" }; // a file of that name that this app did not write
+  if (current && current.sha !== row.published_sha && input.force !== true) return { error: "changed" };
+  if (!current && !row.published_path && (await github(env, "GET", path.replace(/\.md$/, ".mdx")))) return { error: "exists" };
+  const verb = row.published_path ? "update" : "publish";
+  const out = await github(env, "PUT", path, { message: `Reading note: ${verb} ${row.slug} (${row.lang})`, content: base64(file), ...(current ? { sha: current.sha } : {}) });
+  await db
+    .prepare("UPDATE notes SET published_path = ?3, published_sha = ?4, published_hash = ?5, published_at = ?6 WHERE document = ?1 AND lang = ?2")
+    .bind(row.document, row.lang, path, out.content.sha, await sha256(file), Math.floor(now / 1000))
+    .run();
+  return readNote(env, row.document, row.lang);
+}
+
+/** Deletes the note's file from the repository; the draft stays here. */
+async function unpublishNote(env, input, now) {
+  if (!isRecord(input) || typeof input.document !== "string" || !DOC.test(input.document) || !LANGS.includes(input.lang)) return null;
+  if (!env.GITHUB_TOKEN) return { error: "no token" };
+  const db = env.DB;
+  const row = await db.prepare("SELECT * FROM notes WHERE document = ?1 AND lang = ?2").bind(input.document, input.lang).first();
+  if (!row) return undefined;
+  if (!row.published_path) return { error: "not published" };
+  if (!(await takeDaily(db, dayOf(now), "publishes", PUBLISH_PER_DAY))) return { error: "daily limit" };
+  const current = await github(env, "GET", row.published_path);
+  if (current && current.sha !== row.published_sha && input.force !== true) return { error: "changed" };
+  if (current) await github(env, "DELETE", row.published_path, { message: `Reading note: unpublish ${row.slug} (${row.lang})`, sha: current.sha });
+  await db
+    .prepare("UPDATE notes SET published_path = NULL, published_sha = NULL, published_hash = NULL, published_at = NULL WHERE document = ?1 AND lang = ?2")
+    .bind(row.document, row.lang)
+    .run();
+  return readNote(env, row.document, row.lang);
+}
+
+/**
+ * Publishing writes to the site's repository, so it asks for more than a
+ * valid session: the session cookie itself (never a bearer token from a
+ * script) on a request from the app's own origin.
+ */
+function fromTheApp(request) {
+  return givenToken(request).cookie && request.headers.get("origin") === new URL(request.url).origin;
+}
+
+/** A GitHub failure goes back as 502 with its status, never the token or the answer. */
+const viaGithub = async (request, work) => {
+  if (!fromTheApp(request)) return respond({ error: "forbidden" }, 403);
+  try {
+    return answer(await work());
+  } catch (error) {
+    if (!error.github) throw error;
+    return respond({ error: "github", reason: error.message }, 502);
+  }
+};
 
 // ---------------------------------------------------------------- the private app's data
 
@@ -1447,7 +1888,7 @@ async function adminData(env, now) {
 /** Every table that is his: cards, reviews, clippings, books, word lists, settings (never the token hash). */
 async function exportAll(env) {
   const db = env.DB;
-  const names = ["cards", "reviews", "clippings", "books", "days", "book_days", "prestudy", "audio", "sync_log"];
+  const names = ["cards", "reviews", "clippings", "books", "days", "book_days", "prestudy", "audio", "sync_log", "notes"];
   const out = await db.batch([...names.map((n) => db.prepare(`SELECT * FROM ${n}`)), db.prepare("SELECT key, value FROM settings WHERE key <> 'token_hash'")]);
   return Object.fromEntries([...names, "settings"].map((n, i) => [n, out[i].results]));
 }
@@ -1566,6 +2007,12 @@ const PRIVATE = {
     request.headers.get("content-length") === null ? respond({ error: "length required" }, 411) : answer(await importList(env, await readJson(request, 2_000_000))),
   "GET /api/reading/books": (env) => booksList(env),
   "POST /api/reading/books": async (env, request, now) => answer(await setBook(env, await readJson(request), now)),
+  "POST /api/reading/books/cover": async (env, request, now) => answer(await uploadCover(env, request, now)),
+  "GET /api/reading/note": async (env, request) => answer(await getNote(env, request)),
+  "POST /api/reading/note": async (env, request, now) =>
+    request.headers.get("content-length") === null ? respond({ error: "length required" }, 411) : answer(await saveNote(env, await readJson(request, 400_000), now)),
+  "POST /api/reading/note/publish": (env, request, now) => viaGithub(request, async () => publishNote(env, await readJson(request), now)),
+  "POST /api/reading/note/unpublish": (env, request, now) => viaGithub(request, async () => unpublishNote(env, await readJson(request), now)),
 };
 
 // The private page and its sign-in. Strict headers: no framing, no indexing,
@@ -1579,7 +2026,7 @@ function html(body, status, nonce, extra = {}) {
       "x-robots-tag": "noindex, nofollow",
       "referrer-policy": "same-origin",
       "x-frame-options": "DENY",
-      "content-security-policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; font-src 'self'; connect-src 'self'; media-src https://files.busahin.com; img-src 'self' data:; manifest-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'`,
+      "content-security-policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; font-src 'self'; connect-src 'self'; media-src https://files.busahin.com; img-src 'self' data: https://files.busahin.com; manifest-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'`,
       ...extra,
     },
   });
@@ -1686,4 +2133,4 @@ export default {
 };
 
 // For check.mjs.
-export { addDays, addWord, adminData, audioFor, authorized, band, booksList, buildSummary, candidates, cardsCsv, cardsJson, classify, commonsAudio, dayOf, deleteWord, derive, editWord, ensureAudio, eveningPush, exportAll, forecast, getSettings, handTerm, healthLines, importList, ingest, learnNotes, nextBox, notesToWrite, notification, notifications, notify, pace, pickRecording, progress, publicTitle, pull, review, rotateToken, sentences, sentencesMined, setBook, setSettings, streak, summary, termOf, todayCard, weeklyPush, wordFacts };
+export { addDays, addWord, adminData, audioFor, authorized, band, booksList, buildSummary, candidates, cardsCsv, cardsJson, classify, commonsAudio, coverSource, dayOf, deleteWord, derive, editWord, ensureAudio, eveningPush, exportAll, forecast, getNote, getSettings, handTerm, hasHtml, healthLines, imageType, importList, ingest, learnNotes, nextBox, noteFile, notesToWrite, notification, notifications, notify, pace, pickRecording, progress, publicTitle, publishNote, pull, review, rotateToken, saveNote, sentences, sentencesMined, setBook, setSettings, streak, summary, syncCovers, termOf, todayCard, unpublishNote, uploadCover, weeklyPush, wordFacts };

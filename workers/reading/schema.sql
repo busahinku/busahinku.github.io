@@ -16,6 +16,11 @@ CREATE TABLE IF NOT EXISTS raw (
 -- `title` is the book's own metadata title (null without it) and `filename`
 -- is kept apart: the public page never shows a file name. `hidden` and
 -- `public_title` are set from the private side and never touched by a pull.
+-- `cover_url` and the columns after it to `hardcover_slug` are Hardcover's
+-- metadata as Sync passes it on (`genres` a JSON list). `cover_key` is the
+-- book's R2 key for its cover copy (random, kept for good), `cover_v` the
+-- copy's hash (null: no copy now), `cover_checked_at` the last copy attempt;
+-- those three are the Worker's own and never touched by a pull either.
 CREATE TABLE IF NOT EXISTS books (
   document TEXT PRIMARY KEY,
   title TEXT,
@@ -29,7 +34,17 @@ CREATE TABLE IF NOT EXISTS books (
   started_at INTEGER,
   last_at INTEGER,
   finished_at INTEGER,
-  days_to_finish INTEGER
+  days_to_finish INTEGER,
+  cover_url TEXT,
+  release_year INTEGER,
+  genres TEXT,
+  series TEXT,
+  series_position REAL,
+  rating REAL,
+  hardcover_slug TEXT,
+  cover_key TEXT,
+  cover_v TEXT,
+  cover_checked_at INTEGER
 );
 
 -- Reading activity per Istanbul calendar day, as the Sync server derives it from
@@ -109,7 +124,9 @@ CREATE TABLE IF NOT EXISTS daily (
   notified INTEGER NOT NULL DEFAULT 0,
   audio INTEGER NOT NULL DEFAULT 0,
   evening INTEGER NOT NULL DEFAULT 0,
-  weekly INTEGER NOT NULL DEFAULT 0
+  weekly INTEGER NOT NULL DEFAULT 0,
+  covers INTEGER NOT NULL DEFAULT 0,
+  publishes INTEGER NOT NULL DEFAULT 0
 );
 
 -- English to Turkish from WikDict (CC BY-SA 4.0), loaded by
@@ -217,3 +234,26 @@ CREATE TABLE IF NOT EXISTS ranks (
   word TEXT PRIMARY KEY,
   rank INTEGER NOT NULL
 ) WITHOUT ROWID;
+
+-- Notes about books, written in the private app: one draft per book and
+-- language, autosaved. Publishing commits the file to the site's repository
+-- (src/content/books/<slug>.md, or tr/<slug>.md); `published_sha` is the blob
+-- SHA of that commit and `published_hash` the SHA-256 of the file, so the app
+-- can tell a draft with unpublished changes. A book's languages share a slug.
+CREATE TABLE IF NOT EXISTS notes (
+  document TEXT NOT NULL,
+  lang TEXT NOT NULL CHECK (lang IN ('en', 'tr')),
+  slug TEXT NOT NULL,
+  title TEXT NOT NULL DEFAULT '',
+  author TEXT NOT NULL DEFAULT '',
+  finished TEXT,
+  description TEXT,
+  body TEXT NOT NULL DEFAULT '',
+  updated_at INTEGER NOT NULL,
+  published_path TEXT,
+  published_sha TEXT,
+  published_hash TEXT,
+  published_at INTEGER,
+  PRIMARY KEY (document, lang)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS notes_by_slug ON notes (lang, slug);
