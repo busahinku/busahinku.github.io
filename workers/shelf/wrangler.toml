@@ -1,0 +1,32 @@
+# Deploy: npx wrangler@4.146.0 deploy --config workers/shelf/wrangler.toml
+# First time: see DEPLOY.md (a private bucket and two secrets).
+name = "busahin-shelf"
+main = "index.js"
+compatibility_date = "2026-09-01"
+workers_dev = false
+preview_urls = false
+# More specific than the assistant's busahin.com/api/*, so it wins for these paths.
+routes = [{ pattern = "busahin.com/api/shelf*", zone_name = "busahin.com" }]
+
+# Its own bucket, bound to no other Worker and with no public URL: the files
+# Worker cannot serve anything from it, so every file goes through the auth here.
+[[r2_buckets]]
+binding = "SHELF"
+bucket_name = "busahin-shelf"
+
+# Every request carrying credentials, right or wrong, per visitor. Checked before
+# the password, so it slows guessing; generous enough for the reader fetching a
+# feed page and a cover for each of its 60 entries.
+[[ratelimits]]
+name = "AUTH_ATTEMPTS"
+namespace_id = "4981"
+simple = { limit = 300, period = 60 }
+
+# A hard daily ceiling on authenticated requests (see DAILY_REQUESTS).
+[[durable_objects.bindings]]
+name = "BUDGET"
+class_name = "DailyBudget"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["DailyBudget"]
