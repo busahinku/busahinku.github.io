@@ -11,8 +11,8 @@ interface Props {
 
 // A shelf of what the e-reader reports (the reading Worker's public summary),
 // drawn in CSS 3D: each book is a box with a spine, a cover and page edges,
-// as thick as its page count. Up to three books stand face out, more stand
-// spine out on a shelf that scrolls. Everything is filled in by the script,
+// as thick as its page count. They stand spine out on a shelf that scrolls,
+// however few there are, and the first one starts pulled out to its cover. Everything is filled in by the script,
 // with textContent only, and the block stays hidden until there is a book.
 // Motion goes further here than elsewhere on the site, by the owner's choice,
 // but only through canAnimate(); e-ink and reduced motion get a flat shelf.
@@ -41,7 +41,6 @@ const tr = lang === "tr";
   type Book = { title: string; author: string | null; cover: string | null; percent: number | null; pages: number | null; finished: string | null; reading: boolean };
 
   const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)"; // the site's one motion curve
-  const FACE_OUT = 3; // this many books or fewer stand face out
   const TONES = 6;
 
   const text = {
@@ -115,7 +114,6 @@ const tr = lang === "tr";
       const scroll = root.querySelector<HTMLElement>("[data-scroll]")!;
       const cap = root.querySelector<HTMLElement>("[data-caption]")!;
       const motion = canAnimate();
-      root.classList.toggle("face-out", books.length <= FACE_OUT);
       root.dataset.motion = motion ? "on" : "off";
 
       const items = books.map((b, i) => {
@@ -123,8 +121,7 @@ const tr = lang === "tr";
         const a = el("a", `book tone-${tone(b.title)}`);
         a.href = notes.get(titleKey(b.title)) ?? `${root.dataset.base}/`;
         // Thickness from the page count: about a third of a rem per hundred pages, within bounds.
-        // On display a book is drawn larger, so it is thicker too, or it would read as a card.
-        const thick = (b.pages ? Math.min(3.25, Math.max(1.5, 1.1 + (b.pages / 100) * 0.35)) : 2) * (books.length <= FACE_OUT ? 1.35 : 1);
+        const thick = (b.pages ? Math.min(3.25, Math.max(1.5, 1.1 + (b.pages / 100) * 0.35)) : 2);
         a.style.setProperty("--t", `${thick}rem`);
         const label = [b.title, b.author, b.reading && b.percent !== null ? t.read(pct(b.percent)) : null].filter(Boolean).join(", ");
         a.setAttribute("aria-label", label);
@@ -178,22 +175,10 @@ const tr = lang === "tr";
         a.classList.add("is-out");
         cap.replaceChildren(caption(items[Number(a.dataset.i)].b));
       };
-      // Face out, the first book starts out; on a long shelf the caption names it and every spine stays in line.
-      if (books.length <= FACE_OUT) pull(items[0].a);
-      else cap.replaceChildren(caption(items[0].b));
+      // The first book starts out, so the shelf opens on a cover as well as spines.
+      pull(items[0].a);
 
       const coarse = matchMedia("(hover: none)");
-      // Face out, a book leans a little toward the pointer, like one picked up off a stand.
-      if (motion && books.length <= FACE_OUT)
-        for (const { a } of items) {
-          a.addEventListener("pointermove", (e) => {
-            if (e.pointerType !== "mouse") return;
-            const r = a.getBoundingClientRect();
-            a.style.setProperty("--ty", `${((e.clientX - r.left) / r.width - 0.5) * 16}deg`);
-            a.style.setProperty("--tx", `${(0.5 - (e.clientY - r.top) / r.height) * 10}deg`);
-          });
-          a.addEventListener("pointerleave", () => (a.style.removeProperty("--ty"), a.style.removeProperty("--tx")));
-        }
       for (const { a } of items) {
         a.addEventListener("pointerenter", (e) => e.pointerType === "mouse" && pull(a));
         a.addEventListener("focus", () => pull(a));
@@ -331,22 +316,12 @@ const tr = lang === "tr";
     box-shadow: 0 12px 20px -14px rgb(0 0 0 / 0.4);
   }
 
-  /* One to three books stand on display: larger, turned so their thickness and page edges show. */
-  .shelf.face-out {
-    --h: 16rem;
-  }
-
-  .shelf.face-out .shelf-row {
-    gap: 3rem;
-    padding-left: 1.5rem;
-  }
-
   .shelf-slot {
     scroll-snap-align: center;
     flex: none;
   }
 
-  /* A book: its slot is as wide as its spine (or its cover, face out); the box inside is 3D. */
+  /* A book: its slot is as wide as its spine; the box inside is 3D. */
   .shelf .book {
     position: relative;
     display: block;
@@ -358,10 +333,6 @@ const tr = lang === "tr";
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     outline: none;
-  }
-
-  .shelf.face-out .book {
-    width: var(--w);
   }
 
   .shelf .book:focus-visible::after {
@@ -377,8 +348,10 @@ const tr = lang === "tr";
     position: absolute;
     inset: 0;
     transform-style: preserve-3d;
-    /* Spine out: the spine flush with the shelf's front edge. */
+    /* Spine out: the spine flush with the shelf's front edge. It turns on the spine, as a book does
+       when it is taken off a shelf, so it swings out to the right and never past the shelf's left end. */
     transform: translateZ(calc(var(--w) * -0.5));
+    transform-origin: 50% 50% calc(var(--w) * 0.5);
     transition: transform 0.6s var(--turn);
   }
 
@@ -387,26 +360,11 @@ const tr = lang === "tr";
     transform: translate3d(0, calc(var(--lift) * -1), 1.5rem) translateZ(calc(var(--w) * -0.5)) rotateY(-58deg);
   }
 
-  /* On display: the front cover to you, turned past square so the page edges show on its right;
-     on hover it lifts and leans toward the pointer (--tx, --ty from the script). */
-  .shelf.face-out .book {
-    perspective: 760px;
-    perspective-origin: 50% -10%;
-  }
-
-  .shelf.face-out .box {
-    transform: rotateX(var(--tx, 0deg)) rotateY(calc(-126deg + var(--ty, 0deg)));
-  }
-
-  .shelf.face-out .book.is-out .box {
-    transform: translate3d(0, calc(var(--lift) * -0.5), 0.75rem) rotateX(var(--tx, 0deg)) rotateY(calc(-122deg + var(--ty, 0deg)));
-  }
-
   .shelf .book.is-out {
     z-index: 3;
   }
 
-  /* Where the book meets the board: a soft contact shadow, wider when it stands on display. */
+  /* Where the book meets the board: a soft contact shadow. */
   .shelf .book::before {
     content: "";
     position: absolute;
@@ -417,14 +375,6 @@ const tr = lang === "tr";
     background: radial-gradient(closest-side, rgb(0 0 0 / 0.3), transparent);
     pointer-events: none;
     transition: opacity 0.6s var(--turn), transform 0.6s var(--turn);
-  }
-
-  .shelf.face-out .book::before {
-    left: -14%;
-    right: -22%;
-    height: 0.875rem;
-    bottom: -0.4375rem;
-    background: radial-gradient(closest-side, rgb(0 0 0 / 0.38), transparent);
   }
 
   .shelf .book.is-out::before {
@@ -608,16 +558,8 @@ const tr = lang === "tr";
     pointer-events: none;
   }
 
-  .shelf.face-out .ribbon {
-    left: 68%;
-  }
-
   .shelf .book.is-out .ribbon {
     transform: translateY(calc(var(--lift) * -1));
-  }
-
-  .shelf.face-out .book.is-out .ribbon {
-    transform: translateY(calc(var(--lift) * -0.6));
   }
 
   /* Spine colours from the theme's own palette, never random hues. */
@@ -682,10 +624,6 @@ const tr = lang === "tr";
       --h: 10rem;
     }
 
-    .shelf.face-out {
-      --h: 12rem;
-    }
-
     .shelf-scroll {
       padding-inline: 1rem;
       margin-inline: -1rem;
@@ -705,8 +643,7 @@ const tr = lang === "tr";
     margin-left: 0;
   }
 
-  .shelf[data-motion="off"]:not(.face-out) .cover,
-  .shelf[data-motion="off"].face-out .spine,
+  .shelf[data-motion="off"] .cover,
   .shelf[data-motion="off"] .pages,
   .shelf[data-motion="off"] .back,
   .shelf[data-motion="off"] .book::before,
