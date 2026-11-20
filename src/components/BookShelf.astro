@@ -1,0 +1,679 @@
+---
+import type { Lang } from "../i18n/translations";
+
+interface Props {
+  lang: Lang;
+  /** Where a book without a note leads: the reading page in this language. */
+  readingBase: string;
+  /** Book notes in this language: a book whose title matches one opens its note. */
+  notes: { keys: string[]; href: string }[];
+}
+
+// A shelf of what the e-reader reports (the reading Worker's public summary),
+// drawn in CSS 3D: each book is a box with a spine, a cover and page edges,
+// as thick as its page count. Up to three books stand face out, more stand
+// spine out on a shelf that scrolls. Everything is filled in by the script,
+// with textContent only, and the block stays hidden until there is a book.
+// Motion goes further here than elsewhere on the site, by the owner's choice,
+// but only through canAnimate(); e-ink and reduced motion get a flat shelf.
+const { lang, readingBase, notes } = Astro.props;
+const tr = lang === "tr";
+---
+
+<div
+  class="shelf"
+  data-shelf
+  data-lang={lang}
+  data-base={readingBase}
+  data-notes={JSON.stringify(notes.map(({ keys, href }) => ({ keys, href })))}
+  hidden
+>
+  <div class="shelf-scroll" data-scroll>
+    <ul class="shelf-row" data-row aria-label={tr ? "Kitaplık" : "Bookshelf"}></ul>
+  </div>
+  <p class="shelf-caption" data-caption aria-live="polite"></p>
+</div>
+
+<script>
+  import { canAnimate } from "../lib/motion";
+  import { titleKey } from "../lib/title-key.mjs";
+
+  type Book = { title: string; author: string | null; cover: string | null; percent: number | null; pages: number | null; finished: string | null; reading: boolean };
+
+  const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)"; // the site's one motion curve
+  const FACE_OUT = 3; // this many books or fewer stand face out
+  const TONES = 6;
+
+  const text = {
+    en: { locale: "en-GB", read: (p: string) => `${p}% read`, finished: (d: string) => `Finished ${d}`, done: "Finished" },
+    tr: { locale: "tr-TR", read: (p: string) => `%${p} okundu`, finished: (d: string) => `Bitiş: ${d}`, done: "Bitti" },
+  };
+
+  const str = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
+  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+
+  /** A stable tone for a title, so a book keeps its spine colour from visit to visit. */
+  function tone(title: string) {
+    let h = 0;
+    for (const c of title) h = (h * 31 + c.codePointAt(0)!) >>> 0;
+    return h % TONES;
+  }
+
+  function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, content?: string) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (content !== undefined) n.textContent = content;
+    return n;
+  }
+
+  function initShelf() {
+    const root = document.querySelector<HTMLElement>("[data-shelf]");
+    if (!root || root.dataset.ready) return;
+    root.dataset.ready = "1";
+    const t = text[root.dataset.lang === "tr" ? "tr" : "en"];
+    let notes = new Map<string, string>();
+    try {
+      notes = new Map((JSON.parse(root.dataset.notes ?? "[]") as { keys: string[]; href: string }[]).flatMap((n) => n.keys.map((k) => [k, n.href])));
+    } catch {}
+    const date = (day: string) => new Intl.DateTimeFormat(t.locale, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${day}T12:00:00Z`));
+    const pct = (p: number) => new Intl.NumberFormat(t.locale, { maximumFractionDigits: 0 }).format(p);
+
+    fetch("/api/reading/summary", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const books: Book[] = [
+          ...(Array.isArray(data?.reading) ? data.reading : []).map((b: any) => ({ ...b, reading: true })),
+          ...(Array.isArray(data?.finished) ? data.finished : []).map((b: any) => ({ ...b, reading: false })),
+        ]
+          .filter((b) => str(b.title, 300))
+          .map((b) => ({
+            title: str(b.title, 300)!,
+            author: str(b.author, 200),
+            // Only the Worker's own copy on files.busahin.com, never another host.
+            cover: typeof b.cover === "string" && /^https:\/\/files\.busahin\.com\//.test(b.cover) ? b.cover : null,
+            percent: b.reading ? num(b.percent) : null,
+            pages: num(b.page_count),
+            finished: typeof b.finished === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.finished) ? b.finished : null,
+            reading: b.reading,
+          }));
+        if (books.length) render(root, books);
+      })
+      .catch(() => {}); // no shelf without numbers; the notes and the link stay
+
+    function caption(b: Book) {
+      const out = document.createDocumentFragment();
+      out.append(el("strong", undefined, b.title));
+      if (b.author) out.append(`, ${b.author}`);
+      const state = b.reading ? (b.percent !== null ? t.read(pct(b.percent)) : null) : b.finished ? t.finished(date(b.finished)) : t.done;
+      if (state) out.append(el("span", "shelf-state", state));
+      return out;
+    }
+
+    function render(root: HTMLElement, books: Book[]) {
+      const row = root.querySelector<HTMLUListElement>("[data-row]")!;
+      const scroll = root.querySelector<HTMLElement>("[data-scroll]")!;
+      const cap = root.querySelector<HTMLElement>("[data-caption]")!;
+      const motion = canAnimate();
+      root.classList.toggle("face-out", books.length <= FACE_OUT);
+      root.dataset.motion = motion ? "on" : "off";
+
+      const items = books.map((b, i) => {
+        const li = el("li", "shelf-slot");
+        const a = el("a", `book tone-${tone(b.title)}`);
+        a.href = notes.get(titleKey(b.title)) ?? `${root.dataset.base}/`;
+        // Thickness from the page count: about a third of a rem per hundred pages, within bounds.
+        const thick = b.pages ? Math.min(3.25, Math.max(1.5, 1.1 + (b.pages / 100) * 0.35)) : 2;
+        a.style.setProperty("--t", `${thick}rem`);
+        const label = [b.title, b.author, b.reading && b.percent !== null ? t.read(pct(b.percent)) : null].filter(Boolean).join(", ");
+        a.setAttribute("aria-label", label);
+        a.dataset.i = String(i);
+
+        const box = el("span", "box");
+        box.setAttribute("aria-hidden", "true");
+        const spine = el("span", "face spine");
+        spine.append(el("span", "spine-title", b.title));
+        // A thin spine has room for the title only; the caption and the cover carry the author.
+        if (b.author && thick >= 1.9) spine.append(el("span", "spine-author", b.author));
+        if (b.reading && b.percent !== null) spine.append(el("span", "spine-pct", `${pct(b.percent)}%`));
+        const cover = el("span", "face cover");
+        if (b.cover) {
+          const img = el("img");
+          // Not lazy: a face turned in 3D can look off screen to the browser and never load.
+          Object.assign(img, { src: b.cover, alt: "", decoding: "async", width: 240, height: 360 });
+          img.addEventListener("error", () => img.remove(), { once: true }); // the lettered cover underneath shows instead
+          cover.append(img);
+        }
+        // Lettered under any picture: what a cover without one shows.
+        const lettered = el("span", "lettered");
+        // A long single word (Middlemarch) gets a smaller size rather than a break inside it.
+        if (Math.max(...b.title.split(/\s+/).map((w) => w.length)) > 9) lettered.classList.add("long-word");
+        lettered.append(el("span", "lettered-title", b.title));
+        if (b.author) lettered.append(el("span", "lettered-author", b.author));
+        cover.prepend(lettered);
+        box.append(spine, cover, el("span", "face pages"), el("span", "face top"));
+        a.append(box);
+        if (b.reading) a.append(el("span", "ribbon"));
+        li.append(a);
+        return { li, a, b };
+      });
+      row.replaceChildren(...items.map((x) => x.li));
+      root.hidden = false;
+
+      // One book is out at a time: the one under the pointer, the focused one, or on a phone the one
+      // nearest the middle. The caption under the shelf names it in full.
+      let out: HTMLAnchorElement | null = null;
+      const pull = (a: HTMLAnchorElement | null) => {
+        if (a === out) return;
+        out?.classList.remove("is-out");
+        out = a;
+        if (!a) return;
+        a.classList.add("is-out");
+        cap.replaceChildren(caption(items[Number(a.dataset.i)].b));
+      };
+      // Face out, the first book starts out; on a long shelf the caption names it and every spine stays in line.
+      if (books.length <= FACE_OUT) pull(items[0].a);
+      else cap.replaceChildren(caption(items[0].b));
+
+      const coarse = matchMedia("(hover: none)");
+      for (const { a } of items) {
+        a.addEventListener("pointerenter", (e) => e.pointerType === "mouse" && pull(a));
+        a.addEventListener("focus", () => pull(a));
+        // On touch, the first tap takes a book out; a tap on the book that is out opens it.
+        a.addEventListener("click", (e) => {
+          if (coarse.matches && a !== out) {
+            e.preventDefault();
+            pull(a);
+            a.scrollIntoView({ behavior: motion ? "smooth" : "auto", block: "nearest", inline: "center" });
+          }
+        });
+      }
+
+      // Arrow keys walk the shelf, Home and End jump to its ends.
+      row.addEventListener("keydown", (e) => {
+        const step = { ArrowRight: 1, ArrowLeft: -1, Home: -Infinity, End: Infinity }[e.key];
+        if (step === undefined || !out) return;
+        e.preventDefault();
+        const i = Number(out.dataset.i);
+        const next = items[Math.min(items.length - 1, Math.max(0, Number.isFinite(step) ? i + step : step > 0 ? items.length - 1 : 0))].a;
+        next.focus({ preventScroll: true });
+        next.scrollIntoView({ behavior: motion ? "smooth" : "auto", block: "nearest", inline: "nearest" });
+      });
+
+      // On a phone the book nearest the middle comes out once the shelf settles.
+      let settle = 0;
+      scroll.addEventListener(
+        "scroll",
+        () => {
+          clearTimeout(settle);
+          settle = window.setTimeout(() => {
+            if (!coarse.matches) return;
+            const mid = scroll.getBoundingClientRect().left + scroll.clientWidth / 2;
+            let best = items[0].a;
+            for (const { a } of items) {
+              const r = a.getBoundingClientRect();
+              if (Math.abs(r.left + r.width / 2 - mid) < Math.abs(best.getBoundingClientRect().left + best.getBoundingClientRect().width / 2 - mid)) best = a;
+            }
+            pull(best);
+          }, 120);
+          edges();
+        },
+        { passive: true },
+      );
+      // A soft edge shows only where there is more shelf to scroll to.
+      const edges = () => {
+        root.classList.toggle("more-left", scroll.scrollLeft > 4);
+        root.classList.toggle("more-right", scroll.scrollLeft + scroll.clientWidth < scroll.scrollWidth - 4);
+      };
+      edges();
+      new ResizeObserver(edges).observe(scroll);
+
+      if (!motion) return;
+      // The books are put on the shelf one after another, the way they were read.
+      items.slice(0, 14).forEach(({ li }, i) =>
+        li.animate([{ opacity: 0, transform: "translateY(14px)" }, { opacity: 1, transform: "none" }], { duration: 420, delay: 60 + i * 45, easing: EASE, fill: "backwards" }),
+      );
+    }
+  }
+
+  initShelf();
+  document.addEventListener("astro:after-swap", initShelf);
+</script>
+
+<style is:global>
+  /* Sizes: --h is a book's height, --w its cover's width (2:3), --t its thickness (set per book). */
+  .shelf {
+    --h: 11.5rem;
+    --w: calc(var(--h) * 0.66);
+    --lift: 0.875rem;
+    --turn: cubic-bezier(0.32, 0.72, 0, 1);
+    margin: 1.5rem 0 0.5rem;
+  }
+
+  .shelf[hidden] {
+    display: none;
+  }
+
+  /* The scroller: native momentum and snapping; room above for a book that is pulled out. */
+  .shelf-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    padding: 2rem 1.5rem 0;
+    margin: 0 -1.5rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .shelf-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .shelf.more-left .shelf-scroll {
+    mask-image: linear-gradient(to right, transparent, #000 2.5rem, #000);
+  }
+
+  .shelf.more-right .shelf-scroll {
+    mask-image: linear-gradient(to left, transparent, #000 2.5rem, #000);
+  }
+
+  .shelf.more-left.more-right .shelf-scroll {
+    mask-image: linear-gradient(to right, transparent, #000 2.5rem, #000 calc(100% - 2.5rem), transparent);
+  }
+
+  /* The plank: the books stand on one line, with a thin board under it. */
+  .shelf-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.1875rem;
+    width: max-content;
+    min-width: 100%;
+    margin: 0;
+    padding: 0 0 0.625rem;
+    list-style: none;
+    position: relative;
+  }
+
+  .shelf-row::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 0.625rem;
+    border-top: 1px solid color-mix(in srgb, var(--text-primary) 22%, transparent);
+    background: color-mix(in srgb, var(--text-primary) 6%, var(--bg-primary));
+    box-shadow: 0 6px 14px -8px rgb(0 0 0 / 0.25);
+  }
+
+  .shelf.face-out {
+    --h: 13.5rem;
+  }
+
+  .shelf.face-out .shelf-row {
+    gap: 2rem;
+    padding-left: 0.75rem;
+  }
+
+  .shelf-slot {
+    scroll-snap-align: center;
+    flex: none;
+  }
+
+  /* A book: its slot is as wide as its spine (or its cover, face out); the box inside is 3D. */
+  .shelf .book {
+    position: relative;
+    display: block;
+    width: var(--t);
+    height: var(--h);
+    perspective: 1100px;
+    perspective-origin: 50% 20%;
+    border-radius: 2px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    outline: none;
+  }
+
+  .shelf.face-out .book {
+    width: var(--w);
+  }
+
+  .shelf .book:focus-visible::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    border: 2px solid var(--text-primary);
+    border-radius: 4px;
+    pointer-events: none;
+  }
+
+  .shelf .box {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    /* Spine out: the spine flush with the shelf's front edge. */
+    transform: translateZ(calc(var(--w) * -0.5));
+    transition: transform 0.6s var(--turn);
+  }
+
+  /* Pulled out, then turned towards you to show the cover. */
+  .shelf .book.is-out .box {
+    transform: translate3d(0, calc(var(--lift) * -1), 1.5rem) translateZ(calc(var(--w) * -0.5)) rotateY(58deg);
+  }
+
+  /* Face out: the cover to the front, turned a little so the spine still shows. */
+  .shelf.face-out .box {
+    transform: rotateY(72deg);
+  }
+
+  .shelf.face-out .book.is-out .box {
+    transform: translate3d(0, calc(var(--lift) * -0.6), 1rem) rotateY(84deg);
+  }
+
+  .shelf .book.is-out {
+    z-index: 2;
+  }
+
+  .shelf .face {
+    box-sizing: border-box;
+    position: absolute;
+    top: 0;
+    left: 50%;
+    height: var(--h);
+    backface-visibility: hidden;
+    overflow: hidden;
+  }
+
+  /* The spine: title down its length, the author at the foot. */
+  .shelf .spine {
+    width: var(--t);
+    margin-left: calc(var(--t) * -0.5);
+    transform: translateZ(calc(var(--w) * 0.5));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 0 0.625rem;
+    border-radius: 2px 1px 1px 2px;
+    background: var(--spine);
+    color: var(--ink);
+    box-shadow:
+      inset 2px 0 0 color-mix(in srgb, #fff 14%, transparent),
+      inset -3px 0 4px -2px rgb(0 0 0 / 0.28);
+  }
+
+  .shelf .spine-title,
+  .shelf .spine-author {
+    writing-mode: vertical-rl;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-height: 100%;
+    line-height: 1;
+  }
+
+  .shelf .spine-title {
+    flex: 1 1 auto;
+    min-height: 0;
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: 0.8125rem;
+    letter-spacing: 0.01em;
+  }
+
+  .shelf .spine-author {
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: 40%;
+    font-size: 0.6875rem;
+    opacity: 0.8;
+  }
+
+  .shelf .spine-pct {
+    flex: none;
+    font-size: 0.625rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    padding: 0.125rem 0.1875rem;
+    border-top: 1px solid currentColor;
+  }
+
+  /* The front cover is the box's left side; a picture, or the title set on the spine's colour. */
+  .shelf .cover {
+    width: var(--w);
+    margin-left: calc(var(--w) * -0.5);
+    transform: rotateY(-90deg) translateZ(calc(var(--t) * 0.5));
+    background: var(--spine);
+    color: var(--ink);
+    border-radius: 1px 3px 3px 1px;
+  }
+
+  .shelf .cover img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .shelf .lettered {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 0.875rem 0.5rem;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 30%, transparent);
+    margin: 0.3125rem;
+  }
+
+  .shelf .lettered-title {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    /* sized to the cover, so a one-word title fits a small book and breaks between syllables, not letters */
+    font-size: clamp(0.75rem, calc(var(--w) * 0.12), 0.9375rem);
+    line-height: 1.2;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    display: -webkit-box;
+    -webkit-line-clamp: 6;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .shelf .long-word .lettered-title {
+    font-size: clamp(0.625rem, calc(var(--w) * 0.098), 0.8125rem);
+  }
+
+  .shelf .lettered-author {
+    font-size: 0.75rem;
+    opacity: 0.85;
+  }
+
+  /* Page edges: fine lines on the side and the top, the colour of paper in this theme. */
+  .shelf .pages {
+    width: var(--w);
+    margin-left: calc(var(--w) * -0.5);
+    transform: rotateY(90deg) translateZ(calc(var(--t) * 0.5));
+    height: calc(var(--h) - 0.25rem);
+    top: 0.125rem;
+    background: repeating-linear-gradient(to bottom, var(--paper) 0 2px, var(--paper-line) 2px 3px);
+  }
+
+  .shelf .top {
+    width: calc(var(--t) - 0.125rem);
+    height: calc(var(--w) - 0.25rem);
+    margin-left: calc(var(--t) * -0.5 + 0.0625rem);
+    margin-top: calc((var(--w) - 0.25rem) * -0.5);
+    transform: rotateX(90deg);
+    background: repeating-linear-gradient(to right, var(--paper) 0 2px, var(--paper-line) 2px 3px);
+  }
+
+  /* A book in progress has a ribbon out of its top, in the theme's accent. */
+  .shelf .ribbon {
+    position: absolute;
+    top: -0.875rem;
+    left: 50%;
+    width: 0.4375rem;
+    height: 1.375rem;
+    margin-left: -0.125rem;
+    background: var(--accent);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%);
+    transition: transform 0.6s var(--turn);
+    pointer-events: none;
+  }
+
+  .shelf.face-out .ribbon {
+    left: 68%;
+  }
+
+  .shelf .book.is-out .ribbon {
+    transform: translateY(calc(var(--lift) * -1));
+  }
+
+  .shelf.face-out .book.is-out .ribbon {
+    transform: translateY(calc(var(--lift) * -0.6));
+  }
+
+  /* Spine colours from the theme's own palette, never random hues. */
+  .shelf {
+    --paper: color-mix(in srgb, var(--bg-primary) 88%, #c8b994);
+    --paper-line: color-mix(in srgb, var(--text-primary) 18%, var(--bg-primary));
+  }
+
+  .shelf .tone-0 {
+    --spine: color-mix(in srgb, var(--text-primary) 90%, var(--bg-primary));
+    --ink: var(--bg-primary);
+  }
+
+  .shelf .tone-1 {
+    --spine: color-mix(in srgb, var(--accent) 62%, var(--text-primary));
+    --ink: var(--bg-primary);
+  }
+
+  .shelf .tone-2 {
+    --spine: var(--bg-secondary);
+    --ink: var(--text-primary);
+  }
+
+  .shelf .tone-3 {
+    --spine: color-mix(in srgb, var(--accent) 22%, var(--bg-primary));
+    --ink: var(--text-primary);
+  }
+
+  .shelf .tone-4 {
+    --spine: color-mix(in srgb, var(--text-secondary) 75%, var(--bg-primary));
+    --ink: var(--bg-primary);
+  }
+
+  .shelf .tone-5 {
+    --spine: color-mix(in srgb, var(--accent) 28%, var(--text-primary));
+    --ink: var(--bg-primary);
+  }
+
+  /* The light faces need an edge of their own against the page. */
+  .shelf .tone-2 .spine,
+  .shelf .tone-3 .spine,
+  .shelf .tone-2 .cover,
+  .shelf .tone-3 .cover {
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
+
+  .shelf-caption {
+    min-height: 1.6em;
+    margin: 0.875rem 0 0;
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+  }
+
+  .shelf-caption strong {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .shelf-caption .shelf-state {
+    margin-left: 0.625rem;
+    padding-left: 0.625rem;
+    border-left: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 640px) {
+    .shelf {
+      --h: 10rem;
+    }
+
+    .shelf.face-out {
+      --h: 12rem;
+    }
+
+    .shelf-scroll {
+      padding-inline: 1rem;
+      margin-inline: -1rem;
+    }
+  }
+
+  /* E-ink and reduced motion: a flat shelf. The front face only, bordered, with labels; no turning. */
+  .shelf[data-motion="off"] .box,
+  .shelf[data-motion="off"] .book.is-out .box {
+    transform: none;
+    transition: none;
+  }
+
+  .shelf[data-motion="off"] .face {
+    transform: none;
+    left: 0;
+    margin-left: 0;
+  }
+
+  .shelf[data-motion="off"]:not(.face-out) .cover,
+  .shelf[data-motion="off"].face-out .spine,
+  .shelf[data-motion="off"] .pages,
+  .shelf[data-motion="off"] .top {
+    display: none;
+  }
+
+  .shelf[data-motion="off"] .book.is-out {
+    transform: translateY(calc(var(--lift) * -0.5));
+  }
+
+  .shelf[data-motion="off"] .ribbon {
+    transform: none;
+    left: calc(50% - 0.25rem);
+    margin: 0;
+  }
+
+  /* E-ink drops every shadow, so the edges are real borders. */
+  [data-theme="eink"] .shelf .spine,
+  [data-theme="eink"] .shelf .cover {
+    --spine: #fff;
+    --ink: #000;
+    background: #fff;
+    color: #000;
+    border: 1.5px solid #000;
+  }
+
+  [data-theme="eink"] .shelf .lettered {
+    border: 1px solid #000;
+  }
+
+  [data-theme="eink"] .shelf .cover img {
+    filter: grayscale(1);
+  }
+
+  [data-theme="eink"] .shelf .book.is-out .spine,
+  [data-theme="eink"] .shelf .book.is-out .cover {
+    border-width: 3px;
+  }
+
+  [data-theme="eink"] .shelf .ribbon {
+    background: #000;
+  }
+
+  [data-theme="eink"] .shelf-row::after {
+    background: #fff;
+    border-top: 2px solid #000;
+    box-shadow: none;
+  }
+</style>
