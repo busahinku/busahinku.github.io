@@ -26,8 +26,11 @@ TRACKING_SINCE = "2026-11-16"
 # HIDE_TITLES is a secret (DEPLOY.md, step 4), not a var.
 # Where the files Worker serves the bucket below; recordings and covers are linked from here.
 FILES_URL = "https://files.busahin.com"
-# The only hosts a cover is copied from (https, comma-separated). Sync's covers come from Hardcover.
-COVER_HOSTS = "assets.hardcover.app"
+# The only hosts a cover is copied from (https, comma-separated; a leading dot allows subdomains):
+# Hardcover, and where Sync's cover candidates come from (Apple Books on mzstatic.com, Open
+# Library, whose covers are served from archive.org mirrors). Checked against crosspoint-sync's
+# src/models/cover.ts and a real Open Library redirect chain.
+COVER_HOSTS = "assets.hardcover.app,is1-ssl.mzstatic.com,is2-ssl.mzstatic.com,is3-ssl.mzstatic.com,is4-ssl.mzstatic.com,is5-ssl.mzstatic.com,covers.openlibrary.org,archive.org,.us.archive.org"
 
 [[d1_databases]]
 binding = "DB"

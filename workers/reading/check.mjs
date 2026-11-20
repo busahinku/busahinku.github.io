@@ -106,6 +106,8 @@ globalThis.fetch = async (input, init = {}) => {
   if (url.host === "busahin.com" && url.pathname === "/reading/notes.json") return new Response(answers.notes ?? '{"notes":[]}');
   if (url.host === "assets.hardcover.app") return (coverFetches.push(url.href), coverAnswer(url));
   if (url.host === "api.github.com") return githubApi(url, init);
+  const more = url.host === "sync.example" ? syncMore(url, init) : null;
+  if (more) return more;
   requests.push({ url, headers: init.headers });
   const name = { "/healthz": "healthz", "/api/v1/progress": "progress", "/api/v1/stats/activity": "activity", "/api/v1/stats/overview": "overview", "/api/v1/clippings": "clippings" }[url.pathname];
   return name ? new Response(answers[name]) : new Response('{"code":2001,"message":"Unauthorized"}', { status: 401 });
@@ -115,6 +117,32 @@ const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 16, 0x4a, 0x46, 0x49, 0x
 const coverFetches = [];
 let coverAnswer = () => new Response(JPEG, { headers: { "content-type": "image/jpeg", "content-length": String(JPEG.length) } });
 let githubApi = () => new Response("{}", { status: 500 });
+// The Sync routes read live or now and then (descriptions, a book's history and devices, linked apps,
+// cover candidates) and the two it may write (status, dates), from API.md's documented shapes.
+const readest = JSON.parse(fixture("readest"));
+const syncWrites = [];
+const syncMore = (url, init) => {
+  const p = url.pathname;
+  const json = (body, status = 200) => new Response(JSON.stringify(body), { status });
+  if (init.method === "PUT" && /^\/api\/v1\/documents\/[^/]+\/(status|dates)$/.test(p)) return (syncWrites.push({ path: p, body: JSON.parse(init.body) }), json({}));
+  if (/\/about$/.test(p)) return p.includes("a1b2c3d4e5f60718293a4b5c6d7e8f90") ? json({ description: "Stevens drives west.\r\n\n\n\nA\tbutler\u0007 remembers.", manual: false }) : json({ code: 2004, message: "Not found" }, 404);
+  if (p === "/api/v1/stats/activity/books")
+    return json({ books: [{ document: url.searchParams.get("documents"), started_at: 1794000000, finished_at: null, page_count: 258, pages_read: 160, reading_days: ["2026-11-16", "2026-11-17", "bad"], days: [{ day: "2026-11-16", pages: 20, syncs: 2 }, { day: "2026-11-17", pages: 5, syncs: 1 }, { day: 7 }], requested: [url.searchParams.get("documents")] }] });
+  if (/^\/api\/v1\/progress\/[^/]+$/.test(p) && p !== "/api/v1/progress/changes")
+    return json({ document: p.split("/").pop(), devices: [{ device_id: "crosspoint-reader", device: "CrossPoint", percentage: 0.62, progress: "x", position: { spine: 7 }, timestamp: 1795000000 }, { device_id: "readest", device: "Readest", percentage: 0.6, progress: "y", position: null, timestamp: 1794990000 }] });
+  if (p === "/api/v1/connectors")
+    return json({ encryption: "enabled", connectors: [
+      { id: "readest", name: "Readest", linked: true, status: "ok", account: "me", queue: { pending: 2, dead: 1 }, queue_errors: [{ kind: "highlight", message: "clipping text not found at its position in the Readest copy of the book", count: 1 }] },
+      { id: "hardcover", name: "Hardcover", linked: true, status: "ok", queue: { pending: 0, dead: 0 }, queue_errors: [] },
+      { id: "readwise", name: "Readwise", linked: false, status: null } ] });
+  if (/\/cover\/candidates$/.test(p))
+    return json({ items: [
+      { url: "https://is3-ssl.mzstatic.com/image/thumb/Publication/v4/aa/600x600bb.jpg", title: "Foundryside", author: "Robert Jackson Bennett", source: "apple" },
+      { url: "https://covers.openlibrary.org/b/id/240727-L.jpg", title: "Foundryside", source: "openlibrary", pages: 512 },
+      { url: "https://evil.example/cover.jpg", title: "x" },
+      { url: "http://covers.openlibrary.org/b/id/1-L.jpg", title: "plain http" } ] });
+  return null;
+};
 let aiCalls = 0;
 const env = {
   DB: d1(sqlite),
@@ -169,7 +197,7 @@ assert.ok(sqlite.prepare("SELECT COUNT(*) AS n FROM raw WHERE server_version = '
   const backfill = await w.ingest(env, NOW);
   assert.deepEqual(backfill.changed.sort(), ["activity", "clippings", "overview", "progress"], "an older derivation re-reads every answer");
   assert.deepEqual(meta(), filled, "cover_url and the metadata are filled on the first pull");
-  assert.equal(sqlite.prepare("SELECT value FROM meta WHERE key = 'derive_version'").get().value, "2");
+  assert.equal(sqlite.prepare("SELECT value FROM meta WHERE key = 'derive_version'").get().value, String(w.DERIVE_VERSION));
   assert.deepEqual((await w.ingest(env, NOW)).changed, [], "and only once");
 }
 
@@ -1021,8 +1049,11 @@ assert.ok(fs.readFileSync(new URL("../../src/components/ReadingPage.astro", here
   const svg = new TextEncoder().encode("<svg onload='alert(1)'/>");
   r = await tryWith(() => new Response(svg, { headers: { "content-type": "image/svg+xml", "content-length": String(svg.length) } }));
   assert.equal(r.stored, 0, "an SVG says image/ but is refused by its bytes");
-  r = await tryWith(() => new Response(JPEG, { headers: { "content-type": "image/jpeg" } }));
-  assert.equal(r.stored, 0, "no length, no copy");
+  let streamed = 0;
+  const endless = new ReadableStream({ pull: (c) => ((streamed += 65_536), streamed > 3_000_000 ? c.close() : c.enqueue(new Uint8Array(65_536))) });
+  r = await tryWith(() => new Response(endless, { headers: { "content-type": "image/jpeg" } }));
+  assert.equal(r.stored, 0, "no length: read only up to the cap, then refused");
+  assert.ok(streamed < 1_200_000, "and the rest is never read");
   coverAnswer = () => new Response(JPEG, { headers: { "content-type": "image/jpeg", "content-length": String(JPEG.length) } });
   await w.syncCovers(env, NOW + 3_600_000);
   assert.equal(covers().length, 0, "a failed cover waits");
@@ -1186,7 +1217,7 @@ assert.ok(fs.readFileSync(new URL("../../src/components/ReadingPage.astro", here
   assert.ok(gh[0].url.endsWith("?ref=main"));
   assert.deepEqual([gh[2].body.message, gh[2].body.branch, gh[2].body.sha], ["Reading note: publish the-remains-of-the-day (en)", "main", undefined]);
   let { fm: meta, body } = front(path);
-  assert.deepEqual(meta, { title: draft.title, author: draft.author, finished: "2026-11-10", description: draft.description, cover: meta.cover, lang: "en", translationKey: "the-remains-of-the-day" });
+  assert.deepEqual(meta, { title: draft.title, author: draft.author, finished: "2026-11-10", description: draft.description, cover: meta.cover, about: "Stevens drives west.\n\nA butler remembers.", aboutFromHardcover: true, lang: "en", translationKey: "the-remains-of-the-day" }, "the book's description goes with the note, credited");
   assert.match(meta.cover, /^https:\/\/files\.busahin\.com\/reading\/covers\/[0-9a-f-]{36}\?v=[0-9a-f]{12}$/, "the cover copy, never Hardcover's");
   assert.equal(body, "Stevens drives west.\n\n## The road\n\nA *quiet* book.\n");
 
@@ -1267,6 +1298,136 @@ assert.ok(fs.readFileSync(new URL("../../src/components/ReadingPage.astro", here
   assert.deepEqual(listed.notes, { en: "published", tr: "draft" });
   assert.deepEqual([listed.release_year, listed.genres, listed.on_page], [1989, ["Fiction", "Historical"], true]);
   sqlite.exec("DELETE FROM notes");
+}
+
+// ---- a second device: Readest's progress and highlights arrive through Sync with fields CrossPoint always fills left empty
+{
+  const PIRANESI = "6a1d0c2f9e8b7a6d5c4b3a2918070605";
+  const saved = { progress: answers.progress, clippings: answers.clippings };
+  const progress = JSON.parse(saved.progress);
+  progress.items.push(...readest.progress);
+  const clippings = JSON.parse(saved.clippings);
+  clippings.items.push(...readest.clippings);
+  answers.progress = JSON.stringify(progress);
+  answers.clippings = JSON.stringify(clippings);
+  sqlite.exec("DELETE FROM day_devices");
+  const out = await w.ingest(env, NOW + 32_000_000);
+  assert.ok(out.changed.includes("progress") && out.changed.includes("clippings"));
+  const book = { ...sqlite.prepare("SELECT title, device, device_id, percentage, page_count FROM books WHERE document = ?").get(PIRANESI) };
+  assert.deepEqual(book, { title: "Piranesi", device: "Readest", device_id: "readest", percentage: 0.4, page_count: null }, "a book only the phone has read");
+  const clips = sqlite.prepare("SELECT id, kind, term, chapter, created_at FROM clippings WHERE document = ? ORDER BY id").all(PIRANESI);
+  assert.deepEqual(clips.map((c) => [c.id, c.kind, c.term, c.chapter]), [["aa11bb22cc33dd44", "word", "vestibule", null], ["aa11bb22cc33dd45", "sentence", null, null], ["aa11bb22cc33dd46", "word", "tides", null]], "no chapter, no para, a line break or no date: still split the same way");
+  assert.equal(clips[2].created_at, null);
+  assert.ok(sqlite.prepare("SELECT 1 FROM cards WHERE term = 'vestibule'").get(), "a word highlighted on the phone becomes a card");
+  assert.deepEqual(sqlite.prepare("SELECT day, device FROM day_devices WHERE device = 'Readest'").all().map((r) => ({ ...r })), [{ day: w.dayOf(1795010400 * 1000), device: "Readest" }], "the day counts for the phone");
+  const pub = await w.buildSummary(env, NOW + 32_000_000);
+  assert.ok(!JSON.stringify(pub).includes("Readest") && !JSON.stringify(pub).includes("device"), "the public page says nothing about devices");
+  answers.progress = saved.progress;
+  answers.clippings = saved.clippings;
+  await w.ingest(env, NOW + 32_100_000);
+}
+
+// ---- descriptions, a book's history and devices, linked apps, cover candidates, status and dates
+{
+  const log = console.error;
+  console.error = () => {};
+  const REMAINS = "a1b2c3d4e5f60718293a4b5c6d7e8f90";
+  const FOUNDRYSIDE = "25f8abb4f4f5594f02f361726814fea1";
+  const q = (url) => new Request(`https://busahin.com${url}`);
+
+  assert.equal(w.aboutText("A\r\n\n\n\nB\tc\u0007 d e"), "A\n\nB c d e");
+  assert.equal(w.aboutText(5), null);
+  sqlite.exec("DELETE FROM about");
+  assert.ok((await w.refreshAbout(env, NOW)) >= 1);
+  await w.refreshAbout(env, NOW); // three a run
+  assert.deepEqual({ ...sqlite.prepare("SELECT description, manual FROM about WHERE document = ?").get(REMAINS) }, { description: "Stevens drives west.\n\nA butler remembers.", manual: 0 });
+  assert.equal(sqlite.prepare("SELECT description FROM about WHERE document = ?").get(FOUNDRYSIDE).description, null, "Sync's 404: kept as none");
+  assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM about WHERE document = '0123456789abcdef0123456789abcdef'").get().n, 0, "only books on the public page are asked about");
+  const calls = requests.length;
+  await w.refreshAbout(env, NOW + 86_400_000);
+  assert.equal(requests.length, calls, "and not again for a month");
+  const listed = (await w.booksList(env)).books.find((b) => b.document === REMAINS);
+  assert.deepEqual([listed.description, listed.description_manual, listed.device], ["Stevens drives west.\n\nA butler remembers.", false, "CrossPoint"]);
+
+  const history = await w.bookHistory(env, q(`/api/reading/books/history?document=${REMAINS}`));
+  assert.deepEqual(history.reading_days, ["2026-11-16", "2026-11-17"], "only real days");
+  assert.deepEqual(history.days, [{ day: "2026-11-16", pages: 20, syncs: 2 }, { day: "2026-11-17", pages: 5, syncs: 1 }]);
+  assert.deepEqual(history.devices.map((d) => [d.device, d.percentage]), [["CrossPoint", 0.62], ["Readest", 0.6]]);
+  assert.equal(await w.bookHistory(env, q("/api/reading/books/history?document=../x")), null);
+
+  const linked = await w.connectors(env);
+  assert.deepEqual(linked.connectors.map((c) => [c.name, c.status, c.pending, c.dead]), [["Readest", "ok", 2, 1], ["Hardcover", "ok", 0, 0]], "only linked apps");
+  assert.match(linked.connectors[0].errors[0].message, /not found/);
+  assert.ok(!JSON.stringify(linked).includes('"account"'), "the account names stay in Sync");
+
+  // Candidates: only those on an allowed https host are offered, and one is copied through the guarded path.
+  const cands = await w.coverCandidates(env, q(`/api/reading/books/candidates?document=${FOUNDRYSIDE}`));
+  assert.deepEqual(cands.items.map((c) => new URL(c.url).host), ["is3-ssl.mzstatic.com", "covers.openlibrary.org"]);
+  const real = globalThis.fetch;
+  const hops = [];
+  globalThis.fetch = async (input, init = {}) => {
+    const url = new URL(input);
+    if (!/(mzstatic\.com|openlibrary\.org|archive\.org|evil\.example)$/.test(url.host)) return real(input, init);
+    hops.push(url.host);
+    assert.equal(init.redirect, "manual");
+    // Open Library's real chain (checked by hand): covers.openlibrary.org, archive.org, an ia mirror with no length.
+    if (url.host === "covers.openlibrary.org") return new Response(null, { status: 302, headers: { location: "https://archive.org/download/olcovers24/olcovers24-L.zip/240727-L.jpg" } });
+    if (url.host === "archive.org") return new Response(null, { status: 302, headers: { location: answersHop } });
+    return new Response(JPEG, { headers: { "content-type": "image/jpeg" } });
+  };
+  let answersHop = "https://ia800603.us.archive.org/view_archive.php?archive=/35/items/olcovers24/olcovers24-L.zip&file=240727-L.jpg";
+  sqlite.prepare("UPDATE books SET cover_v = NULL WHERE document = ?").run(FOUNDRYSIDE);
+  let picked = await w.pickCover(env, { document: FOUNDRYSIDE, url: cands.items[1].url }, NOW);
+  assert.match(picked.cover, /^https:\/\/files\.busahin\.com\/reading\/covers\//);
+  assert.deepEqual(hops, ["covers.openlibrary.org", "archive.org", "ia800603.us.archive.org"], "two redirects, each to an allowed host, by hand");
+  for (const [hop, why] of [["https://evil.example/x.jpg", "a hop off the list"], ["http://ia800603.us.archive.org/x.jpg", "a hop to plain http"], ["https://evilus.archive.org/x.jpg", "a look-alike host"]]) {
+    answersHop = hop;
+    assert.equal((await w.pickCover(env, { document: FOUNDRYSIDE, url: cands.items[1].url }, NOW)).error, "cover", why);
+  }
+  assert.equal(await w.pickCover(env, { document: FOUNDRYSIDE, url: "https://evil.example/cover.jpg" }, NOW), null, "never a URL off the list");
+  assert.deepEqual(await w.pickCover(env, { document: "0123456789abcdef0123456789abcdef", url: cands.items[0].url }, NOW), { error: "not on the page" });
+  picked = await w.pickCover(env, { document: FOUNDRYSIDE, url: cands.items[0].url }, NOW);
+  assert.ok(picked.cover);
+  globalThis.fetch = real;
+  assert.ok(w.coverSource("https://ia600100.us.archive.org/a.jpg", env) && !w.coverSource("https://us.archive.org.evil.example/a.jpg", env) && !w.coverSource("https://.us.archive.org/a.jpg", env));
+
+  // Status and dates go to Sync; a book marked did-not-finish leaves the public list after the pull that follows.
+  syncWrites.length = 0;
+  const saved = answers.progress;
+  const answersAfter = JSON.parse(saved);
+  answersAfter.items.find((i) => i.document === REMAINS).status = "dnf";
+  answers.progress = JSON.stringify(answersAfter);
+  const row = await w.setStatus(env, { document: REMAINS, status: "dnf", finished_date: null }, NOW + 33_000_000);
+  assert.deepEqual(syncWrites, [{ path: `/api/v1/documents/${REMAINS}/status`, body: { status: "dnf" } }, { path: `/api/v1/documents/${REMAINS}/dates`, body: { finished_date: null } }]);
+  assert.equal(row.status, "dnf");
+  const pub = await w.summary(env, NOW + 33_000_000);
+  assert.ok(!pub.reading.some((b) => b.title === "The Remains of the Day") && !pub.finished.some((b) => b.title === "The Remains of the Day"), "did not finish: on neither public list");
+  for (const bad of [{ document: REMAINS, status: "abandoned" }, { document: REMAINS, start_date: "2026-02-30" }, { document: REMAINS }, { document: "../x", status: "paused" }])
+    assert.equal(await w.setStatus(env, bad, NOW), null, JSON.stringify(bad));
+  answers.progress = saved;
+  await w.pull(env, NOW + 33_100_000, "manual");
+
+  // Through the router: a Sync failure is a 502 that names the status, nothing more.
+  const private_ = (path) => w.default.fetch(new Request(`https://busahin.com${path}`, { headers: { authorization: `Bearer ${env.READING_TOKEN}` } }), { ...env, PER_VISITOR: open, SITE_WIDE: open }, { waitUntil() {} });
+  assert.equal((await private_(`/api/reading/books/history?document=${REMAINS}`)).status, 200);
+  const down = await private_("/api/reading/connectors?x").then(async (r) => [r.status, await r.json()]);
+  assert.equal(down[0], 200);
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => (new URL(input).pathname === "/api/v1/connectors" ? new Response("nope", { status: 503 }) : realFetch(input, init));
+  const failed = await private_("/api/reading/connectors");
+  assert.deepEqual([failed.status, await failed.json()], [502, { error: "sync", reason: "/api/v1/connectors: HTTP 503" }]);
+  globalThis.fetch = realFetch;
+  assert.equal((await call("GET", "/api/reading/connectors")).status, 404, "private, like every other route");
+
+  // The Progress screen: days by device, and the days both were used.
+  sqlite.exec("DELETE FROM day_devices; INSERT INTO day_devices VALUES ('2026-11-16', 'CrossPoint'), ('2026-11-17', 'CrossPoint'), ('2026-11-17', 'Readest'), ('2026-11-18', 'Readest')");
+  assert.deepEqual((await w.progress(env, NOW)).devices, { days: [{ device: "CrossPoint", days: 2 }, { device: "Readest", days: 2 }], both: 1, since: "2026-11-16" });
+
+  // The app may show candidates before one is copied: its CSP lists the cover hosts, nothing more.
+  const login2 = await site("POST", "/api/reading/login", { form: { token: env.READING_TOKEN } });
+  const appCsp = (await site("GET", "/api/reading/app", { cookie: login2.headers.get("set-cookie").split(";")[0] })).headers.get("content-security-policy");
+  assert.match(appCsp, /img-src 'self' data: https:\/\/files\.busahin\.com https:\/\/assets\.hardcover\.app .*https:\/\/covers\.openlibrary\.org https:\/\/archive\.org https:\/\/\*\.us\.archive\.org;/);
+  console.error = log;
 }
 
 // ---- schema.sql is what the upgrades make: every column an upgrade adds is in a fresh install, the same way
