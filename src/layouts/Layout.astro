@@ -45,7 +45,8 @@ const isHomePage = Astro.url.pathname === "/" || Astro.url.pathname === "/tr/";
             ? "container wide"
             : "container"}
     >
-      <slot />
+      {/* The page's own content takes the slack, so on a short page the ask bar rests just above the footer. */}
+      <div class="page-body"><slot /></div>
       {/* inside main so it stops above the footer; /photos has no chrome at all */}
       {!bleed && <Assistant lang={lang} />}
     </main>
@@ -61,6 +62,15 @@ const isHomePage = Astro.url.pathname === "/" || Astro.url.pathname === "/tr/";
     margin: 0 auto;
     padding: 6rem 1rem 2rem;
     /* takes the slack in the body flex column, so the footer stays put */
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* The slack goes to the content, not below the ask bar: on a short page the
+     bar sits at the bottom of main, just above the footer; on a long page it is
+     sticky as before. The wrapper keeps the slotted content in block flow. */
+  .page-body {
     flex: 1 0 auto;
   }
 
