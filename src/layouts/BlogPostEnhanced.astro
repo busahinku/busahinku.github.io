@@ -97,6 +97,7 @@ const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
       <!-- Center: Article Content -->
       <!-- Search (Pagefind) indexes the article; the data-pagefind-ignore parts are chrome. -->
       <article class="article-container" id="main-content" data-pagefind-body>
+        <div class="article-body">
         {
           heroImage && (
             <div
@@ -198,7 +199,8 @@ const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
 
         <Comments pageKey={key} lang={lang} />
 
-        <!-- inside the article so it stops above the footer -->
+        </div>
+        <!-- inside the article so it stops above the footer; the body above takes the slack -->
         <Assistant lang={lang} />
       </article>
 

@@ -266,6 +266,9 @@ html[data-blog-width="wide"] {
   margin: 0 auto;
   padding-top: 70px;
   align-items: flex-start;
+  /* fills the body's flex column, so a short article's ask bar rests above the footer */
+  flex: 1 0 auto;
+  width: 100%;
 }
 
 /* Sticky at half the viewport, then pulled back by half its own height, so
@@ -291,7 +294,8 @@ html[data-blog-width="wide"] {
 
 @media (max-width: 1280px) {
   .blog-layout {
-    display: block;
+    flex-direction: column;
+    align-items: stretch;
     max-width: 100%;
     padding: 70px 1.5rem 0;
   }
@@ -303,6 +307,7 @@ html[data-blog-width="wide"] {
 
   .article-container {
     width: 100%;
+    flex: 1 0 auto;
   }
 }
 
@@ -588,6 +593,14 @@ html[data-blog-width="wide"] {
   max-width: var(--blog-media-width);
   padding: 0 0 2rem;
   transition: max-width 0.3s ease;
+  /* a column: the body takes the slack and the ask bar comes last */
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+}
+
+.article-body {
+  flex: 1 0 auto;
 }
 
 /* Everything sits at a comfortable reading measure, centered in the wider
