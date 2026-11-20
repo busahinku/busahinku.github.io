@@ -90,7 +90,8 @@ const tr = lang === "tr";
             title: str(b.title, 300)!,
             author: str(b.author, 200),
             // Only the Worker's own copy on files.busahin.com, never another host.
-            cover: typeof b.cover === "string" && /^https:\/\/files\.busahin\.com\//.test(b.cover) ? b.cover : null,
+            // The characters are limited too, since the address also goes into a CSS url() on the spine.
+            cover: typeof b.cover === "string" && /^https:\/\/files\.busahin\.com\/[\w./?=-]+$/.test(b.cover) ? b.cover : null,
             percent: b.reading ? num(b.percent) : null,
             pages: num(b.page_count),
             finished: typeof b.finished === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.finished) ? b.finished : null,
@@ -122,7 +123,8 @@ const tr = lang === "tr";
         const a = el("a", `book tone-${tone(b.title)}`);
         a.href = notes.get(titleKey(b.title)) ?? `${root.dataset.base}/`;
         // Thickness from the page count: about a third of a rem per hundred pages, within bounds.
-        const thick = b.pages ? Math.min(3.25, Math.max(1.5, 1.1 + (b.pages / 100) * 0.35)) : 2;
+        // On display a book is drawn larger, so it is thicker too, or it would read as a card.
+        const thick = (b.pages ? Math.min(3.25, Math.max(1.5, 1.1 + (b.pages / 100) * 0.35)) : 2) * (books.length <= FACE_OUT ? 1.35 : 1);
         a.style.setProperty("--t", `${thick}rem`);
         const label = [b.title, b.author, b.reading && b.percent !== null ? t.read(pct(b.percent)) : null].filter(Boolean).join(", ");
         a.setAttribute("aria-label", label);
@@ -135,6 +137,11 @@ const tr = lang === "tr";
         // A thin spine has room for the title only; the caption and the cover carry the author.
         if (b.author && thick >= 1.9) spine.append(el("span", "spine-author", b.author));
         if (b.reading && b.percent !== null) spine.append(el("span", "spine-pct", `${pct(b.percent)}%`));
+        // With a picture, the spine carries the cover's art round its edge, under a shade for the lettering.
+        if (b.cover) {
+          spine.classList.add("art");
+          spine.style.backgroundImage = `linear-gradient(rgb(0 0 0 / 0.45), rgb(0 0 0 / 0.45)), url("${b.cover}")`;
+        }
         const cover = el("span", "face cover");
         if (b.cover) {
           const img = el("img");
@@ -150,7 +157,8 @@ const tr = lang === "tr";
         lettered.append(el("span", "lettered-title", b.title));
         if (b.author) lettered.append(el("span", "lettered-author", b.author));
         cover.prepend(lettered);
-        box.append(spine, cover, el("span", "face pages"), el("span", "face top"));
+        // A Western book: front cover on the right of the spine, back cover on the left, page edges opposite the spine.
+        box.append(spine, cover, el("span", "face back"), el("span", "face pages"), el("span", "face top"));
         a.append(box);
         if (b.reading) a.append(el("span", "ribbon"));
         li.append(a);
@@ -175,6 +183,17 @@ const tr = lang === "tr";
       else cap.replaceChildren(caption(items[0].b));
 
       const coarse = matchMedia("(hover: none)");
+      // Face out, a book leans a little toward the pointer, like one picked up off a stand.
+      if (motion && books.length <= FACE_OUT)
+        for (const { a } of items) {
+          a.addEventListener("pointermove", (e) => {
+            if (e.pointerType !== "mouse") return;
+            const r = a.getBoundingClientRect();
+            a.style.setProperty("--ty", `${((e.clientX - r.left) / r.width - 0.5) * 16}deg`);
+            a.style.setProperty("--tx", `${(0.5 - (e.clientY - r.top) / r.height) * 10}deg`);
+          });
+          a.addEventListener("pointerleave", () => (a.style.removeProperty("--ty"), a.style.removeProperty("--tx")));
+        }
       for (const { a } of items) {
         a.addEventListener("pointerenter", (e) => e.pointerType === "mouse" && pull(a));
         a.addEventListener("focus", () => pull(a));
@@ -289,30 +308,37 @@ const tr = lang === "tr";
     width: max-content;
     min-width: 100%;
     margin: 0;
-    padding: 0 0 0.625rem;
+    padding: 0 0 0.875rem;
     list-style: none;
     position: relative;
   }
 
+  /* The board: a lit top surface and a darker front edge, so it has depth. */
   .shelf-row::after {
     content: "";
     position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
-    height: 0.625rem;
-    border-top: 1px solid color-mix(in srgb, var(--text-primary) 22%, transparent);
-    background: color-mix(in srgb, var(--text-primary) 6%, var(--bg-primary));
-    box-shadow: 0 6px 14px -8px rgb(0 0 0 / 0.25);
+    height: 1rem;
+    background: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--text-primary) 7%, var(--bg-primary)) 0 42%,
+      color-mix(in srgb, var(--text-primary) 17%, var(--bg-primary)) 42% 100%
+    );
+    border-top: 1px solid color-mix(in srgb, var(--text-primary) 14%, transparent);
+    border-radius: 1px;
+    box-shadow: 0 12px 20px -14px rgb(0 0 0 / 0.4);
   }
 
+  /* One to three books stand on display: larger, turned so their thickness and page edges show. */
   .shelf.face-out {
-    --h: 13.5rem;
+    --h: 16rem;
   }
 
   .shelf.face-out .shelf-row {
-    gap: 2rem;
-    padding-left: 0.75rem;
+    gap: 3rem;
+    padding-left: 1.5rem;
   }
 
   .shelf-slot {
@@ -356,22 +382,64 @@ const tr = lang === "tr";
     transition: transform 0.6s var(--turn);
   }
 
-  /* Pulled out, then turned towards you to show the cover. */
+  /* Pulled out, then turned to show the front cover: the spine to its left, the page edges away. */
   .shelf .book.is-out .box {
-    transform: translate3d(0, calc(var(--lift) * -1), 1.5rem) translateZ(calc(var(--w) * -0.5)) rotateY(58deg);
+    transform: translate3d(0, calc(var(--lift) * -1), 1.5rem) translateZ(calc(var(--w) * -0.5)) rotateY(-58deg);
   }
 
-  /* Face out: the cover to the front, turned a little so the spine still shows. */
+  /* On display: the front cover to you, turned past square so the page edges show on its right;
+     on hover it lifts and leans toward the pointer (--tx, --ty from the script). */
+  .shelf.face-out .book {
+    perspective: 760px;
+    perspective-origin: 50% -10%;
+  }
+
   .shelf.face-out .box {
-    transform: rotateY(72deg);
+    transform: rotateX(var(--tx, 0deg)) rotateY(calc(-126deg + var(--ty, 0deg)));
   }
 
   .shelf.face-out .book.is-out .box {
-    transform: translate3d(0, calc(var(--lift) * -0.6), 1rem) rotateY(84deg);
+    transform: translate3d(0, calc(var(--lift) * -0.5), 0.75rem) rotateX(var(--tx, 0deg)) rotateY(calc(-122deg + var(--ty, 0deg)));
   }
 
   .shelf .book.is-out {
-    z-index: 2;
+    z-index: 3;
+  }
+
+  /* Where the book meets the board: a soft contact shadow, wider when it stands on display. */
+  .shelf .book::before {
+    content: "";
+    position: absolute;
+    left: -6%;
+    right: -6%;
+    bottom: -0.3125rem;
+    height: 0.625rem;
+    background: radial-gradient(closest-side, rgb(0 0 0 / 0.3), transparent);
+    pointer-events: none;
+    transition: opacity 0.6s var(--turn), transform 0.6s var(--turn);
+  }
+
+  .shelf.face-out .book::before {
+    left: -14%;
+    right: -22%;
+    height: 0.875rem;
+    bottom: -0.4375rem;
+    background: radial-gradient(closest-side, rgb(0 0 0 / 0.38), transparent);
+  }
+
+  .shelf .book.is-out::before {
+    opacity: 0.55;
+    transform: scaleX(0.92);
+  }
+
+  .shelf-slot {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* The book that is out comes in front of its neighbours (each slot stacks on its own). */
+  .shelf-slot:has(.is-out) {
+    z-index: 3;
   }
 
   .shelf .face {
@@ -400,6 +468,13 @@ const tr = lang === "tr";
     box-shadow:
       inset 2px 0 0 color-mix(in srgb, #fff 14%, transparent),
       inset -3px 0 4px -2px rgb(0 0 0 / 0.28);
+  }
+
+  /* The cover's art round the spine's edge, as on a printed jacket. */
+  .shelf .spine.art {
+    background-size: auto 100%;
+    background-position: left center;
+    color: #fff;
   }
 
   .shelf .spine-title,
@@ -438,14 +513,23 @@ const tr = lang === "tr";
     border-top: 1px solid currentColor;
   }
 
-  /* The front cover is the box's left side; a picture, or the title set on the spine's colour. */
+  /* The front cover is the box's right side; a picture, or the title set on the spine's colour. */
   .shelf .cover {
+    width: var(--w);
+    margin-left: calc(var(--w) * -0.5);
+    transform: rotateY(90deg) translateZ(calc(var(--t) * 0.5));
+    background: var(--spine);
+    color: var(--ink);
+    border-radius: 1px 3px 3px 1px;
+    box-shadow: inset 3px 0 4px -2px rgb(0 0 0 / 0.35);
+  }
+
+  /* The back cover, plain, in the spine's colour. */
+  .shelf .back {
     width: var(--w);
     margin-left: calc(var(--w) * -0.5);
     transform: rotateY(-90deg) translateZ(calc(var(--t) * 0.5));
     background: var(--spine);
-    color: var(--ink);
-    border-radius: 1px 3px 3px 1px;
   }
 
   .shelf .cover img {
@@ -490,14 +574,15 @@ const tr = lang === "tr";
     opacity: 0.85;
   }
 
-  /* Page edges: fine lines on the side and the top, the colour of paper in this theme. */
+  /* Page edges: the fore-edge opposite the spine and the top, fine lines the colour of paper in this theme. */
   .shelf .pages {
-    width: var(--w);
-    margin-left: calc(var(--w) * -0.5);
-    transform: rotateY(90deg) translateZ(calc(var(--t) * 0.5));
+    width: calc(var(--t) - 0.125rem);
+    margin-left: calc(var(--t) * -0.5 + 0.0625rem);
+    transform: rotateY(180deg) translateZ(calc(var(--w) * 0.5 - 0.0625rem));
     height: calc(var(--h) - 0.25rem);
     top: 0.125rem;
-    background: repeating-linear-gradient(to bottom, var(--paper) 0 2px, var(--paper-line) 2px 3px);
+    background: repeating-linear-gradient(to right, var(--paper) 0 1.5px, var(--paper-line) 1.5px 2.5px);
+    box-shadow: inset 0 0 6px rgb(0 0 0 / 0.12);
   }
 
   .shelf .top {
@@ -541,42 +626,34 @@ const tr = lang === "tr";
     --paper-line: color-mix(in srgb, var(--text-primary) 18%, var(--bg-primary));
   }
 
-  .shelf .tone-0 {
-    --spine: color-mix(in srgb, var(--text-primary) 90%, var(--bg-primary));
+  /* Six spine colours, all mixed from the theme's own tokens and all far from its background:
+     dark spines on a light page, light ones on a dark page, with the page's colour as their ink. */
+  .shelf .book {
     --ink: var(--bg-primary);
+  }
+
+  .shelf .tone-0 {
+    --spine: color-mix(in srgb, var(--text-primary) 92%, var(--bg-primary));
   }
 
   .shelf .tone-1 {
-    --spine: color-mix(in srgb, var(--accent) 62%, var(--text-primary));
-    --ink: var(--bg-primary);
+    --spine: color-mix(in srgb, var(--accent) 58%, var(--text-primary));
   }
 
   .shelf .tone-2 {
-    --spine: var(--bg-secondary);
-    --ink: var(--text-primary);
+    --spine: color-mix(in srgb, var(--text-secondary) 62%, var(--text-primary));
   }
 
   .shelf .tone-3 {
-    --spine: color-mix(in srgb, var(--accent) 22%, var(--bg-primary));
-    --ink: var(--text-primary);
+    --spine: color-mix(in srgb, var(--accent) 30%, var(--text-primary));
   }
 
   .shelf .tone-4 {
-    --spine: color-mix(in srgb, var(--text-secondary) 75%, var(--bg-primary));
-    --ink: var(--bg-primary);
+    --spine: color-mix(in srgb, var(--text-muted) 55%, var(--text-primary));
   }
 
   .shelf .tone-5 {
-    --spine: color-mix(in srgb, var(--accent) 28%, var(--text-primary));
-    --ink: var(--bg-primary);
-  }
-
-  /* The light faces need an edge of their own against the page. */
-  .shelf .tone-2 .spine,
-  .shelf .tone-3 .spine,
-  .shelf .tone-2 .cover,
-  .shelf .tone-3 .cover {
-    box-shadow: inset 0 0 0 1px var(--border);
+    --spine: color-mix(in srgb, var(--accent) 80%, var(--text-primary));
   }
 
   .shelf-caption {
@@ -593,6 +670,7 @@ const tr = lang === "tr";
   }
 
   .shelf-caption .shelf-state {
+    white-space: nowrap;
     margin-left: 0.625rem;
     padding-left: 0.625rem;
     border-left: 1px solid var(--border);
@@ -630,6 +708,8 @@ const tr = lang === "tr";
   .shelf[data-motion="off"]:not(.face-out) .cover,
   .shelf[data-motion="off"].face-out .spine,
   .shelf[data-motion="off"] .pages,
+  .shelf[data-motion="off"] .back,
+  .shelf[data-motion="off"] .book::before,
   .shelf[data-motion="off"] .top {
     display: none;
   }
@@ -652,6 +732,11 @@ const tr = lang === "tr";
     background: #fff;
     color: #000;
     border: 1.5px solid #000;
+  }
+
+  [data-theme="eink"] .shelf .spine.art {
+    background-image: none !important;
+    color: #000;
   }
 
   [data-theme="eink"] .shelf .lettered {
