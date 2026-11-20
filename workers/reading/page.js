@@ -151,6 +151,15 @@ footer { margin-top: 2.5rem; font-size: .75rem; color: var(--text-secondary); }
 .preview hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
 .saved { min-height: 1.25rem; margin: 0; color: var(--text-secondary); font-size: .8125rem; }
 .state.live { border-color: var(--text-primary); color: var(--text-primary); }
+.about { margin: .75rem 0 0; font-size: .9375rem; line-height: 1.65; }
+.about p { margin: 0 0 .625rem; }
+.strip { display: grid; grid-template-columns: repeat(42, minmax(0, 1fr)); gap: 2px; align-items: end; height: 48px; margin-top: .5rem; }
+.strip span { display: block; min-height: 2px; border-radius: 1px; background: color-mix(in srgb, var(--border) 70%, transparent); }
+.strip span.read { background: var(--accent); }
+[data-theme="eink"] .strip span.read { background: #000; }
+.cands { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin-top: .75rem; }
+.cands button { display: grid; gap: .25rem; padding: 0; border: none; background: none; text-align: left; font-size: .75rem; color: var(--text-secondary); }
+.cands img { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 2px; background: var(--bg-secondary); box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-primary) 10%, transparent); }
 .link { display: inline-flex; align-items: center; gap: .25rem; color: inherit; font-size: .875rem; text-underline-offset: 3px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .spin svg { animation: spin .7s linear infinite; }
@@ -250,6 +259,28 @@ const TEXT = {
     writeNote: "Write a note",
     editNote: "Edit the note",
     notes: { draft: "Note: draft", published: "Note: published" },
+    deviceName: (d) => (d === "CrossPoint" ? "E-reader" : d),
+    aboutBook: "About the book",
+    fromHardcover: "Description from Hardcover.",
+    history: "History",
+    historyLine: (days, read, of) => [`${days} reading ${days === 1 ? "day" : "days"}`, read != null && (of ? `${read} of ${of} pages` : `${read} pages`)].filter(Boolean).join(" · "),
+    lastSix: "Pages a day, last six weeks",
+    noHistory: "No history in Sync yet.",
+    positions: "Where each device is",
+    statusDates: "Status and dates",
+    statusAuto: "As Sync works it out",
+    started: "Started",
+    chooseCover: "Choose a cover",
+    otherTitle: "Search another title",
+    noCandidates: "No covers found.",
+    linkedApps: "Linked apps",
+    noLinked: "No apps linked in Sync.",
+    working: "Working",
+    waiting: (n) => `${n} waiting`,
+    stuck: (n) => `${n} failed`,
+    whereRead: "Where I read",
+    bothDays: (n) => `Both on ${n} ${n === 1 ? "day" : "days"}`,
+    countedSince: (d) => `Counted since ${d}`,
     back: "Books",
     english: "English",
     turkish: "Türkçe",
@@ -394,6 +425,28 @@ const TEXT = {
     writeNote: "Not yaz",
     editNote: "Notu düzenle",
     notes: { draft: "Not: taslak", published: "Not: yayında" },
+    deviceName: (d) => (d === "CrossPoint" ? "E-okuyucu" : d),
+    aboutBook: "Kitap hakkında",
+    fromHardcover: "Açıklama Hardcover'dan.",
+    history: "Geçmiş",
+    historyLine: (days, read, of) => [`${days} okuma günü`, read != null && (of ? `${of} sayfanın ${read} sayfası` : `${read} sayfa`)].filter(Boolean).join(" · "),
+    lastSix: "Günlük sayfa, son altı hafta",
+    noHistory: "Sync'te henüz geçmiş yok.",
+    positions: "Her cihaz nerede",
+    statusDates: "Durum ve tarihler",
+    statusAuto: "Sync'in bulduğu gibi",
+    started: "Başlangıç",
+    chooseCover: "Kapak seç",
+    otherTitle: "Başka bir başlık ara",
+    noCandidates: "Kapak bulunamadı.",
+    linkedApps: "Bağlı uygulamalar",
+    noLinked: "Sync'te bağlı uygulama yok.",
+    working: "Çalışıyor",
+    waiting: (n) => `${n} bekliyor`,
+    stuck: (n) => `${n} başarısız`,
+    whereRead: "Nerede okudum",
+    bothDays: (n) => `${n} gün ikisinde de`,
+    countedSince: (d) => `${d} tarihinden beri sayılıyor`,
     back: "Kitaplar",
     english: "English",
     turkish: "Türkçe",
@@ -1049,6 +1102,15 @@ function client(ICON, TEXT, dropGrade) {
       el("span", { class: "bar" }, el("span", { style: `transform:scaleX(${p.awl.met / 570})` })),
       p.books.length && el("h2", {}, t.books),
       el("ul", { class: "plain" }, p.books.map((b) => lineRow(b.book, `${num(b.cards)} · ${num(b.learned)} ${t.learned.toLowerCase()}`))),
+      p.devices?.days.length > 0 && el("h2", {}, t.whereRead),
+      p.devices?.days.length > 0 &&
+        el(
+          "ul",
+          { class: "plain" },
+          p.devices.days.map((d) => lineRow(el("span", { style: "display:inline-flex;gap:.5rem;align-items:center" }, icon(d.device === "CrossPoint" ? "reader" : "phone"), t.deviceName(d.device)), `${num(d.days)} ${t.days(d.days)}`, d.days / Math.max(1, ...p.devices.days.map((x) => x.days)))),
+          p.devices.both > 0 && lineRow(t.bothDays(p.devices.both), ""),
+        ),
+      p.devices?.since && el("p", { class: "muted" }, t.countedSince(day(p.devices.since, { day: "numeric", month: "long", year: "numeric" }))),
       p.lists.length && el("h2", {}, t.lists),
       el("ul", { class: "plain" }, p.lists.map((l) => lineRow(l.book, t.of(num(l.cards), num(l.words)), l.cards / Math.max(1, l.words)))),
     ];
@@ -1093,6 +1155,7 @@ function client(ICON, TEXT, dropGrade) {
               { class: "metaline" },
               el("span", {}, [t.status[b.status], b.status !== "finished" && percent(b)].filter(Boolean).join(" · ")),
               b.hidden && el("span", { class: "state" }, icon("hidden"), t.hiddenChip),
+              b.device && el("span", { class: "state", title: b.device }, icon(b.device === "CrossPoint" ? "reader" : "phone"), t.deviceName(b.device)),
               !b.hidden && !b.on_page && b.status !== "paused" && el("span", { class: "state" }, t.offPage),
               b.notes.en || b.notes.tr ? el("span", { class: `state${Object.values(b.notes).includes("published") ? " live" : ""}` }, t.notes[Object.values(b.notes).includes("published") ? "published" : "draft"]) : null,
             ),
@@ -1129,10 +1192,114 @@ function client(ICON, TEXT, dropGrade) {
         }
       });
       const id = `show-${b.document}`;
+      // History and every device's position come from Sync live, so they fill in after the rest.
+      const history = el("div", {}, el("p", { class: "muted" }, "…"));
+      api(`books/history?document=${b.document}`)
+        .then((h) => {
+          const pages = new Map(h.days.map((d) => [d.day, d.pages]));
+          const read = new Set(h.reading_days);
+          const days = Array.from({ length: 42 }, (_, i) => {
+            const d = new Date(`${state.day ?? h.days.at(-1)?.day ?? "2026-01-01"}T12:00:00Z`);
+            d.setUTCDate(d.getUTCDate() - (41 - i));
+            return d.toISOString().slice(0, 10);
+          });
+          const most = Math.max(1, ...days.map((d) => pages.get(d) ?? 0));
+          history.replaceChildren(
+            el("p", { style: "margin:0" }, read.size ? t.historyLine(read.size, h.pages_read, h.page_count) : t.noHistory),
+            read.size > 0 && el("p", { class: "muted", style: "margin:.75rem 0 0" }, t.lastSix),
+            read.size > 0 &&
+              el(
+                "div",
+                { class: "strip", role: "img", "aria-label": `${t.lastSix}: ${days.filter((d) => read.has(d)).map((d) => `${day(d)} ${pages.get(d) ?? 0}`).join(", ")}` },
+                days.map((d) => el("span", { class: read.has(d) ? "read" : "", style: `height:${read.has(d) ? Math.max(12, ((pages.get(d) ?? 0) / most) * 100) : 4}%`, title: `${day(d)}: ${pages.get(d) ?? 0}` })),
+              ),
+            h.devices.length > 0 && el("p", { class: "sub" }, t.positions),
+            h.devices.length > 0 &&
+              el(
+                "ul",
+                { class: "plain" },
+                h.devices.map((d) =>
+                  el("li", { class: "line" }, icon(d.device === "CrossPoint" ? "reader" : "phone"), el("span", { class: "grow" }, t.deviceName(d.device ?? "?")), el("span", { class: "meta" }, [d.percentage != null && `${num(Math.round(d.percentage * 100))}%`, when(d.at)].filter(Boolean).join(" · "))),
+                ),
+              ),
+          );
+        })
+        .catch(() => history.replaceChildren(el("p", { class: "muted" }, t.loadFailed)));
+      const statusSelect = el("select", { "aria-label": t.statusDates }, el("option", { value: "" }, t.statusAuto), ["reading", "paused", "finished", "dnf"].map((v) => el("option", { value: v, selected: v === b.status }, t.status[v])));
+      const startInput = el("input", { type: "date", value: b.started ?? "" });
+      const finishInput = el("input", { type: "date", value: b.finished ?? "" });
+      const candidates = el("div");
+      const showCandidates = async (q = "") => {
+        candidates.replaceChildren(el("p", { class: "muted" }, "…"));
+        try {
+          const { items } = await api(`books/candidates?document=${b.document}${q ? `&q=${encodeURIComponent(q)}` : ""}`);
+          const search = el("input", { type: "search", placeholder: t.otherTitle, "aria-label": t.otherTitle, value: q, onchange: (e) => showCandidates(e.target.value) });
+          candidates.replaceChildren(
+            search,
+            items.length
+              ? el(
+                  "div",
+                  { class: "cands" },
+                  items.map((c) =>
+                    el(
+                      "button",
+                      {
+                        type: "button",
+                        onclick: async () => {
+                          try {
+                            await api("books/cover/pick", { document: b.document, url: c.url });
+                            status(t.coverSaved);
+                            await refresh();
+                          } catch (e) {
+                            status(t.error(e.data?.reason ?? e.message));
+                          }
+                        },
+                      },
+                      el("img", { src: c.url, alt: [c.title, c.author].filter(Boolean).join(", "), loading: "lazy", referrerpolicy: "no-referrer" }),
+                      el("span", {}, c.source ?? ""),
+                    ),
+                  ),
+                )
+              : el("p", { class: "muted" }, t.noCandidates),
+          );
+        } catch (e) {
+          candidates.replaceChildren(el("p", { class: "muted" }, t.error(e.data?.reason ?? e.message)));
+        }
+      };
       return el(
         "div",
         { class: "opened" },
         facts.length > 0 && el("dl", { class: "facts" }, facts.map(([k, v]) => el("div", { style: "display:contents" }, el("dt", {}, k), el("dd", {}, String(v))))),
+        b.description && el("p", { class: "sub" }, t.aboutBook),
+        b.description && el("div", { class: "about", lang: "en" }, b.description.split("\n\n").map((para) => el("p", {}, para))),
+        b.description && !b.description_manual && el("p", { class: "credit" }, t.fromHardcover),
+        el("p", { class: "sub" }, t.history),
+        history,
+        el("p", { class: "sub" }, t.statusDates),
+        el(
+          "form",
+          {
+            class: "form",
+            onsubmit: async (e) => {
+              e.preventDefault();
+              // Only what changed goes to Sync; an emptied date goes back to Sync's own.
+              const change = {};
+              if (statusSelect.value !== (b.status ?? "")) change.status = statusSelect.value || null;
+              if (startInput.value !== (b.started ?? "")) change.start_date = startInput.value || null;
+              if (finishInput.value !== (b.finished ?? "")) change.finished_date = finishInput.value || null;
+              if (!Object.keys(change).length) return;
+              try {
+                await api("books/status", { document: b.document, ...change });
+                await refresh();
+              } catch (err) {
+                status(t.error(err.data?.reason ?? err.message));
+              }
+            },
+          },
+          statusSelect,
+          el("div", { class: "pair" }, el("label", { class: "field" }, el("span", {}, t.started), startInput), el("label", { class: "field" }, el("span", {}, t.finishedOn), finishInput)),
+          el("div", {}, button(t.save, { type: "submit", icon: "check" })),
+        ),
         el("p", { class: "sub" }, t.readingPage),
         el(
           "div",
@@ -1176,8 +1343,16 @@ function client(ICON, TEXT, dropGrade) {
         ),
         el("p", { class: "sub" }, t.cover),
         b.on_page
-          ? el("div", { class: "row", style: "margin-top:0" }, button(b.cover ? t.replaceCover : t.uploadCover, { icon: "upload", onclick: () => file.click() }), file, !b.cover && b.cover_waiting && el("span", { class: "muted" }, t.coverWaiting))
+          ? el(
+              "div",
+              { class: "row", style: "margin-top:0" },
+              button(b.cover ? t.replaceCover : t.uploadCover, { icon: "upload", onclick: () => file.click() }),
+              !b.cover && !b.cover_waiting && button(t.chooseCover, { icon: "choose", onclick: () => showCandidates() }),
+              file,
+              !b.cover && b.cover_waiting && el("span", { class: "muted" }, t.coverWaiting),
+            )
           : el("p", { class: "muted" }, t.coverOnPage),
+        candidates,
         button(b.notes.en || b.notes.tr ? t.editNote : t.writeNote, { primary: true, class: "action", icon: "pencil", onclick: () => (location.hash = `#note/${b.document}`) }),
       );
     };
@@ -1478,6 +1653,34 @@ function client(ICON, TEXT, dropGrade) {
       );
     };
     const tokenBox = el("div");
+    const linked = el("div", {}, el("p", { class: "muted" }, "…"));
+    api("connectors")
+      .then(({ connectors }) =>
+        linked.replaceChildren(
+          connectors.length
+            ? el(
+                "ul",
+                { class: "plain" },
+                connectors.map((c) =>
+                  el(
+                    "li",
+                    { class: "line", style: "display:block" },
+                    el(
+                      "div",
+                      { style: "display:flex;gap:.75rem;align-items:center" },
+                      icon("linked"),
+                      el("span", { class: "grow" }, c.name ?? c.id),
+                      el("span", { class: `state${c.status === "ok" ? " live" : ""}` }, c.status === "ok" ? t.working : (c.status ?? t.failed)),
+                    ),
+                    (c.pending > 0 || c.dead > 0) && el("span", { class: "muted", style: "display:block" }, [c.pending > 0 && t.waiting(c.pending), c.dead > 0 && t.stuck(c.dead)].filter(Boolean).join(" · ")),
+                    ...c.errors.map((e) => el("span", { class: "muted", style: "display:block" }, [e.kind, e.message].filter(Boolean).join(": "))),
+                  ),
+                ),
+              )
+            : el("p", { class: "muted" }, t.noLinked),
+        ),
+      )
+      .catch((e) => linked.replaceChildren(el("p", { class: "muted" }, t.error(e.data?.reason ?? e.message))));
     return [
       top(t.tabs.admin, button(t.language, { icon: "language", onclick: () => ((lang = lang === "en" ? "tr" : "en"), store.set("reading-app-lang", lang), location.reload()) })),
       el("h2", {}, t.lastSync),
@@ -1495,6 +1698,8 @@ function client(ICON, TEXT, dropGrade) {
           ),
         ),
       ),
+      el("h2", {}, t.linkedApps),
+      linked,
       el("h2", {}, t.quota),
       el("ul", { class: "plain" }, quota(t.translations, a.quota.translations), quota(t.recordings, a.quota.audio)),
       el("h2", {}, t.pushes),
