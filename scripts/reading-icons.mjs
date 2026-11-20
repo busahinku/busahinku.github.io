@@ -10,7 +10,7 @@ const ICONS = {
   offline: "wifi-off", close: "x", plus: "plus", pencil: "pencil", trash: "trash-2", volume: "volume-2",
   logout: "log-out", language: "languages", chevron: "chevron-down",
   books: "book-open", book: "book", upload: "image-up", shown: "eye", hidden: "eye-off", publish: "send", back: "arrow-left",
-  external: "external-link", unpublish: "undo-2",
+  external: "external-link", unpublish: "undo-2", phone: "smartphone", reader: "tablet", linked: "link", choose: "images",
 };
 const dir = new URL("../node_modules/@lucide/astro/", import.meta.url);
 const version = JSON.parse(fs.readFileSync(new URL("package.json", dir), "utf8")).version;

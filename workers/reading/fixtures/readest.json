@@ -1,0 +1,54 @@
+{
+ "about": "What arrives once Readest on the phone is linked as a connector in CrossPoint Sync (src/connectors/readest.ts there): its progress as a device row named Readest, and its highlights as clippings with no chapter, para or page fields. Merged into progress.json and clippings.json by check.mjs.",
+ "progress": [
+  {
+   "document": "6a1d0c2f9e8b7a6d5c4b3a2918070605",
+   "title": "Piranesi",
+   "author": "Susanna Clarke",
+   "filename": null,
+   "percentage": 0.4,
+   "progress": "/body/DocFragment[5]/body/p[20]",
+   "device_id": "readest",
+   "device": "Readest",
+   "timestamp": 1795010400,
+   "status": "reading",
+   "status_at": null,
+   "cover_url": null,
+   "page_count": null,
+   "hardcover_slug": null,
+   "moods": [],
+   "genres": [],
+   "content_warnings": [],
+   "rating": null,
+   "series": null,
+   "series_position": null,
+   "release_year": null
+  }
+ ],
+ "clippings": [
+  {
+   "document": "6a1d0c2f9e8b7a6d5c4b3a2918070605",
+   "id": "aa11bb22cc33dd44",
+   "spine": 4,
+   "start_offset": 120,
+   "chapter": null,
+   "text": "Vestibule",
+   "note": null,
+   "created_at": 1795010000
+  },
+  {
+   "document": "6a1d0c2f9e8b7a6d5c4b3a2918070605",
+   "id": "aa11bb22cc33dd45",
+   "chapter": null,
+   "text": "The Beauty of the House is immeasurable;\nits Kindness infinite.",
+   "note": "a note written on the phone",
+   "created_at": 1795010100
+  },
+  {
+   "document": "6a1d0c2f9e8b7a6d5c4b3a2918070605",
+   "id": "aa11bb22cc33dd46",
+   "text": "  tides  ",
+   "created_at": null
+  }
+ ]
+}

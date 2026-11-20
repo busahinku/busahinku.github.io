@@ -59,7 +59,13 @@ const WIKI_HEADERS = { accept: "application/json", "user-agent": "busahin-readin
 // recordings: allowed https hosts only, no redirect, an image judged by its
 // headers before a byte is read and by its first bytes after, a size cap, an
 // object cap, a daily cap, and a failure waits a day.
-const COVER_HOSTS = "assets.hardcover.app"; // env.COVER_HOSTS replaces it (comma-separated host names)
+// Hardcover's covers, and the hosts Sync's cover candidates come from (src/models/cover.ts there):
+// Apple Books artwork on is1-ssl to is5-ssl.mzstatic.com, and Open Library, whose covers are
+// handed on to archive.org and then one of its ia*.us.archive.org mirrors. A leading dot allows
+// any subdomain. env.COVER_HOSTS replaces the list.
+const COVER_HOSTS =
+  "assets.hardcover.app,is1-ssl.mzstatic.com,is2-ssl.mzstatic.com,is3-ssl.mzstatic.com,is4-ssl.mzstatic.com,is5-ssl.mzstatic.com,covers.openlibrary.org,archive.org,.us.archive.org";
+const COVER_HOPS = 2; // redirects followed by hand, each to an allowed host
 const COVERS_PER_RUN = 5;
 const COVERS_PER_DAY = 50;
 const COVER_MAX_BYTES = 1_000_000; // a Hardcover cover is about 36 KB; the app shrinks an upload before sending it
@@ -68,12 +74,14 @@ const COVER_ERROR_RETRY = 86_400;
 const COOKIE = "reading_session";
 const SESSION_DAYS = 60;
 const CLIPPINGS_MAX = 5000; // GET /api/v1/clippings returns at most this many
-const KEEP_RAW = 900_000;
+const KEEP_RAW = 900_000; // characters of an answer worth keeping; D1 rows stop at 2 MB
 // Raise when the derivation changes (a new column, a new field read from an answer): the
 // next pull ignores the stored hashes once and re-derives every table from the answers,
 // so rows written by older code are filled in even when Sync's answers have not changed.
-// 2: covers and Hardcover's metadata on books.
-const DERIVE_VERSION = 2; // characters of an answer worth keeping; D1 rows stop at 2 MB
+// 2: covers and Hardcover's metadata on books. 3: the device of each book's newest position.
+const DERIVE_VERSION = 3;
+const ABOUT_PER_RUN = 3;
+const ABOUT_REFRESH = 30 * 86_400; // a book's description is asked for again after a month
 
 const DOC = /^[A-Za-z0-9._-]{1,64}$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -194,6 +202,9 @@ function deriveBooks(progress, activity) {
         series_position: num(i.series_position, 0, 100_000),
         rating: num(i.rating, 0, 5),
         hardcover_slug: text(i.hardcover_slug, 200),
+        // The device behind the newest position: the reader, or Readest on the phone once it is linked in Sync.
+        device: text(i.device, 60),
+        device_id: text(i.device_id, 64),
       };
     });
 }
@@ -241,9 +252,33 @@ async function get(env, path, auth = true) {
   // A redirect is refused, so the credentials never follow one to another host.
   // (Workers only accept "follow" or "manual"; "manual" hands back the 3xx.)
   const res = await fetch(new URL(path, env.SYNC_URL), { headers, redirect: "manual", signal: AbortSignal.timeout(20_000) });
-  if (res.status >= 300 && res.status < 400) throw new Error(`${path}: refused a redirect (HTTP ${res.status})`);
-  if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
+  if (res.status >= 300 && res.status < 400) throw Object.assign(new Error(`${path}: refused a redirect (HTTP ${res.status})`), { sync: true });
+  if (!res.ok) throw Object.assign(new Error(`${path}: HTTP ${res.status}`), { sync: true, status: res.status });
   return res.text();
+}
+
+/** A Sync answer as JSON, for the private routes that read it live. */
+async function syncJson(env, path) {
+  const body = await get(env, path);
+  try {
+    return JSON.parse(body);
+  } catch {
+    throw Object.assign(new Error(`${path}: not JSON`), { sync: true });
+  }
+}
+
+/** A write to Sync (a book's status or dates), with the same headers and the same refusal of redirects. */
+async function put(env, path, body) {
+  if (!env.SYNC_USER || !env.SYNC_KEY) throw Object.assign(new Error("SYNC_USER and SYNC_KEY are not set"), { sync: true });
+  const res = await fetch(new URL(path, env.SYNC_URL), {
+    method: "PUT",
+    headers: { accept: "application/json", "content-type": "application/json", "user-agent": "reading-worker", "x-auth-user": env.SYNC_USER, "x-auth-key": env.SYNC_KEY },
+    body: J(body),
+    redirect: "manual",
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!res.ok) throw Object.assign(new Error(`${path}: HTTP ${res.status}`), { sync: true, status: res.status });
+  return res.json().catch(() => ({}));
 }
 
 async function sha256(s) {
@@ -328,23 +363,31 @@ async function ingest(env, now = Date.now()) {
   if (booksChanged) {
     const books = deriveBooks(parsed.progress, parsed.activity);
     counts.books = books.length;
+    // Which device read on which day, kept from here on (Sync keeps no per-day device): a book whose
+    // newest position moved since the last pull counts that day for the device that moved it.
+    const before = new Map((await db.prepare("SELECT document, last_at FROM books").all()).results.map((r) => [r.document, r.last_at]));
+    const moved = books.filter((b) => b.last_at && b.device && before.get(b.document) !== b.last_at).map((b) => ({ day: dayOf(b.last_at * 1000), device: b.device }));
+    if (moved.length)
+      statements.push(db.prepare("INSERT OR IGNORE INTO day_devices (day, device) SELECT value->>'day', value->>'device' FROM json_each(?1)").bind(J(moved)));
     statements.push(
       db
         .prepare(
           `INSERT INTO books (document, title, filename, author, percentage, status, page_count, started_at, last_at, finished_at, days_to_finish,
-                             cover_url, release_year, genres, series, series_position, rating, hardcover_slug)
+                             cover_url, release_year, genres, series, series_position, rating, hardcover_slug, device, device_id)
            SELECT value->>'document', value->>'title', value->>'filename', value->>'author', value->>'percentage', value->>'status', value->>'page_count',
                   value->>'started_at', value->>'last_at', value->>'finished_at', value->>'days_to_finish',
-                  value->>'cover_url', value->>'release_year', value->>'genres', value->>'series', value->>'series_position', value->>'rating', value->>'hardcover_slug'
+                  value->>'cover_url', value->>'release_year', value->>'genres', value->>'series', value->>'series_position', value->>'rating', value->>'hardcover_slug',
+                  value->>'device', value->>'device_id'
            FROM json_each(?1) WHERE true
            ON CONFLICT (document) DO UPDATE SET title = excluded.title, filename = excluded.filename, author = excluded.author, percentage = excluded.percentage,
              status = excluded.status, page_count = excluded.page_count, started_at = excluded.started_at, last_at = excluded.last_at,
              finished_at = excluded.finished_at, days_to_finish = excluded.days_to_finish, cover_url = excluded.cover_url, release_year = excluded.release_year,
-             genres = excluded.genres, series = excluded.series, series_position = excluded.series_position, rating = excluded.rating, hardcover_slug = excluded.hardcover_slug
+             genres = excluded.genres, series = excluded.series, series_position = excluded.series_position, rating = excluded.rating, hardcover_slug = excluded.hardcover_slug,
+             device = excluded.device, device_id = excluded.device_id
            WHERE (books.title, books.filename, books.author, books.percentage, books.status, books.page_count, books.started_at, books.last_at, books.finished_at, books.days_to_finish,
-                  books.cover_url, books.release_year, books.genres, books.series, books.series_position, books.rating, books.hardcover_slug)
+                  books.cover_url, books.release_year, books.genres, books.series, books.series_position, books.rating, books.hardcover_slug, books.device, books.device_id)
              IS NOT (excluded.title, excluded.filename, excluded.author, excluded.percentage, excluded.status, excluded.page_count, excluded.started_at, excluded.last_at, excluded.finished_at, excluded.days_to_finish,
-                     excluded.cover_url, excluded.release_year, excluded.genres, excluded.series, excluded.series_position, excluded.rating, excluded.hardcover_slug)`,
+                     excluded.cover_url, excluded.release_year, excluded.genres, excluded.series, excluded.series_position, excluded.rating, excluded.hardcover_slug, excluded.device, excluded.device_id)`,
         )
         .bind(J(books)),
     );
@@ -434,9 +477,10 @@ async function ingest(env, now = Date.now()) {
     }
   }
   const covers = await syncCovers(env, now);
+  const about = await refreshAbout(env, now).catch((error) => (console.error(error), 0));
   // The public answer is rebuilt every pull (the day may have turned) and read back as one row.
   await storeSummary(env, now);
-  return { changed, ...counts, translated, recorded, covers };
+  return { changed, ...counts, translated, recorded, covers, about };
 }
 
 /** Reserves one translation from today's cap; false when it is spent. */
@@ -680,8 +724,9 @@ async function summary(env, now) {
 async function booksList(env) {
   const [books, notes] = await env.DB.batch([
     env.DB.prepare(
-      `SELECT document, title, filename, public_title, hidden, author, status, percentage, page_count, release_year, genres, series, series_position,
-              cover_url, cover_key, cover_v FROM books ORDER BY last_at DESC`,
+      `SELECT b.document, b.title, b.filename, b.public_title, b.hidden, b.author, b.status, b.percentage, b.page_count, b.release_year, b.genres, b.series,
+              b.series_position, b.cover_url, b.cover_key, b.cover_v, b.device, b.started_at, b.finished_at, a.description, a.manual AS description_manual
+       FROM books b LEFT JOIN about a USING (document) ORDER BY b.last_at DESC`,
     ),
     env.DB.prepare("SELECT document, lang, published_path IS NOT NULL AS published FROM notes"),
   ]);
@@ -693,6 +738,9 @@ async function booksList(env) {
       shown_as: publicTitle(b, env),
       on_page: onPage(b, env),
       genres: genres ? JSON.parse(genres) : [],
+      description_manual: Boolean(b.description_manual),
+      started: b.started_at ? dayOf(b.started_at * 1000) : null,
+      finished: b.finished_at ? dayOf(b.finished_at * 1000) : null,
       cover: coverOf({ cover_key, cover_v }, env),
       cover_waiting: !cover_v && Boolean(cover_url), // Hardcover has one; the next pull copies it if the book is on the page
       notes: Object.fromEntries((byBook.get(b.document) ?? []).map((n) => [n.lang, n.published ? "published" : "draft"])),
@@ -1172,8 +1220,61 @@ function coverSource(value, env) {
   } catch {
     return null;
   }
-  const hosts = String(env.COVER_HOSTS ?? COVER_HOSTS).split(",").map((h) => h.trim().toLowerCase()).filter(Boolean);
-  return url.protocol === "https:" && !url.username && !url.password && !url.port && hosts.includes(url.hostname) ? url : null;
+  const host = url.hostname;
+  const allowed = coverHosts(env).some((h) => (h.startsWith(".") ? host.endsWith(h) && host.length > h.length : host === h));
+  return url.protocol === "https:" && !url.username && !url.password && !url.port && allowed ? url : null;
+}
+const coverHosts = (env) => String(env.COVER_HOSTS ?? COVER_HOSTS).split(",").map((h) => h.trim().toLowerCase()).filter(Boolean);
+
+/** Reads a body up to `max` bytes and refuses anything longer, for an answer that does not say its size. */
+async function readCapped(res, max) {
+  if (!res.body) return res.arrayBuffer();
+  const reader = res.body.getReader();
+  const parts = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) {
+      await reader.cancel().catch(() => {});
+      throw new Error("cover: larger than the cap");
+    }
+    parts.push(value);
+  }
+  const out = new Uint8Array(size);
+  let at = 0;
+  for (const p of parts) (out.set(p, at), (at += p.byteLength));
+  return out.buffer;
+}
+
+/**
+ * A cover's bytes, from an allowed https host only. Redirects are never
+ * followed by fetch: a 3xx is followed by hand at most COVER_HOPS times, and
+ * only to another allowed host (Open Library's covers live on archive.org).
+ * Judged by its headers before a byte is read: an image, and under the cap
+ * when it says its size; an answer with no size is read only up to the cap.
+ */
+async function fetchCover(env, value) {
+  let url = coverSource(value, env);
+  if (!url) throw new Error(`cover: ${value} is not on an allowed https host`);
+  for (let hop = 0; ; hop++) {
+    const res = await fetch(url, { headers: { "user-agent": WIKI_HEADERS["user-agent"] }, redirect: "manual", signal: AbortSignal.timeout(15_000) });
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get("location");
+      const next = hop < COVER_HOPS && location ? coverSource(new URL(location, url).href, env) : null;
+      if (!next) throw new Error(`cover: refused a redirect (HTTP ${res.status})`);
+      url = next;
+      continue;
+    }
+    const length = res.headers.get("content-length");
+    const size = Number(length);
+    if (!res.ok || !(res.headers.get("content-type") ?? "").startsWith("image/") || (length !== null && !(size > 0 && size <= COVER_MAX_BYTES)))
+      throw new Error(`cover: HTTP ${res.status}, ${res.headers.get("content-type")}, ${length} bytes`);
+    const bytes = length !== null ? await res.arrayBuffer() : await readCapped(res, COVER_MAX_BYTES);
+    if (bytes.byteLength > COVER_MAX_BYTES) throw new Error("cover: larger than it said");
+    return bytes;
+  }
 }
 
 /** Reserves one of today's `column` (a fixed name below) under `cap`; false when it is spent. */
@@ -1212,16 +1313,7 @@ async function coverRoom(env, now, adds = true) {
 async function copyCover(env, book, now) {
   if (!(await coverRoom(env, now))) return false;
   try {
-    const url = coverSource(book.cover_url, env);
-    if (!url) throw new Error(`cover: ${book.cover_url} is not on an allowed https host`);
-    const res = await fetch(url, { headers: { "user-agent": WIKI_HEADERS["user-agent"] }, redirect: "manual", signal: AbortSignal.timeout(15_000) });
-    // Judged before reading: an answer that is not an image, has no size, or is too big is never read. A 3xx is not ok.
-    const size = Number(res.headers.get("content-length"));
-    if (!res.ok || !(res.headers.get("content-type") ?? "").startsWith("image/") || !(size > 0) || size > COVER_MAX_BYTES)
-      throw new Error(`cover: HTTP ${res.status}, ${res.headers.get("content-type")}, ${size} bytes`);
-    const bytes = await res.arrayBuffer();
-    if (bytes.byteLength > COVER_MAX_BYTES) throw new Error("cover: larger than it said");
-    await storeCover(env, book, bytes, now);
+    await storeCover(env, book, await fetchCover(env, book.cover_url), now);
     return true;
   } catch (error) {
     console.error(error);
@@ -1276,6 +1368,161 @@ async function uploadCover(env, request, now) {
   await storeSummary(env, now);
   return { document, cover };
 }
+
+// ---------------------------------------------------------------- more of what Sync knows: descriptions, history, devices, linked apps
+
+/** Book descriptions (GET /documents/{document}/about) for books on the public page, a few a run, asked again monthly. */
+async function refreshAbout(env, now) {
+  const db = env.DB;
+  const seconds = Math.floor(now / 1000);
+  const { results } = await db.prepare("SELECT b.*, a.checked_at FROM books b LEFT JOIN about a USING (document)").all();
+  const due = results.filter((b) => onPage(b, env) && !(b.checked_at > seconds - ABOUT_REFRESH)).slice(0, ABOUT_PER_RUN);
+  let found = 0;
+  for (const b of due) {
+    let row = { description: null, manual: 0 };
+    try {
+      const body = await syncJson(env, `/api/v1/documents/${encodeURIComponent(b.document)}/about`);
+      row = { description: aboutText(body?.description), manual: body?.manual === true ? 1 : 0 };
+    } catch (error) {
+      if (error.status !== 404) throw error; // Sync knows no description: kept as none, asked again in a month
+    }
+    if (row.description) found++;
+    await db
+      .prepare("INSERT INTO about (document, description, manual, checked_at) VALUES (?1, ?2, ?3, ?4) ON CONFLICT (document) DO UPDATE SET description = excluded.description, manual = excluded.manual, checked_at = excluded.checked_at")
+      .bind(b.document, row.description, row.manual, seconds)
+      .run();
+  }
+  return found;
+}
+
+/** A description kept as plain paragraphs: no control characters, at most one blank line in a row, 6000 characters. */
+function aboutText(v) {
+  if (typeof v !== "string") return null;
+  const clean = v
+    .toWellFormed()
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\u0000-\u0009\u000b-\u001f\u007f\u2028\u2029]+/g, " ")
+    .replace(/[ \t]+/g, " ")
+    .replace(/ ?\n ?/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+    .slice(0, 6000);
+  return clean || null;
+}
+
+/** Device names as the app shows them: CrossPoint is the reader; anything else (Readest) as Sync names it. */
+const deviceRow = (d) => ({ device: text(d?.device, 60), device_id: text(d?.device_id, 64), percentage: num(d?.percentage), at: ts(d?.timestamp) });
+
+/** One book's reading history and every device's position, read live from Sync for the app's book page. */
+async function bookHistory(env, request) {
+  const document = new URL(request.url).searchParams.get("document") ?? "";
+  if (!DOC.test(document)) return null;
+  if (!(await bookRow(env.DB, document))) return undefined;
+  const doc = encodeURIComponent(document);
+  const [activity, progressRows] = await Promise.all([
+    syncJson(env, `/api/v1/stats/activity/books?documents=${doc}&tz=${TZ_OFFSET}`),
+    syncJson(env, `/api/v1/progress/${doc}`).catch((error) => (error.status === 404 ? { devices: [] } : Promise.reject(error))),
+  ]);
+  const book = list(activity?.books)[0] ?? null;
+  return {
+    document,
+    started: book && ts(book.started_at) ? dayOf(book.started_at * 1000) : null,
+    finished: book && ts(book.finished_at) ? dayOf(book.finished_at * 1000) : null,
+    pages_read: int(book?.pages_read),
+    page_count: int(book?.page_count, 1, 100_000),
+    reading_days: (Array.isArray(book?.reading_days) ? book.reading_days : []).filter((d) => typeof d === "string" && DAY.test(d)),
+    days: list(book?.days)
+      .filter((d) => typeof d.day === "string" && DAY.test(d.day))
+      .map((d) => ({ day: d.day, pages: int(d.pages) ?? 0, syncs: int(d.syncs) ?? 0 })),
+    devices: list(progressRows?.devices).map(deviceRow),
+  };
+}
+
+/** The apps linked in Sync (Readest, Hardcover) and whether they are working; read-only. */
+async function connectors(env) {
+  const body = await syncJson(env, "/api/v1/connectors");
+  return {
+    encryption: text(body?.encryption, 20),
+    connectors: list(body?.connectors)
+      .filter((c) => c.linked === true)
+      .map((c) => ({
+        id: text(c.id, 40),
+        name: text(c.name, 60),
+        status: text(c.status, 40),
+        pending: int(c.queue?.pending),
+        dead: int(c.queue?.dead),
+        errors: list(c.queue_errors).slice(0, 3).map((e) => ({ kind: text(e.kind, 60), message: text(e.message, 300), count: int(e.count) })),
+      })),
+  };
+}
+
+/** Covers to choose from for a book that has none, from Sync (Apple Books, Open Library); only those on an allowed host. */
+async function coverCandidates(env, request) {
+  const params = new URL(request.url).searchParams;
+  const document = params.get("document") ?? "";
+  if (!DOC.test(document)) return null;
+  if (!(await bookRow(env.DB, document))) return undefined;
+  const q = text(params.get("q"), 200);
+  const body = await syncJson(env, `/api/v1/documents/${encodeURIComponent(document)}/cover/candidates${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+  return {
+    items: list(body?.items)
+      .filter((c) => typeof c.url === "string" && coverSource(c.url, env))
+      .slice(0, 12)
+      .map((c) => ({ url: c.url, title: text(c.title, 200), author: text(c.author, 200), source: text(c.source, 40), pages: int(c.pages, 1, 100_000) })),
+  };
+}
+
+/** Keeps a chosen candidate as the book's cover, through the same guarded copy as Hardcover's. */
+async function pickCover(env, input, now) {
+  if (!isRecord(input) || typeof input.document !== "string" || !DOC.test(input.document) || typeof input.url !== "string" || !coverSource(input.url, env)) return null;
+  const book = await bookRow(env.DB, input.document);
+  if (!book) return undefined;
+  if (!onPage(book, env)) return { error: "not on the page" };
+  if (!env.FILES) return { error: "no bucket" };
+  if (!(await coverRoom(env, now, !book.cover_v))) return { error: "cover limit" };
+  let bytes;
+  try {
+    bytes = await fetchCover(env, input.url);
+  } catch (error) {
+    return { error: "cover", reason: String(error.message).slice(0, 200) };
+  }
+  if (!imageType(bytes)) return { error: "cover", reason: "not a JPEG, PNG, WebP or AVIF image" };
+  const cover = await storeCover(env, book, bytes, now);
+  await storeSummary(env, now);
+  return { document: book.document, cover };
+}
+
+/**
+ * A book's status (reading, paused, finished, dnf, or null for Sync to derive it
+ * again) and its start and finish dates, written to Sync, which stays the system
+ * of record; then a pull, so the public page follows (a dnf book leaves it).
+ */
+async function setStatus(env, input, now) {
+  if (!isRecord(input) || typeof input.document !== "string" || !DOC.test(input.document)) return null;
+  const { status, start_date, finished_date } = input;
+  if (status !== undefined && status !== null && !STATUSES.has(status)) return null;
+  for (const d of [start_date, finished_date]) if (d !== undefined && d !== null && !isDay(d)) return null;
+  if (status === undefined && start_date === undefined && finished_date === undefined) return null;
+  if (!(await bookRow(env.DB, input.document))) return undefined;
+  const doc = encodeURIComponent(input.document);
+  if (status !== undefined) await put(env, `/api/v1/documents/${doc}/status`, { status });
+  const dates = Object.fromEntries(Object.entries({ start_date, finished_date }).filter(([, v]) => v !== undefined));
+  if (Object.keys(dates).length) await put(env, `/api/v1/documents/${doc}/dates`, dates);
+  const out = await pull(env, now, "manual");
+  if (!out.ok) return { error: "pull failed", reason: out.error };
+  return (await booksList(env)).books.find((b) => b.document === input.document);
+}
+
+/** A route that reads from or writes to Sync: a Sync failure is a 502 with its status, never the answer or the credentials. */
+const viaSync = async (work) => {
+  try {
+    const out = await work();
+    return out?.error === "cover" ? respond(out, 502) : answer(out);
+  } catch (error) {
+    if (!error.sync) throw error;
+    return respond({ error: "sync", reason: error.message }, 502);
+  }
+};
 
 // ---------------------------------------------------------------- notifications and settings
 
@@ -1533,6 +1780,8 @@ function noteFile(note) {
     ["description", note.description],
     ["readerTitle", note.reader_title],
     ["cover", note.cover],
+    ["about", note.about],
+    ["aboutFromHardcover", note.about_hardcover],
     ["lang", note.lang],
     ["translationKey", note.slug],
   ].filter(([, v]) => v);
@@ -1580,11 +1829,15 @@ async function noteState(env, row, book) {
 /** The note plus what the book adds to its file: the reader's own title when it differs, and the cover when the book is on the page. */
 const noteForFile = (row, book, env) => ({
   ...row,
+  // The book's description from Sync, credited to Hardcover unless it was written by hand there.
+  about: book?.about ?? null,
+  about_hardcover: book?.about ? !book.about_manual : null,
   reader_title: book?.title && titleKey(book.title) !== titleKey(row.title) ? oneLine(book.title, 200) : null,
   cover: book && onPage(book, env) ? coverOf(book, env) : null,
 });
 
-const bookRow = (db, document) => db.prepare("SELECT * FROM books WHERE document = ?1").bind(document).first();
+const bookRow = (db, document) =>
+  db.prepare("SELECT b.*, a.description AS about, a.manual AS about_manual FROM books b LEFT JOIN about a USING (document) WHERE b.document = ?1").bind(document).first();
 
 /** Both languages of a book's note, and the book to fill a new one from. */
 async function getNote(env, request) {
@@ -1871,6 +2124,10 @@ async function progress(env, now) {
     if (f.awl) (awlMet.add(f.awl), c.box >= LEARNED && awlLearned.add(f.awl));
   }
   const listed = await db.prepare("SELECT COUNT(DISTINCT awl_headword) AS n FROM prestudy WHERE awl = 1").first("n");
+  // Where reading happened, by day: each device's days, and the days both were used.
+  const { results: deviceDays } = await db.prepare("SELECT day, COUNT(*) AS n, MIN(device) AS device FROM day_devices GROUP BY day").all();
+  const byDevice = new Map();
+  for (const d of (await db.prepare("SELECT device, COUNT(*) AS days FROM day_devices GROUP BY device ORDER BY days DESC, device").all()).results) byDevice.set(d.device, d.days);
   return {
     today,
     weeks: series,
@@ -1880,6 +2137,7 @@ async function progress(env, now) {
     awl: { met: awlMet.size, learned: awlLearned.size, in_lists: listed, families: 570 },
     books: bookRows,
     lists: preBooks,
+    devices: { days: [...byDevice].map(([device, days]) => ({ device, days })), both: deviceDays.filter((d) => d.n > 1).length, since: deviceDays[0]?.day ?? null },
   };
 }
 
@@ -1907,7 +2165,7 @@ async function adminData(env, now) {
 /** Every table that is his: cards, reviews, clippings, books, word lists, settings (never the token hash). */
 async function exportAll(env) {
   const db = env.DB;
-  const names = ["cards", "reviews", "clippings", "books", "days", "book_days", "prestudy", "audio", "sync_log", "notes"];
+  const names = ["cards", "reviews", "clippings", "books", "days", "book_days", "prestudy", "audio", "sync_log", "notes", "about", "day_devices"];
   const out = await db.batch([...names.map((n) => db.prepare(`SELECT * FROM ${n}`)), db.prepare("SELECT key, value FROM settings WHERE key <> 'token_hash'")]);
   return Object.fromEntries([...names, "settings"].map((n, i) => [n, out[i].results]));
 }
@@ -2027,6 +2285,11 @@ const PRIVATE = {
   "GET /api/reading/books": (env) => booksList(env),
   "POST /api/reading/books": async (env, request, now) => answer(await setBook(env, await readJson(request), now)),
   "POST /api/reading/books/cover": async (env, request, now) => answer(await uploadCover(env, request, now)),
+  "GET /api/reading/books/history": (env, request) => viaSync(() => bookHistory(env, request)),
+  "GET /api/reading/books/candidates": (env, request) => viaSync(() => coverCandidates(env, request)),
+  "POST /api/reading/books/cover/pick": async (env, request, now) => viaSync(async () => pickCover(env, await readJson(request), now)),
+  "POST /api/reading/books/status": async (env, request, now) => viaSync(async () => setStatus(env, await readJson(request), now)),
+  "GET /api/reading/connectors": (env) => viaSync(() => connectors(env)),
   "GET /api/reading/note": async (env, request) => answer(await getNote(env, request)),
   "POST /api/reading/note": async (env, request, now) =>
     request.headers.get("content-length") === null ? respond({ error: "length required" }, 411) : answer(await saveNote(env, await readJson(request, 400_000), now)),
@@ -2036,7 +2299,10 @@ const PRIVATE = {
 
 // The private page and its sign-in. Strict headers: no framing, no indexing,
 // scripts and styles only with this response's nonce.
-function html(body, status, nonce, extra = {}) {
+// The app shows cover candidates before one is copied, so it may load images from the cover hosts.
+const coverImgSrc = (env) => coverHosts(env).map((h) => (h.startsWith(".") ? `https://*${h}` : `https://${h}`)).join(" ");
+
+function html(body, status, nonce, extra = {}, images = "") {
   return new Response(body, {
     status,
     headers: {
@@ -2045,7 +2311,7 @@ function html(body, status, nonce, extra = {}) {
       "x-robots-tag": "noindex, nofollow",
       "referrer-policy": "same-origin",
       "x-frame-options": "DENY",
-      "content-security-policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; font-src 'self'; connect-src 'self'; media-src https://files.busahin.com; img-src 'self' data: https://files.busahin.com; manifest-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'`,
+      "content-security-policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; font-src 'self'; connect-src 'self'; media-src https://files.busahin.com; img-src 'self' data: https://files.busahin.com${images ? ` ${images}` : ""}; manifest-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'`,
       ...extra,
     },
   });
@@ -2059,7 +2325,7 @@ async function pageRoute(request, env, path) {
   const origin = request.headers.get("origin");
   if (request.method === "POST" && origin && origin !== url.origin) return new Response(null, { status: 403 });
   if (path === "/api/reading/app" && request.method === "GET")
-    return (await authorized(request, env)) ? html(appPage(nonce), 200, nonce) : html(loginPage(nonce), 401, nonce);
+    return (await authorized(request, env)) ? html(appPage(nonce), 200, nonce, {}, coverImgSrc(env)) : html(loginPage(nonce), 401, nonce);
   if (path === "/api/reading/login" && request.method === "POST") {
     // Five tries a minute per visitor on top of the general limit; the token is 64 hex characters anyway.
     if (env.LOGIN && !(await env.LOGIN.limit({ key: request.headers.get("cf-connecting-ip") ?? "unknown" })).success)
@@ -2152,4 +2418,4 @@ export default {
 };
 
 // For check.mjs.
-export { addDays, addWord, adminData, audioFor, authorized, band, booksList, buildSummary, candidates, cardsCsv, cardsJson, classify, commonsAudio, coverSource, dayOf, deleteWord, derive, editWord, ensureAudio, eveningPush, exportAll, forecast, getNote, getSettings, handTerm, hasHtml, healthLines, imageType, importList, ingest, learnNotes, nextBox, noteFile, notesToWrite, notification, notifications, notify, pace, pickRecording, progress, publicTitle, publishNote, pull, review, rotateToken, saveNote, sentences, sentencesMined, setBook, setSettings, streak, summary, syncCovers, termOf, todayCard, unpublishNote, uploadCover, weeklyPush, wordFacts };
+export { aboutText, bookHistory, connectors, coverCandidates, DERIVE_VERSION, fetchCover, pickCover, refreshAbout, setStatus, addDays, addWord, adminData, audioFor, authorized, band, booksList, buildSummary, candidates, cardsCsv, cardsJson, classify, commonsAudio, coverSource, dayOf, deleteWord, derive, editWord, ensureAudio, eveningPush, exportAll, forecast, getNote, getSettings, handTerm, hasHtml, healthLines, imageType, importList, ingest, learnNotes, nextBox, noteFile, notesToWrite, notification, notifications, notify, pace, pickRecording, progress, publicTitle, publishNote, pull, review, rotateToken, saveNote, sentences, sentencesMined, setBook, setSettings, streak, summary, syncCovers, termOf, todayCard, unpublishNote, uploadCover, weeklyPush, wordFacts };

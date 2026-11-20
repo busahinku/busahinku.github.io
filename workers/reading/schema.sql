@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS raw (
 -- book's R2 key for its cover copy (random, kept for good), `cover_v` the
 -- copy's hash (null: no copy now), `cover_checked_at` the last copy attempt;
 -- those three are the Worker's own and never touched by a pull either.
+-- `device` and `device_id` are those of the book's newest position (the
+-- reader, or Readest on the phone when it is linked in Sync).
 CREATE TABLE IF NOT EXISTS books (
   document TEXT PRIMARY KEY,
   title TEXT,
@@ -44,7 +46,9 @@ CREATE TABLE IF NOT EXISTS books (
   hardcover_slug TEXT,
   cover_key TEXT,
   cover_v TEXT,
-  cover_checked_at INTEGER
+  cover_checked_at INTEGER,
+  device TEXT,
+  device_id TEXT
 );
 
 -- Reading activity per Istanbul calendar day, as the Sync server derives it from
@@ -257,3 +261,22 @@ CREATE TABLE IF NOT EXISTS notes (
   PRIMARY KEY (document, lang)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS notes_by_slug ON notes (lang, slug);
+
+-- A book's description from Sync (GET /documents/{document}/about), for books
+-- on the public page; `manual` is 1 when it was written by hand in Sync rather
+-- than taken from Hardcover. Asked again after a month.
+CREATE TABLE IF NOT EXISTS about (
+  document TEXT PRIMARY KEY,
+  description TEXT,
+  manual INTEGER NOT NULL DEFAULT 0,
+  checked_at INTEGER NOT NULL
+);
+
+-- Which device read on which day, kept from the pulls on (Sync keeps no
+-- per-day device): a day counts for a device when a book's newest position,
+-- moved by that device, lands on it.
+CREATE TABLE IF NOT EXISTS day_devices (
+  day TEXT NOT NULL,
+  device TEXT NOT NULL,
+  PRIMARY KEY (day, device)
+) WITHOUT ROWID;

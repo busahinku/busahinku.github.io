@@ -39,6 +39,19 @@ const slug = noteSlug(note);
 >
   {note.data.cover && <img slot="lead" class="book-cover" src={note.data.cover} alt="" width="240" height="360" decoding="async" />}
   <Content />
+  {
+    note.data.about && (
+      <details class="about-book">
+        <summary>Kitap hakkında</summary>
+        <div lang="en">
+          {note.data.about.split("\n\n").map((para) => (
+            <p>{para}</p>
+          ))}
+        </div>
+        {note.data.aboutFromHardcover && <p class="about-credit" set:html={`Açıklama <a href="https://hardcover.app/">Hardcover</a>'dan.`} />}
+      </details>
+    )
+  }
 </BlogPostEnhanced>
 
 <style>
@@ -53,6 +66,29 @@ const slug = noteSlug(note);
     border-radius: 2px;
     background: var(--bg-secondary);
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-primary) 8%, transparent);
+  }
+
+  /* The book's own description, folded away under the note: his words first, the blurb on request. */
+  .about-book {
+    margin: 2.5rem 0 0;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+  }
+
+  .about-book summary {
+    cursor: pointer;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .about-credit {
+    font-size: 0.8125rem;
+  }
+
+  .about-credit :global(a) {
+    color: inherit;
   }
 
   @media (max-width: 640px) {

@@ -91,6 +91,10 @@ const books = defineCollection({
 				.string()
 				.regex(/^https:\/\/files\.busahin\.com\/reading\/covers\/[0-9a-f-]{36}(\?v=[0-9a-f]{1,16})?$/)
 				.optional(),
+			// The book's description from CrossPoint Sync (written by the private app when it publishes),
+			// and whether it came from Hardcover, which is then credited under it.
+			about: z.string().max(6000).optional(),
+			aboutFromHardcover: z.boolean().optional(),
 			draft: z.boolean().default(false),
 			lang: z.enum(['en', 'tr']).default('en'),
 			translationKey: z.string().optional(),
